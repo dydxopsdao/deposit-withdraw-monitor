@@ -1,0 +1,27 @@
+{
+  "name": "deposit-withdraw-monitor",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dydxopsdao/deposit-withdraw-monitor.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/dydxopsdao/deposit-withdraw-monitor/issues"
+  },
+  "homepage": "https://github.com/dydxopsdao/deposit-withdraw-monitor#readme",
+  "dependencies": {
+    "playwright": "^1.53.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.53.0",
+    "@types/node": "^24.0.3",
+    "dotenv": "^16.5.0"
+  }
+}
