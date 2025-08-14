@@ -15,6 +15,20 @@
 npm install
 ```
 
+## 📦 Downloading Chrome Extensions
+
+Download and extract Chrome extensions for testing:
+
+```bash
+# Download Phantom wallet extension
+npm run download-phantom
+
+# Download any extension (requires name and ID)
+node scripts/download-extension.js <extension-name> <extension-id>
+```
+
+Extensions are downloaded to `extensions/<extension-name>/` with CRX/ZIP files automatically cleaned up.
+
 ## 🧪 Running Tests
 
 ### Run all tests:
