@@ -1,29 +1,32 @@
 // tests/fixtures.ts
-import { chromium as _chromium, test as _test } from '@playwright/test';
-import path from 'path';
+import { chromium as _chromium, test as _test } from "@playwright/test";
+import path from "path";
 
-const EXT_PATH      = path.resolve(__dirname, 'extensions/phantom');
-const USER_DATA_DIR = path.resolve(__dirname, 'user-data');
-const EXT_ID        = 'bfnaelmomeimhlpmgjnjophhpkkoljpa';
+export const USER_DATA_DIR = path.resolve(process.cwd(), "user-data");
+export const PHANTOM_EXT_PATH = path.resolve(
+  process.cwd(),
+  "extensions/phantom"
+);
+export const PHANTOM_EXT_ID = "bfnaelmomeimhlpmgjnjophhpkkoljpa";
 
 export const test = _test.extend<{
-  context: import('@playwright/test').BrowserContext,
-  page: import('@playwright/test').Page,
+  context: import("@playwright/test").BrowserContext;
+  page: import("@playwright/test").Page;
 }>({
-  context: async ({ }, use) => {
-    console.log('➜ Loading Phantom extension from:', EXT_PATH);
+  context: async ({}, use) => {
+    console.log("➜ Loading Phantom extension from:", PHANTOM_EXT_PATH);
 
     const context = await _chromium.launchPersistentContext(USER_DATA_DIR, {
       headless: false,
-      ignoreDefaultArgs: ['--enable-automation'],
+      ignoreDefaultArgs: ["--enable-automation"],
       args: [
-        '--disable-blink-features=AutomationControlled',
-        `--disable-extensions-except=${EXT_PATH}`,
-        `--load-extension=${EXT_PATH}`,
+        "--disable-blink-features=AutomationControlled",
+        `--disable-extensions-except=${PHANTOM_EXT_PATH}`,
+        `--load-extension=${PHANTOM_EXT_PATH}`,
       ],
     });
     await context.addInitScript(() => {
-      Object.defineProperty(navigator, 'webdriver', { get: () => false });
+      Object.defineProperty(navigator, "webdriver", { get: () => false });
     });
     await use(context);
     await context.close();
@@ -35,4 +38,4 @@ export const test = _test.extend<{
   },
 });
 
-export { expect } from '@playwright/test';
+export { expect } from "@playwright/test";
