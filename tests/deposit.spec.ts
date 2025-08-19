@@ -1,17 +1,18 @@
-import { test, expect, PHANTOM_EXT_ID } from "../fixtures";
+import { testWithPhantom, expect, PHANTOM_EXT_ID } from "../fixtures";
 
 const DAPP_URL = "https://dydx.trade/portfolio/overview";
 
-test.beforeEach(async ({ page }) => {
+testWithPhantom.beforeEach(async ({ page }) => {
   await page.goto(DAPP_URL);
   await page.reload();
 });
 
-test("Regular deposit flow", async ({ page, context }) => {
+testWithPhantom("Regular deposit flow", async ({ page, context }) => {
+  
+  await page.pause();
+
   // Click on the Connect wallet button
   await page.locator('button:has-text("Connect wallet")').click();
-
-  await page.pause();
 
   const phantomWallet = context
     .pages()

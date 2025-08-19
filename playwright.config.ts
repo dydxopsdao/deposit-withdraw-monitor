@@ -2,7 +2,6 @@ import path from "path";
 import { defineConfig, devices } from "@playwright/test";
 import dotenv from "dotenv";
 
-const PHANTOM_EXT_PATH = path.resolve(process.cwd(), "./extensions/phantom");
 const envFile = process.env.CI ? ".env" : ".env.local";
 dotenv.config({ path: envFile });
 console.log(`> Loaded environment from ${envFile}`);
@@ -20,7 +19,10 @@ console.log(`> Loaded environment from ${envFile}`);
  */
 export default defineConfig({
   testDir: "./tests",
-  globalSetup: "./global-setup.ts",
+
+  // NOTE: Some global configuration steps can be done in a Global Setup file
+  //globalSetup: "./global-setup.ts",
+
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
@@ -50,9 +52,7 @@ export default defineConfig({
         launchOptions: {
           ignoreDefaultArgs: ["--enable-automation"],
           args: [
-            "--disable-blink-features=AutomationControlled",
-            `--disable-extensions-except=${PHANTOM_EXT_PATH}`,
-            `--load-extension=${PHANTOM_EXT_PATH}`,
+            "--disable-blink-features=AutomationControlled"
           ],
         },
       },
