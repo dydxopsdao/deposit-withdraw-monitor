@@ -53,7 +53,7 @@ async function downloadExtension() {
     
     const { crxPath, zipPath } = await fetchExtensionZip(webstoreUrl, {
       // one could provide a custom chrome version here
-      // chromeVersion: '133.0',
+      chromeVersion: '133.0',
       outputDir: outputDir
     });
     
