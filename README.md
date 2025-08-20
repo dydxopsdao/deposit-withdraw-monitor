@@ -58,4 +58,19 @@ test.skip('test name', async ({ page }) => {
 });
 ```
 
+## 📦 Terraform
 
+Prerequisites:
+- You have the `dos-sandbox` profile and `dydxopsdao` session set up in your `~/.aws/config` file.
+- You have the `terraform` CLI installed.
+- You are logged in to AWS using `aws sso login --sso-session dydxopsdao`
+
+To deploy the task to AWS, run the following commands:
+
+```bash
+cd terraform
+export AWS_PROFILE=dos-sandbox
+terraform init
+terraform plan
+terraform apply
+```
