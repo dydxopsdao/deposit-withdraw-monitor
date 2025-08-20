@@ -11,7 +11,7 @@ export const phantomTest = base.extend<{
     console.log('➜ Loading Phantom extension from:', PHANTOM_EXT_PATH);
 
     // Create persistent browser context with Phantom extension
-    const context = await chromium.launchPersistentContext(USER_DATA_DIR, {
+    const context = await chromium.launchPersistentContext(`${USER_DATA_DIR}/phantom`, {
       headless: false,
       ignoreDefaultArgs: ['--enable-automation'],
       args: [

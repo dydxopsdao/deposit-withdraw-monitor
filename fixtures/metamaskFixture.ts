@@ -1,7 +1,7 @@
 // tests/fixtures.ts
 import { chromium, test as base } from '@playwright/test';
 import { findPageWithUrl } from './helpers';
-import { METAMASK_EXT_PATH, USER_DATA_DIR, DAPP_URL, METAMASK_EXT_ID } from './constants';
+import { METAMASK_EXT_PATH, USER_DATA_DIR, DAPP_URL } from './constants';
 
 export const metamaskTest = base.extend<{
   context: import('@playwright/test').BrowserContext;
@@ -11,7 +11,7 @@ export const metamaskTest = base.extend<{
     console.log('➜ Loading Metamask extension from:', METAMASK_EXT_PATH);
 
     // Create persistent browser context with Phantom extension
-    const context = await chromium.launchPersistentContext(USER_DATA_DIR, {
+    const context = await chromium.launchPersistentContext(`${USER_DATA_DIR}/metamask`, {
       headless: false,
       ignoreDefaultArgs: ['--enable-automation'],
       args: [
