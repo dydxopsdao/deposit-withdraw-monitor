@@ -1,4 +1,4 @@
-import { phantomTest, expect } from "../fixtures/phantomTest";
+import { phantomTest, expect } from "../fixtures";
 
 phantomTest("Regular deposit flow with Phantom Wallet", async ({ dappPage, context }) => {
   

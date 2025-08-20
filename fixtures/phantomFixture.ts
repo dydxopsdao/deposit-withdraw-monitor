@@ -1,10 +1,10 @@
 // tests/fixtures.ts
-import { chromium, test } from "@playwright/test";
+import { chromium, test as base } from "@playwright/test";
 import { findPageWithUrl } from "./helpers";
 import { PHANTOM_EXT_PATH, USER_DATA_DIR, DAPP_URL, PHANTOM_EXT_ID } from "./constants";
 
 
-export const phantomTest = test.extend<{
+export const phantomTest = base.extend<{
   context: import("@playwright/test").BrowserContext;
   dappPage: import("@playwright/test").Page;
 }>({
@@ -136,5 +136,3 @@ async function connectPhantomWallet(dappPage: any, context: any) {
   
   console.log("✅ Phantom wallet connection completed");
 }
-
-export { expect } from "@playwright/test";
