@@ -31,6 +31,12 @@ Extensions are downloaded to `extensions/<extension-name>/` with CRX/ZIP files a
 
 ## 🧪 Running Tests
 
+### ⚠️ Run with clean user data
+While this repo is a work in progress, it's recommended to start each run with a clean slate to avoid any leftover data from previous Phantom wallet connections.
+```bash
+rm -rf user-data test-results playwright-report && ENV_PATH=.env.local npx playwright test
+```
+
 ### Run all tests:
 ```bash
 ENV_PATH=.env.local npx playwright test

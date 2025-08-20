@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "download-phantom": "node scripts/download-extension.js phantom bfnaelmomeimhlpmgjnjophhpkkoljpa"
+    "download-phantom": "node scripts/download-extension.js phantom bfnaelmomeimhlpmgjnjophhpkkoljpa",
+    "download-metamask": "node scripts/download-extension.js metamask nkbihfbeogaeaoehlefnkodbefgpgknn",
+    "download-extensions": "npm run download-phantom && npm run download-metamask"
   },
   "repository": {
     "type": "git",
