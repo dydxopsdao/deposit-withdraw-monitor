@@ -52,11 +52,11 @@ export const testWithPhantom = test.extend<{
     // Get the first page from the context for the test
     const [page] = context.pages();
 
-    await page.pause();
-    
     // Navigate to the DApp URL and wait for it to load
     await page.goto(DAPP_URL);
-    await page.waitForLoadState('domcontentloaded');
+    await page.waitForLoadState('domcontentloaded', {timeout: 30000});
+
+    await connectPhantomWallet(page, context);
     
     // Make the loaded page available to the test
     await use(page);
@@ -121,6 +121,58 @@ async function setupPhantomWallet(context: any) {
 
   await phantomWalletOnboarding.close();
   console.log("✅ Phantom wallet setup completed successfully");
+}
+
+async function getPhantomPopup(context: any) {
+  console.log("⏳ Waiting for new Phantom popup...");
+
+  const maxRetries = 10;
+  const retryDelay = 1000; // 1 second
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    console.log(`🔄 Attempt ${attempt}/${maxRetries}`);
+    
+    const pages = await context.pages();
+    const existingPopup = await pages.find(page => page.url().includes(`chrome-extension://${PHANTOM_EXT_ID}/notification.html`));
+    
+    if (existingPopup) {
+      await existingPopup.waitForLoadState('domcontentloaded');
+      console.log("✅ Found existing popup");
+      return existingPopup;
+    }
+
+    console.log(`⏳ No popup found, waiting ${retryDelay}ms before retry...`);
+    await new Promise(resolve => setTimeout(resolve, retryDelay));
+  }
+
+  console.log("❌ No popup found after all retries");
+  return null;
+}
+
+async function connectPhantomWallet(dappPage: any, context: any) {
+  console.log("🚀 Starting Phantom wallet connection...");
+  
+  console.log("📋 Step 1: Initial connection prompt");
+  const phantomPopup1 = await getPhantomPopup(context);
+  await phantomPopup1.getByTestId('primary-button').click();
+  await phantomPopup1.close(); // Close after use
+  
+  console.log("📋 Step 2: Choosing Solana wallet");
+  await dappPage.getByRole('button', { name: 'Connect wallet' }).click();
+  await dappPage.getByRole('button', { name: 'Phantom (Solana)' }).click();
+  await dappPage.getByRole('button', { name: 'Send request' }).click();
+
+  console.log("📋 Step 3: Generating dYdX Chain wallet");
+  const phantomPopup2 = await getPhantomPopup(context);
+  await phantomPopup2.getByTestId('primary-button').click();
+  await phantomPopup2.close(); // Close after use
+
+  console.log("📋 Step 4: Verifying wallet compatibility");
+  const phantomPopup3 = await getPhantomPopup(context);
+  await phantomPopup3.getByTestId('primary-button').click();
+  await phantomPopup3.close(); // Close after use
+  
+  console.log("✅ Phantom wallet connection completed");
 }
 
 export { expect } from "@playwright/test";
