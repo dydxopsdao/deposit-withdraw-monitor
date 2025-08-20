@@ -1,8 +1,10 @@
 // tests/fixtures.ts
-import { chromium as _chromium, test as _test } from "@playwright/test";
+import { chromium, test } from "@playwright/test";
 import path from "path";
 
 export const USER_DATA_DIR = path.resolve(process.cwd(), "user-data");
+export const DAPP_URL = "https://dydx.trade/portfolio/overview";
+
 export const PHANTOM_EXT_PATH = path.resolve(
   process.cwd(),
   "extensions/phantom"
@@ -14,6 +16,52 @@ export const PHANTOM_EXT_ID = "bfnaelmomeimhlpmgjnjophhpkkoljpa";
 // "extensions/metamask"
 //);
 //export const METAMASK_EXT_ID = "nkbihfbeogaeaoehlefnkodbefgpgknn";
+
+export const testWithPhantom = test.extend<{
+  context: import("@playwright/test").BrowserContext;
+  dappPage: import("@playwright/test").Page;
+}>({
+  context: async ({}, use) => {
+    console.log("➜ Loading Phantom extension from:", PHANTOM_EXT_PATH);
+    
+    // Create persistent browser context with Phantom extension
+    const context = await chromium.launchPersistentContext(USER_DATA_DIR, {
+      headless: false,
+      ignoreDefaultArgs: ["--enable-automation"],
+      args: [
+        "--disable-blink-features=AutomationControlled",
+        `--disable-extensions-except=${PHANTOM_EXT_PATH}`,
+        `--load-extension=${PHANTOM_EXT_PATH}`,
+      ],
+    });
+    
+    await context.addInitScript(() => {
+      // Prevent websites from detecting automation by overriding navigator.webdriver
+      Object.defineProperty(navigator, "webdriver", { get: () => false });
+    });
+
+    console.log("🔧 Setting up Phantom wallet...");
+    await setupPhantomWallet(context);
+    
+    // Make the context available to the test
+    await use(context);
+    await context.close();
+  },
+
+  dappPage: async ({ context }, use) => {
+    // Get the first page from the context for the test
+    const [page] = context.pages();
+
+    await page.pause();
+    
+    // Navigate to the DApp URL and wait for it to load
+    await page.goto(DAPP_URL);
+    await page.waitForLoadState('domcontentloaded');
+    
+    // Make the loaded page available to the test
+    await use(page);
+  },
+});
 
 // Helper function to setup Phantom wallet
 async function setupPhantomWallet(context: any) {
@@ -74,39 +122,5 @@ async function setupPhantomWallet(context: any) {
   await phantomWalletOnboarding.close();
   console.log("✅ Phantom wallet setup completed successfully");
 }
-
-export const testWithPhantom = _test.extend<{
-  context: import("@playwright/test").BrowserContext;
-  page: import("@playwright/test").Page;
-}>({
-  context: async ({}, use) => {
-    console.log("➜ Loading Phantom extension from:", PHANTOM_EXT_PATH);
-    
-    const context = await _chromium.launchPersistentContext(USER_DATA_DIR, {
-      headless: false,
-      ignoreDefaultArgs: ["--enable-automation"],
-      args: [
-        "--disable-blink-features=AutomationControlled",
-        `--disable-extensions-except=${PHANTOM_EXT_PATH}`,
-        `--load-extension=${PHANTOM_EXT_PATH}`,
-      ],
-    });
-    
-    await context.addInitScript(() => {
-      Object.defineProperty(navigator, "webdriver", { get: () => false });
-    });
-
-    console.log("🔧 Setting up Phantom wallet...");
-    await setupPhantomWallet(context);
-    
-    await use(context);
-    await context.close();
-  },
-
-  page: async ({ context }, use) => {
-    const [page] = context.pages();
-    await use(page);
-  },
-});
 
 export { expect } from "@playwright/test";
