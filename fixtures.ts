@@ -17,7 +17,7 @@ export const PHANTOM_EXT_ID = "bfnaelmomeimhlpmgjnjophhpkkoljpa";
 //);
 //export const METAMASK_EXT_ID = "nkbihfbeogaeaoehlefnkodbefgpgknn";
 
-export const testWithPhantom = test.extend<{
+export const phantomTest = test.extend<{
   context: import("@playwright/test").BrowserContext;
   dappPage: import("@playwright/test").Page;
 }>({
@@ -62,6 +62,39 @@ export const testWithPhantom = test.extend<{
     await use(page);
   },
 });
+
+// Finds and returns a page in the browser context matching a given URL pattern, retrying if necessary.
+async function findPageWithUrl(
+  context: any, 
+  urlPattern: string, 
+  maxRetries: number = 10, 
+  retryDelay: number = 1000
+) {
+  console.log(`⏳ Waiting for page with URL pattern: ${urlPattern}`);
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    console.log(`🔄 Attempt ${attempt}/${maxRetries}`);
+    
+    const pages = await context.pages();
+    const existingPopup = await pages.find(page => page.url().match(new RegExp(urlPattern)));
+    
+    if (existingPopup) {
+      await existingPopup.waitForLoadState('domcontentloaded');
+      console.log("✅ Found existing popup");
+      return existingPopup;
+    }
+
+    console.log(`⏳ No page found, waiting ${retryDelay}ms before retry...`);
+    await new Promise(resolve => setTimeout(resolve, retryDelay));
+  }
+
+  console.log("❌ No page found after all retries");
+  return null;
+}
+
+// ----------------------------
+// Phant wallet setup and connection
+// ----------------------------
 
 // Helper function to setup Phantom wallet
 async function setupPhantomWallet(context: any) {
@@ -123,37 +156,12 @@ async function setupPhantomWallet(context: any) {
   console.log("✅ Phantom wallet setup completed successfully");
 }
 
-async function getPhantomPopup(context: any) {
-  console.log("⏳ Waiting for new Phantom popup...");
-
-  const maxRetries = 10;
-  const retryDelay = 1000; // 1 second
-
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    console.log(`🔄 Attempt ${attempt}/${maxRetries}`);
-    
-    const pages = await context.pages();
-    const existingPopup = await pages.find(page => page.url().includes(`chrome-extension://${PHANTOM_EXT_ID}/notification.html`));
-    
-    if (existingPopup) {
-      await existingPopup.waitForLoadState('domcontentloaded');
-      console.log("✅ Found existing popup");
-      return existingPopup;
-    }
-
-    console.log(`⏳ No popup found, waiting ${retryDelay}ms before retry...`);
-    await new Promise(resolve => setTimeout(resolve, retryDelay));
-  }
-
-  console.log("❌ No popup found after all retries");
-  return null;
-}
-
+// Connects to the Phantom wallet on the dApp page
 async function connectPhantomWallet(dappPage: any, context: any) {
   console.log("🚀 Starting Phantom wallet connection...");
   
   console.log("📋 Step 1: Initial connection prompt");
-  const phantomPopup1 = await getPhantomPopup(context);
+  const phantomPopup1 = await findPageWithUrl(context, `chrome-extension://${PHANTOM_EXT_ID}/notification.html`);
   await phantomPopup1.getByTestId('primary-button').click();
   await phantomPopup1.close(); // Close after use
   
@@ -163,12 +171,12 @@ async function connectPhantomWallet(dappPage: any, context: any) {
   await dappPage.getByRole('button', { name: 'Send request' }).click();
 
   console.log("📋 Step 3: Generating dYdX Chain wallet");
-  const phantomPopup2 = await getPhantomPopup(context);
+  const phantomPopup2 = await findPageWithUrl(context, `chrome-extension://${PHANTOM_EXT_ID}/notification.html`);
   await phantomPopup2.getByTestId('primary-button').click();
   await phantomPopup2.close(); // Close after use
 
   console.log("📋 Step 4: Verifying wallet compatibility");
-  const phantomPopup3 = await getPhantomPopup(context);
+  const phantomPopup3 = await findPageWithUrl(context, `chrome-extension://${PHANTOM_EXT_ID}/notification.html`);
   await phantomPopup3.getByTestId('primary-button').click();
   await phantomPopup3.close(); // Close after use
   
