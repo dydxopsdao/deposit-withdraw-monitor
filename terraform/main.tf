@@ -12,6 +12,54 @@ data "aws_subnets" "default" {
 
 data "aws_region" "current" {}
 
+data "aws_caller_identity" "current" {}
+
+# --- ECR Repository for the Docker image ---
+resource "aws_ecr_repository" "this" {
+  name                 = "deposit-withdraw-monitor"
+  image_tag_mutability = "MUTABLE"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+}
+
+# --- ECR Lifecycle Policy ---
+resource "aws_ecr_lifecycle_policy" "this" {
+  repository = aws_ecr_repository.this.name
+
+  policy = jsonencode({
+    rules = [
+      {
+        rulePriority = 1
+        description  = "Keep last 10 images"
+        selection = {
+          tagStatus     = "tagged"
+          tagPrefixList = ["v"]
+          countType     = "imageCountMoreThan"
+          countNumber   = 10
+        }
+        action = {
+          type = "expire"
+        }
+      },
+      {
+        rulePriority = 2
+        description  = "Delete untagged images older than 1 day"
+        selection = {
+          tagStatus   = "untagged"
+          countType   = "sinceImagePushed"
+          countUnit   = "days"
+          countNumber = 1
+        }
+        action = {
+          type = "expire"
+        }
+      }
+    ]
+  })
+}
+
 # --- Security group for the task (egress only) ---
 resource "aws_security_group" "task" {
   name        = "deposit-withdraw-monitor-scheduled-task-sg"
@@ -55,6 +103,32 @@ resource "aws_iam_role_policy_attachment" "task_execution_managed" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
+# Add explicit ECR permissions to task execution role
+resource "aws_iam_role_policy" "ecr_permissions" {
+  name = "deposit-withdraw-monitor-ecr-permissions"
+  role = aws_iam_role.task_execution.id
+  
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage"
+        ]
+        Resource = aws_ecr_repository.this.arn
+      },
+      {
+        Effect = "Allow"
+        Action = "ecr:GetAuthorizationToken"
+        Resource = "*"
+      }
+    ]
+  })
+}
+
 # --- IAM: (optional) Task role for your app (minimal/no perms here) ---
 resource "aws_iam_role" "task_role" {
   name = "deposit-withdraw-monitor-ecsTaskRole-scheduled"
@@ -81,21 +155,26 @@ resource "aws_ecs_task_definition" "this" {
   container_definitions = jsonencode([
     {
       name      = "job"
-      image     = "public.ecr.aws/docker/library/node:18-alpine"
-      command   = [
-        "sh", "-c", 
-        "echo '${base64encode(file("${path.module}/../scripts/run-task.sh"))}' | base64 -d > /tmp/run-task.sh && chmod +x /tmp/run-task.sh && /tmp/run-task.sh"
-      ]
+      image     = "${aws_ecr_repository.this.repository_url}:latest"
       essential = true
-      workingDirectory = "/tmp"
       logConfiguration = {
         logDriver = "awslogs",
         options = {
           awslogs-group         = aws_cloudwatch_log_group.this.name,
-          awslogs-region        = data.aws_region.current.name,
+          awslogs-region        = data.aws_region.current.id,
           awslogs-stream-prefix = "job"
         }
       }
+      environment = [
+        {
+          name  = "CI"
+          value = "true"
+        },
+        {
+          name  = "NODE_ENV"
+          value = "production"
+        }
+      ]
     }
   ])
 }

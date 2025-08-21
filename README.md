@@ -8,7 +8,7 @@
 
 
 
-## 🚀 Quick Start
+## 🚀 Quick Start (local interactive development)
 
 1. Install dependencies:
 ```bash
@@ -47,20 +47,6 @@ ENV_PATH=.env.local npx playwright test
 ENV_PATH=.env.local npx playwright test --grep "Connect MetaMask Wallet"
 ```
 
-## 🧪 Running Tests in non-interactive mode
-
-For CI/CD pipelines, Docker containers, or any automated environment where no user interaction is expected:
-
-### ⚠️ Run with clean user data
-```bash
-rm -rf user-data test-results playwright-report && CI=true npx playwright test --reporter=line
-```
-
-**Key differences for non-interactive mode:**
-- `CI=true` enables CI optimizations (headless mode, retry logic, uses `.env` instead of `.env.local`)
-- `--reporter=line` provides clean terminal output suitable for logs (no HTML reports)
-- Tests run completely headless without expecting user input
-
 ### Skipping Tests
 
 You can skip a test by appending `.skip` to the `test` function. This is useful when a test is failing due to a known issue that you don't want to fix immediately.
@@ -88,3 +74,37 @@ terraform init
 terraform plan
 terraform apply
 ```
+
+## 🐳 Docker-based Testing (Non-interactive mode)
+
+### Local Docker Testing
+To test the Docker container locally:
+
+```bash
+# Build the Docker image
+docker build -t deposit-withdraw-monitor:local .
+
+# Run tests in the container
+docker run --rm deposit-withdraw-monitor:local
+```
+
+**Key features of the Docker setup:**
+- Pre-installed Playwright with Chrome dependencies
+- Chrome extensions automatically downloaded during build
+- Runs in headless mode optimized for CI environments
+- Clean, isolated environment for each test run
+- Uses `--reporter=line` for clean log output
+
+### Automated AWS Deployment
+The application is designed to run as a scheduled ECS Fargate task in AWS:
+
+```bash
+# Deploy infrastructure and container registry
+cd terraform && terraform apply
+
+# Build and push Docker image to AWS ECR
+AWS_PROFILE=dos-sandbox ./scripts/build-and-push.sh
+```
+
+The ECS task runs automatically every 60 minutes, executing the test suite in a clean container environment.
+
