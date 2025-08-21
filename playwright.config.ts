@@ -48,11 +48,17 @@ export default defineConfig({
       name: "chromium",
       use: {
         ...devices["Desktop Chrome"],
-        headless: false,
+        headless: process.env.CI ? true : false,
         launchOptions: {
           ignoreDefaultArgs: ["--enable-automation"],
           args: [
-            "--disable-blink-features=AutomationControlled"
+            "--disable-blink-features=AutomationControlled",
+            ...(process.env.CI ? [
+              "--no-sandbox",
+              "--disable-setuid-sandbox",
+              "--disable-dev-shm-usage",
+              "--disable-gpu"
+            ] : [])
           ],
         },
       },

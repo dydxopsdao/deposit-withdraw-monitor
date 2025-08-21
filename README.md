@@ -29,7 +29,7 @@ node scripts/download-extension.js <extension-name> <extension-id>
 
 Extensions are downloaded to `extensions/<extension-name>/` with CRX/ZIP files automatically cleaned up.
 
-## 🧪 Running Tests
+## 🧪 Running Tests in interactive mode
 
 ### ⚠️ Run with clean user data
 While this repo is a work in progress, it's recommended to start each run with a clean slate to avoid any leftover data from previous Phantom wallet connections.
@@ -46,6 +46,20 @@ ENV_PATH=.env.local npx playwright test
 ```bash
 ENV_PATH=.env.local npx playwright test --grep "Connect MetaMask Wallet"
 ```
+
+## 🧪 Running Tests in non-interactive mode
+
+For CI/CD pipelines, Docker containers, or any automated environment where no user interaction is expected:
+
+### ⚠️ Run with clean user data
+```bash
+rm -rf user-data test-results playwright-report && CI=true npx playwright test --reporter=line
+```
+
+**Key differences for non-interactive mode:**
+- `CI=true` enables CI optimizations (headless mode, retry logic, uses `.env` instead of `.env.local`)
+- `--reporter=line` provides clean terminal output suitable for logs (no HTML reports)
+- Tests run completely headless without expecting user input
 
 ### Skipping Tests
 
