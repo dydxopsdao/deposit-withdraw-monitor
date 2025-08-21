@@ -39,6 +39,7 @@ export const phantomTest = base.extend<{
     // Get the first page from the context for the test
     const [page] = context.pages();
     // Navigate to the DApp URL and wait for it to load
+    // Rudi commented navigation and move it to the test file to be able to deal with wallet injection popup and go to any page directly
     //await page.goto(DAPP_URL);
     //await page.waitForLoadState('domcontentloaded', {timeout: 30000});
 
