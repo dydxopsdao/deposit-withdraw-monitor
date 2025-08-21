@@ -12,7 +12,7 @@ export const metamaskTest = base.extend<{
 
     // Create persistent browser context with Phantom extension
     const context = await chromium.launchPersistentContext(`${USER_DATA_DIR}/metamask`, {
-      headless: false,
+      headless: process.env.CI ? true : false,
       ignoreDefaultArgs: ['--enable-automation'],
       args: [
         `--disable-extensions-except=${METAMASK_EXT_PATH}`,

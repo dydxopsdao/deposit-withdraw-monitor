@@ -12,7 +12,7 @@ export const phantomTest = base.extend<{
 
     // Create persistent browser context with Phantom extension
     const context = await chromium.launchPersistentContext(`${USER_DATA_DIR}/phantom`, {
-      headless: false,
+      headless: process.env.CI ? true : false,
       ignoreDefaultArgs: ['--enable-automation'],
       args: [
         '--disable-blink-features=AutomationControlled',
