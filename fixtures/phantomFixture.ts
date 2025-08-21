@@ -38,12 +38,11 @@ export const phantomTest = base.extend<{
   dappPage: async ({ context }, use) => {
     // Get the first page from the context for the test
     const [page] = context.pages();
-
     // Navigate to the DApp URL and wait for it to load
-    await page.goto(DAPP_URL);
-    await page.waitForLoadState('domcontentloaded', {timeout: 30000});
+    //await page.goto(DAPP_URL);
+    //await page.waitForLoadState('domcontentloaded', {timeout: 30000});
 
-    await connectPhantomWallet(page, context);
+   //await connectPhantomWallet(page, context);
     
     // Make the loaded page available to the test
     await use(page);
