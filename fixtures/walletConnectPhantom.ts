@@ -13,5 +13,5 @@ export async function walletConnectPhantom(dappPage: any, context: any) {
   // Send request and handle popup
   await phantomPopupConfirmation(context, () => dappPage.getByRole('button', { name: 'Send request' }).click(), "wallet connection");
   
-  console.log("✅ Phantom wallet connection completed");
+  console.log("✅ Phantom wallet connected successfully");
 }
