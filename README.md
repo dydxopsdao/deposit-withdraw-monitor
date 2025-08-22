@@ -64,6 +64,7 @@ Prerequisites:
 - You have the `dos-sandbox` profile and `dydxopsdao` session set up in your `~/.aws/config` file.
 - You have the `terraform` CLI installed.
 - You are logged in to AWS using `aws sso login --sso-session dydxopsdao`
+- You have Docker installed and running
 
 To deploy the task to AWS, run the following commands:
 
