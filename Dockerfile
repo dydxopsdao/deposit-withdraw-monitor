@@ -1,5 +1,5 @@
 # Use official Node.js runtime as base image
-FROM node:18-bullseye
+FROM node:24-bookworm-slim
 
 # Install system dependencies for Playwright and Chrome
 RUN apt-get update && apt-get install -y \
