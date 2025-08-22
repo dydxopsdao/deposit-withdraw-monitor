@@ -38,13 +38,7 @@ export const phantomTest = base.extend<{
   dappPage: async ({ context }, use) => {
     // Get the first page from the context for the test
     const [page] = context.pages();
-    // Navigate to the DApp URL and wait for it to load
-    // Rudi commented navigation and move it to the test file to be able to deal with wallet injection popup and go to any page directly
-    //await page.goto(DAPP_URL);
-    //await page.waitForLoadState('domcontentloaded', {timeout: 30000});
 
-   //await connectPhantomWallet(page, context);
-    
     // Make the loaded page available to the test
     await use(page);
   },
@@ -108,31 +102,4 @@ async function setupPhantomWallet(context: any) {
 
   await phantomWalletOnboarding.close();
   console.log("✅ Phantom wallet setup completed successfully");
-}
-
-// Connects to the Phantom wallet on the dApp page
-async function connectPhantomWallet(dappPage: any, context: any) {
-  console.log("🚀 Starting Phantom wallet connection...");
-  
-  console.log("📋 Step 1: Initial connection prompt");
-  const phantomPopup1 = await findPageWithUrl(context, `chrome-extension://${PHANTOM_EXT_ID}/notification.html`);
-  await phantomPopup1.getByTestId('primary-button').click();
-  await phantomPopup1.close(); // Close after use
-  
-  console.log("📋 Step 2: Choosing Solana wallet");
-  await dappPage.getByRole('button', { name: 'Connect wallet' }).click();
-  await dappPage.getByRole('button', { name: 'Phantom (Solana)' }).click();
-  await dappPage.getByRole('button', { name: 'Send request' }).click();
-
-  console.log("📋 Step 3: Generating dYdX Chain wallet");
-  const phantomPopup2 = await findPageWithUrl(context, `chrome-extension://${PHANTOM_EXT_ID}/notification.html`);
-  await phantomPopup2.getByTestId('primary-button').click();
-  await phantomPopup2.close(); // Close after use
-
-  console.log("📋 Step 4: Verifying wallet compatibility");
-  const phantomPopup3 = await findPageWithUrl(context, `chrome-extension://${PHANTOM_EXT_ID}/notification.html`);
-  await phantomPopup3.getByTestId('primary-button').click();
-  await phantomPopup3.close(); // Close after use
-  
-  console.log("✅ Phantom wallet connection completed");
 }
