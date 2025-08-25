@@ -74,6 +74,17 @@ The ECS task runs automatically every 60 minutes, executing the test suite in a 
 - The CI/CD pipeline handles container registry authentication and deployment
 - Images are tagged with timestamps and also maintained as `:latest`
 
+**GitHub Repository Configuration:**
+The following variables must be configured in GitHub repository settings (Settings → Secrets and variables → Actions → Variables):
+
+| Variable | Source |
+|----------|--------|
+| `AWS_REGION` | Static value: `ap-northeast-1` |
+| `AWS_ECR_REPOSITORY_URL` | Terraform Cloud output: `aws_ecr_repository_url` |
+| `AWS_GITHUB_ACTIONS_ROLE_ARN` | Terraform Cloud output: `aws_github_actions_role_arn` |
+
+*Note: The Terraform Cloud outputs can be found in the workspace's "Outputs" tab after a successful apply.*
+
 ## 🐳 Local Docker Testing
 
 To test the Docker container locally:
