@@ -58,27 +58,35 @@ test.skip('test name', async ({ page }) => {
 });
 ```
 
-## 📦 Terraform
+## 📦 Deployment
 
-Prerequisites:
-- You have the `dos-sandbox` profile and `dydxopsdao` session set up in your `~/.aws/config` file.
-- You have the `terraform` CLI installed.
-- You are logged in to AWS using `aws sso login --sso-session dydxopsdao`
-- You have Docker installed and running
+The application is designed to run as a scheduled ECS Fargate task in AWS.
 
-To deploy the task to AWS, run the following commands:
+The ECS task runs automatically every 60 minutes, executing the test suite in a clean container environment.
 
-```bash
-cd terraform
-export AWS_PROFILE=dos-sandbox
-terraform init
-terraform plan
-terraform apply
-```
+**Infrastructure Management:**
+- Infrastructure is managed through **Terraform Cloud**
+- Changes are automatically planned and applied via GitHub integration
+- Manual infrastructure updates can be triggered through the Terraform Cloud web interface
 
-## 🐳 Docker-based Testing (Non-interactive mode)
+**GitHub Actions Integration:**
+- Docker images are automatically built and pushed to AWS ECR via GitHub Actions
+- The CI/CD pipeline handles container registry authentication and deployment
+- Images are tagged with timestamps and also maintained as `:latest`
 
-### Local Docker Testing
+**GitHub Repository Configuration:**
+The following variables must be configured in GitHub repository settings (Settings → Secrets and variables → Actions → Variables):
+
+| Variable | Source |
+|----------|--------|
+| `AWS_REGION` | Static value: `ap-northeast-1` |
+| `AWS_ECR_REPOSITORY_URL` | Terraform Cloud output: `aws_ecr_repository_url` |
+| `AWS_GITHUB_ACTIONS_ROLE_ARN` | Terraform Cloud output: `aws_github_actions_role_arn` |
+
+*Note: The Terraform Cloud outputs can be found in the workspace's "Outputs" tab after a successful apply.*
+
+## 🐳 Local Docker Testing
+
 To test the Docker container locally:
 
 ```bash
@@ -95,17 +103,3 @@ docker run --rm deposit-withdraw-monitor:local
 - Runs in headless mode optimized for CI environments
 - Clean, isolated environment for each test run
 - Uses `--reporter=line` for clean log output
-
-### Automated AWS Deployment
-The application is designed to run as a scheduled ECS Fargate task in AWS:
-
-```bash
-# Deploy infrastructure and container registry
-cd terraform && terraform apply
-
-# Build and push Docker image to AWS ECR
-AWS_PROFILE=dos-sandbox ./scripts/build-and-push.sh
-```
-
-The ECS task runs automatically every 60 minutes, executing the test suite in a clean container environment.
-
