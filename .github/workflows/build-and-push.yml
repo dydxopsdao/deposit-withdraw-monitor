@@ -3,7 +3,7 @@ name: Build and Push Docker Image
 on:
   push:
     branches:
-      - github-action
+      - main
 
 env:
   AWS_REGION: ${{ vars.AWS_REGION }}
