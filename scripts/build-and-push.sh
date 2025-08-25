@@ -9,15 +9,13 @@ NC='\033[0m' # No Color
 
 echo -e "${GREEN}🚀 Building and pushing Docker image to ECR${NC}"
 
+# Set region to ap-northeast-1 if the variable is not set already
+AWS_REGION="${AWS_REGION:-ap-northeast-1}"
+echo -e "${GREEN}✅ AWS Region: ${AWS_REGION}${NC}"
+
 # Check if we're in the right directory
 if [ ! -f "Dockerfile" ]; then
     echo -e "${RED}❌ Error: Dockerfile not found. Please run this script from the project root.${NC}"
-    exit 1
-fi
-
-# Check if terraform directory exists
-if [ ! -d "terraform" ]; then
-    echo -e "${RED}❌ Error: terraform directory not found. Please run this script from the project root.${NC}"
     exit 1
 fi
 
@@ -33,25 +31,19 @@ if ! aws sts get-caller-identity &> /dev/null; then
     exit 1
 fi
 
-# Get ECR repository URL from Terraform output
-echo -e "${YELLOW}📋 Getting ECR repository URL from Terraform...${NC}"
-cd terraform
-ECR_URL=$(terraform output -raw ecr_repository_url 2>/dev/null)
+# Get ECR repository URL by name
+echo -e "${YELLOW}📋 Getting ECR repository URL by name in ${AWS_REGION}...${NC}"
+ECR_URL=$(aws ecr describe-repositories --repository-names deposit-withdraw-monitor --region ${AWS_REGION} --query 'repositories[0].repositoryUri' --output text 2>/dev/null)
 if [ $? -ne 0 ] || [ -z "$ECR_URL" ]; then
-    echo -e "${RED}❌ Error: Could not get ECR repository URL from Terraform. Make sure Terraform is applied.${NC}"
+    echo -e "${RED}❌ Error: Could not get ECR repository URL by name in ${AWS_REGION} in the current AWS account.${NC}"
     exit 1
 fi
-cd ..
 
 echo -e "${GREEN}✅ ECR Repository URL: ${ECR_URL}${NC}"
 
-# Extract region from ECR URL
-REGION=$(echo $ECR_URL | cut -d'.' -f4)
-echo -e "${GREEN}✅ AWS Region: ${REGION}${NC}"
-
 # Login to ECR
 echo -e "${YELLOW}🔐 Logging into ECR...${NC}"
-aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $ECR_URL
+aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin $ECR_URL
 
 # Build Docker image
 echo -e "${YELLOW}🔨 Building Docker image...${NC}"
