@@ -66,13 +66,13 @@ routes:
     enabled: true
 
   # ---------------------------
-  # DEPOSITS – $10 REGULAR (FE)
+  # DEPOSITS – $10 REGULAR
   # ---------------------------
   - id: dep-ethereum-usdc-regular-metamask-10
     kind: deposit
     description: "$10 USDC from Ethereum Regular Deposit with MetaMask"
     wallet_type: metamask
-    wallet_alias: mm_dep_eth_reg10_1
+    wallet_alias: mm_dep_eth_reg
     route_kind: regular
     amount: "10"
     src_chain: ethereum
@@ -84,7 +84,7 @@ routes:
     kind: deposit
     description: "$10 USDC from Arbitrum Regular Deposit with MetaMask"
     wallet_type: metamask
-    wallet_alias: mm_dep_arb_reg10_1
+    wallet_alias: mm_dep_arb_reg
     route_kind: regular
     amount: "10"
     src_chain: arbitrum
@@ -96,7 +96,7 @@ routes:
     kind: deposit
     description: "$10 USDC from Base Regular Deposit with MetaMask"
     wallet_type: metamask
-    wallet_alias: mm_dep_base_reg10_1
+    wallet_alias: mm_dep_base_reg
     route_kind: regular
     amount: "10"
     src_chain: base
@@ -108,7 +108,7 @@ routes:
     kind: deposit
     description: "$10 USDC from Polygon Regular Deposit with MetaMask"
     wallet_type: metamask
-    wallet_alias: mm_dep_poly_reg10_1
+    wallet_alias: mm_dep_poly_reg
     route_kind: regular
     amount: "10"
     src_chain: polygon
@@ -120,7 +120,7 @@ routes:
     kind: deposit
     description: "$10 USDC from Solana Regular Deposit with Phantom"
     wallet_type: phantom
-    wallet_alias: ph_dep_sol_reg10_1
+    wallet_alias: ph_dep_sol_reg
     route_kind: regular
     amount: "10"
     src_chain: solana
@@ -129,13 +129,13 @@ routes:
     enabled: true
 
   # ---------------------------
-  # DEPOSITS – $101
+  # INSTANT DEPOSITS – $101
   # ---------------------------
   - id: dep-ethereum-usdc-instant-metamask-101
     kind: deposit
     description: "$101 USDC from Ethereum Instant Deposit with MetaMask"
     wallet_type: metamask
-    wallet_alias: mm_dep_eth_inst101_1
+    wallet_alias: mm_dep_eth_inst
     route_kind: instant
     amount: "101"
     src_chain: ethereum
@@ -147,7 +147,7 @@ routes:
     kind: deposit
     description: "$101 USDC from Arbitrum Instant Deposit with MetaMask"
     wallet_type: metamask
-    wallet_alias: mm_dep_arb_inst101_1
+    wallet_alias: mm_dep_arb_inst
     route_kind: instant
     amount: "101"
     src_chain: arbitrum
@@ -159,7 +159,7 @@ routes:
     kind: deposit
     description: "$101 USDC from Base Instant Deposit with MetaMask"
     wallet_type: metamask
-    wallet_alias: mm_dep_base_reg101_1
+    wallet_alias: mm_dep_base_inst
     route_kind: instant
     amount: "101"
     src_chain: base
@@ -169,22 +169,22 @@ routes:
 
   - id: dep-polygon-usdc-regular-metamask-101
     kind: deposit
-    description: "$101 USDC from Polygon Regular Deposit with MetaMask"
+    description: "$101 USDC from Polygon Instant Deposit with MetaMask"
     wallet_type: metamask
-    wallet_alias: mm_dep_poly_reg101_1
-    route_kind: regular
+    wallet_alias: mm_dep_poly_inst
+    route_kind: instant
     amount: "101"
     src_chain: polygon
     dst_chain: dydx
     cadence_min: 30
     enabled: true
 
-  - id: dep-solana-usdc-regular-phantom-101
+  - id: dep-solana-usdc-instant-phantom-101
     kind: deposit
-    description: "$101 USDC from Solana Regular Deposit with Phantom"
+    description: "$101 USDC from Solana Instant Deposit with Phantom"
     wallet_type: phantom
-    wallet_alias: ph_dep_sol_reg101_1
-    route_kind: regular
+    wallet_alias: ph_dep_sol_inst
+    route_kind: instant
     amount: "101"
     src_chain: solana
     dst_chain: dydx

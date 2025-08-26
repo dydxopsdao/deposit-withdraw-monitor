@@ -10,7 +10,7 @@
 // Telemetry: single Datadog emit (pass/fail) at the very end.
 // Rebalance: never fails the test (errors swallowed + logged).
 
-import { test, expect } from "../fixtures"; // your thin glue
+import { test, expect } from "../fixtures";
 import { logger } from "../utils/logger/logging-utils";
 import { emitResult, emitLog } from "../utils/datadog/datadog-utils";
 import { getRoutesSync, type Route, type WalletType } from "../utils/route/routes";
@@ -53,8 +53,10 @@ for (const route of depositRoutes) {
     });
 
     try {
-      // -------- Pre-submit block (open app, connect wallet, navigate, fill amount) ----
+      // -------- Pre-submit block (open app, connect wallet, navigate, fill amount) ---- TODO: add more blocks for error handling to allign with the flow
       try {
+
+
         await test.step("Open app", async () => {
           await openApp(page); // TODO: implement using DAPP_URL
         });
@@ -72,6 +74,7 @@ for (const route of depositRoutes) {
         });
       } catch (e: any) {
         error_stage = "pre_submit";
+        //TODO: add more error reporting with datadog
         logger.error("Pre-submit step failed", e, { route_id: route.id });
         throw e;
       }
@@ -91,6 +94,7 @@ for (const route of depositRoutes) {
         logger.success("Deposit flow complete", { route_id: route.id, txHash });
       } catch (e: any) {
         error_stage = "submit_or_finality";
+        //TODO: add more error reporting with datadog
         logger.error("Submit/finality failed", e, { route_id: route.id, txHash });
         throw e;
       }
