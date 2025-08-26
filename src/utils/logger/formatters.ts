@@ -1,4 +1,4 @@
-import { LogEntry } from "./types";
+import { LogEntry } from "../../types/types";
 
 export const serializeError = (err: unknown) => {
   if (!err) return undefined;

@@ -29,6 +29,11 @@ node scripts/download-extension.js <extension-name> <extension-id>
 
 Extensions are downloaded to `extensions/<extension-name>/` with CRX/ZIP files automatically cleaned up.
 
+## List tests generated from routes.yaml 
+```bash
+npx playwright test src/tests/deposit.spec.ts --list
+```
+
 ## 🧪 Running Tests in interactive mode
 
 ### ⚠️ Run with clean user data

@@ -1,4 +1,3 @@
-import { Page } from "@playwright/test";
 
 /**
  * Finds a page with a given URL pattern in the context
