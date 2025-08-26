@@ -55,8 +55,6 @@ for (const route of depositRoutes) {
     try {
       // -------- Pre-submit block (open app, connect wallet, navigate, fill amount) ---- TODO: add more blocks for error handling to allign with the flow
       try {
-
-
         await test.step("Open app", async () => {
           await openApp(page); // TODO: implement using DAPP_URL
         });

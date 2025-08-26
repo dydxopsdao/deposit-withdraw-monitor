@@ -1,10 +1,7 @@
 version: 1
 
-defaults:
+global:
   enabled: true
-  paused: false
-  token_symbol: USDC
-  cadence_min: 30
 
 routes:
   # ---------------------------

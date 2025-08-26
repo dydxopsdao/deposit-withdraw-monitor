@@ -1,110 +1,205 @@
-> **⚠️ WARNING – NOT PRODUCTION READY**
+# Deposit–Withdraw Monitor
 
+> **⚠️ Status: Not production‑ready yet**
 >
-> **Planned changes:**  
-> - Download and load Phantom extension at runtime.  
-> - Import wallet using a test seed from environment variables.  
-> - Ensure secrets are injected securely in CI.
 
+A synthetic E2E test harness for dYdX deposits/withdrawals using **MetaMask** and **Phantom**. It automates the FE, waits for **finality**, emits **Datadog** telemetry, and always attempts a **rebalance** in teardown so routes can run repeatedly.
 
+---
 
-## 🚀 Quick Start (local interactive development)
+## Contents
 
-1. Install dependencies:
+* [Quick start](#quick-start)
+* [Configuration](#configuration)
+* [Routes: how tests are generated](#routes-how-tests-are-generated)
+* [Running tests](#running-tests)
+* [Docker](#docker)
+* [AWS (EventBridge → ECS Fargate) — IaC](#aws-eventbridge--ecs-fargate--iac)
+* [Project structure](#project-structure)
+* [Telemetry (Datadog)](#telemetry-datadog)
+* [Troubleshooting](#troubleshooting)
+* [Contributing](#contributing)
+
+---
+
+## Quick start
+
+> Node 18+, Playwright installed via `npm ci`. The repo expects **Chrome extensions** to be present under `extensions/`.
+
 ```bash
-npm install
+# 1) Install deps
+npm ci
+
+# 2) Dry‑run: list deposit tests derived from routes.yaml
+npx playwright test src/tests/ --list
+
+# 3) Run all tests (uses routes.yaml)
+npx playwright test src/tests/ --reporter=line
+
+# 4) (Optional) Run specific test (uses routes.yaml)
+npx playwright test src/tests/deposit.spec.ts -g "deposit: dep-ethereum-usdc-regular-metamask-10"
+
+---
+
+## Configuration
+
+Shared constants live in `src/config/constants.ts` (paths, extension IDs, DAPP URL). Secrets live in environment variables.
+
+| Variable                                 | Where                 | Purpose                                                        |
+| ---------------------------------------- | --------------------- | -------------------------------------------------------------- |
+| `DD_API_KEY`                             | env                   | Datadog HTTP intake key (optional locally).                    |
+| `DAPP_URL`                               | `config/constants.ts` | Defaults to `https://dydx.trade/portfolio/overview`.           |
+
+---
+
+## Routes: how tests are generated
+
+* `routes.yaml` is the single source of truth in the repo.
+* The spec loads YAML synchronously and defines **one test per enabled route**.
+* Filter with envs: `ROUTE_ID` and/or `WALLET`.
+
+---
+
+## Running tests
+
+### List generated tests (YAML mode)
+
+```bash
+npx playwright test src/tests/ --list
 ```
 
-## 📦 Downloading Chrome Extensions
-
-Download and extract Chrome extensions for testing:
+### Run a single test by route id (YAML mode)
 
 ```bash
-# Download Phantom wallet extension
-npm run download-phantom
-
-# Download any extension (requires name and ID)
-node scripts/download-extension.js <extension-name> <extension-id>
+ROUTE_ID=dep-ethereum-usdc-regular-metamask-10 \
+  npx playwright test src/tests/deposit.spec.ts --reporter=line
 ```
 
-Extensions are downloaded to `extensions/<extension-name>/` with CRX/ZIP files automatically cleaned up.
+### Run by wallet (YAML mode)
 
-## List tests generated from routes.yaml 
 ```bash
-npx playwright test src/tests/deposit.spec.ts --list
+WALLET=phantom npx playwright test src/tests/deposit.spec.ts --list
 ```
 
-## 🧪 Running Tests in interactive mode
 
-### ⚠️ Run with clean user data
-While this repo is a work in progress, it's recommended to start each run with a clean slate to avoid any leftover data from previous Phantom wallet connections.
-```bash
-rm -rf user-data test-results playwright-report && ENV_PATH=.env.local npx playwright test
+---
+
+## Docker [WIP]
+
+Use a **single** image (official Playwright base) that contains browsers + both extensions. Choose the wallet/route at runtime via routes.
+
+
+
+**Notes**
+
+* Extensions require **headful** Chromium; the Playwright base image uses Xvfb so headful is OK in CI.
+
+---
+
+## AWS (EventBridge → ECS Fargate) — IaC [WIP]
+
+**Pattern:** one **Fargate task** per route. EventBridge sets env overrides that describe the route; the task reads secrets from **Secrets Manager**.
+
+* **Task definition**
+
+* **Scheduling**
+
+  * **(YAML as source)**: Terraform `yamldecode(file("../../routes.yaml"))` → create one EventBridge rule per enabled route with `rate(cadence_min)`, pass env overrides.
+
+* **Tags**
+
+  * The test emits Datadog metrics/logs with tags: `route_id`, `wallet`, `route_kind`, `src`, `dst`, `env`.
+
+---
+
+## Project structure
+
+```
+src/
+  fixtures/
+    index.ts                 # thin glue: launches context, opens app, connectWallet helper
+  targets/
+    dydx/
+      flows.ts               # e.g open(), navToDeposit()
+      selectors.ts           # app selectors
+      index.ts
+    wallets/
+      metamask/
+        flows.ts             # e.g. connect
+        selectors.ts
+        constants.ts
+        index.ts
+      phantom/
+        flows.ts             # e.g. connect
+        selectors.ts
+        constants.ts
+        index.ts
+  utils/
+    datadog                  # findPageWithUrl(context, matcher)
+      datadog-utils.ts       # emitResult/emitLog
+    finality/
+      finality.ts            # Deposit Assertion - FE/BE
+    helpers/
+      windows.ts  
+    logger/
+      logging-utils.ts
+    rebalance/
+      rebalancer.ts          # Keeps wallet balances between certain thresholds through API transactions
+    route
+      routes.ts              # YAML loaders
+  config/
+    constants.ts             # paths, DAPP_URL, extension IDs
+    timeouts.ts              # test timeouts
+  tests/
+    deposit.spec.ts          # generates tests from routes (YAML)
+    withdraw.spec.ts         # similar pattern
+routes.yaml                  # Test source of truth
 ```
 
-### Run all tests:
-```bash
-ENV_PATH=.env.local npx playwright test
-```
+---
 
-### Run a specific test:
-```bash
-ENV_PATH=.env.local npx playwright test --grep "Connect MetaMask Wallet"
-```
+## Telemetry (Datadog) [WIP]
 
-### Skipping Tests
+A tiny HTTP client sends both a **result gauge** (1/0) and a **structured log** per run.
 
-You can skip a test by appending `.skip` to the `test` function. This is useful when a test is failing due to a known issue that you don't want to fix immediately.
+```ts
+await emitResult(passed, [
+  `route_id:${route.id}`,
+  `wallet:${route.wallet_type}`,
+  `src:${route.src_chain}`,
+  `dst:${route.dst_chain}`,
+  `env:${ENV}`,
+]);
 
-**Skip a single test:**
-```typescript
-test.skip('test name', async ({ page }) => {
-  // test code
+await emitLog(passed ? "deposit.ok" : "deposit.error", {
+  route_id: route.id,
+  route_kind: route.route_kind,
+  amount: route.amount,
+  src_chain: route.src_chain,
+  dst_chain: route.dst_chain,
+  tx_hash: txHash,
+  status: passed ? "ok" : "error",
+  error_stage: passed ? undefined : error_stage,
 });
 ```
 
-## 📦 Deployment
+**Env** [WIP]
 
-The application is designed to run as a scheduled ECS Fargate task in AWS.
+* `DD_API_KEY` (required to send) — if unset, functions no‑op.
+* `DD_SITE`
+* `DD_SERVICE`/`DD_SOURCE` — optional labels.
 
-The ECS task runs automatically every 60 minutes, executing the test suite in a clean container environment.
+---
 
-**Infrastructure Management:**
-- Infrastructure is managed through **Terraform Cloud**
-- Changes are automatically planned and applied via GitHub integration
-- Manual infrastructure updates can be triggered through the Terraform Cloud web interface
+## Troubleshooting [WIP]
 
-**GitHub Actions Integration:**
-- Docker images are automatically built and pushed to AWS ECR via GitHub Actions
-- The CI/CD pipeline handles container registry authentication and deployment
-- Images are tagged with timestamps and also maintained as `:latest`
 
-**GitHub Repository Configuration:**
-The following variables must be configured in GitHub repository settings (Settings → Secrets and variables → Actions → Variables):
+**Rebalance failed**
 
-| Variable | Source |
-|----------|--------|
-| `AWS_REGION` | Static value: `ap-northeast-1` |
-| `AWS_ECR_REPOSITORY_URL` | Terraform Cloud output: `aws_ecr_repository_url` |
-| `AWS_GITHUB_ACTIONS_ROLE_ARN` | Terraform Cloud output: `aws_github_actions_role_arn` |
+* By design, **does not fail** the test. We log a `warning` and continue.
 
-*Note: The Terraform Cloud outputs can be found in the workspace's "Outputs" tab after a successful apply.*
+**Network flakiness**
 
-## 🐳 Local Docker Testing
+* The spec separates errors into `pre_submit` vs `submit_or_finality`. You can add retries to pre‑submit only.
 
-To test the Docker container locally:
-
-```bash
-# Build the Docker image
-docker build -t deposit-withdraw-monitor:local .
-
-# Run tests in the container
-docker run --rm deposit-withdraw-monitor:local
-```
-
-**Key features of the Docker setup:**
-- Pre-installed Playwright with Chrome dependencies
-- Chrome extensions automatically downloaded during build
-- Runs in headless mode optimized for CI environments
-- Clean, isolated environment for each test run
-- Uses `--reporter=line` for clean log output
+---
