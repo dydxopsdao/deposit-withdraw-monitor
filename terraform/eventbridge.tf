@@ -22,7 +22,7 @@ resource "aws_iam_role_policy" "events_invoke_ecs" {
         Sid    = "RunTask",
         Effect = "Allow",
         Action = ["ecs:RunTask"],
-        Resource = [aws_ecs_task_definition.this.arn]
+        Resource = "*"
       },
       {
         Sid    = "PassRoles",
