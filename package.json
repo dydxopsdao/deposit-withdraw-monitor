@@ -21,10 +21,11 @@
   },
   "homepage": "https://github.com/dydxopsdao/deposit-withdraw-monitor#readme",
   "dependencies": {
-    "chrome-extension-fetch": "^1.0.0",
     "@playwright/test": "^1.54.2",
+    "chrome-extension-fetch": "^1.0.0",
     "dotenv": "^16.5.0",
-    "unzipper": "^0.10.14"
+    "unzipper": "^0.10.14",
+    "yaml": "^2.8.1"
   },
   "devDependencies": {
     "@types/node": "^24.0.3"

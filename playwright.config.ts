@@ -18,7 +18,7 @@ console.log(`> Loaded environment from ${envFile}`);
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
-  testDir: "./tests",
+  testDir: "./src/tests",
 
   // NOTE: Some global configuration steps can be done in a Global Setup file
   //globalSetup: "./global-setup.ts",
@@ -64,11 +64,4 @@ export default defineConfig({
       },
     },
   ],
-
-  /* Run your local dev server before starting the tests */
-  // webServer: {
-  //   command: 'npm run start',
-  //   url: 'http://localhost:3000',
-  //   reuseExistingServer: !process.env.CI,
-  // },
 });
