@@ -1,7 +1,7 @@
 # Use official Node.js runtime as base image
 FROM node:24-bookworm-slim
 
-# Install system dependencies for Playwright and Chrome
+# Install system dependencies for Playwright, Chrome, and xvfb
 RUN apt-get update && apt-get install -y \
     libnss3 \
     libnspr4 \
@@ -23,6 +23,8 @@ RUN apt-get update && apt-get install -y \
     wget \
     ca-certificates \
     unzip \
+    xvfb \
+    xauth \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
@@ -50,9 +52,10 @@ RUN npm run download-extensions
 # Set environment variables for non-interactive mode
 ENV CI=true
 ENV NODE_ENV=production
+ENV DISPLAY=:99
 
 # Expose any necessary ports (if needed)
 # EXPOSE 3000
 
-# Set the entrypoint to run tests in non-interactive mode
-CMD ["npx", "playwright", "test", "--reporter=line"]
+# Set the entrypoint to run tests in non-interactive mode with xvfb
+CMD ["sh", "-c", "Xvfb :99 -screen 0 1024x768x24 -ac +extension GLX +render -noreset & npx playwright test --reporter=line"]
