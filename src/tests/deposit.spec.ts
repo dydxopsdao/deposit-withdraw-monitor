@@ -21,6 +21,8 @@ import { openApp } from "../targets/dydx/flows";
 
 // ---- Route discovery (sync so tests can be defined at import time) ----------
 const onlyRouteId = process.env.ROUTE_ID?.trim();
+logger.info("ROUTE_ID", { onlyRouteId });
+
 const onlyWallet = process.env.WALLET?.trim()?.toLowerCase() as WalletType | undefined;
 
 const allRoutes: Route[] = getRoutesSync();
