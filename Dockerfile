@@ -51,6 +51,9 @@ RUN npm run download-extensions
 ENV CI=true
 ENV NODE_ENV=production
 
+# DEBUG
+ENV ROUTE_ID="dep-ethereum-usdc-regular-metamask-10"
+
 # Expose any necessary ports (if needed)
 # EXPOSE 3000
 
