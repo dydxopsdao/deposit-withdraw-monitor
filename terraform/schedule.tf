@@ -1,25 +1,30 @@
 # Each test is run in a separate ECS task and by a separate EventBridge rule
 
 locals {
-  test_names = [
-    "deposit-usdc-regular-metamask-10",
-    "deposit-usdc-regular-phantom-10",
-    "withdraw-usdc-regular-metamask-10",
-    "withdraw-usdc-regular-phantom-10"
+  # Read routes.yaml dynamically
+  routes_yaml = yamldecode(file("${path.module}/../routes.yaml"))
+  
+  # Transform routes into test definitions, filtering only enabled routes
+  test_definitions = [
+    for route in local.routes_yaml.routes : {
+      id          = route.id
+      cadence_min = route.cadence_min
+    }
+    if lookup(route, "enabled", false) == true
   ]
 }
 
 resource "aws_cloudwatch_log_group" "this" {
-  for_each = toset(local.test_names)
+  for_each = { for test in local.test_definitions : test.id => test }
 
-  name              = "/ecs/test-${each.value}"
+  name              = "/ecs/test-${each.value.id}"
   retention_in_days = 7
 }
 
 resource "aws_ecs_task_definition" "this" {
-  for_each = toset(local.test_names)
+  for_each = { for test in local.test_definitions : test.id => test }
 
-  family                   = "test-${each.value}"
+  family                   = "test-${each.value.id}"
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
   cpu                      = "256"
@@ -35,7 +40,7 @@ resource "aws_ecs_task_definition" "this" {
       environment = [
         {
           name  = "ROUTE_ID"
-          value = each.value
+          value = each.value.id
         },
       ]
       logConfiguration = {
@@ -51,18 +56,18 @@ resource "aws_ecs_task_definition" "this" {
 }
 
 resource "aws_cloudwatch_event_rule" "test_schedules" {
-  for_each = toset(local.test_names)
+  for_each = { for test in local.test_definitions : test.id => test }
 
-  name                = "test-${each.value}-every-60m"
-  description         = "Runs the ECS Fargate task for ${each.value} every 60 minutes"
-  schedule_expression = "rate(60 minutes)"
+  name                = "test-${each.value.id}-every-${each.value.cadence_min}m"
+  description         = "Runs the ECS Fargate task for ${each.value.id} every ${each.value.cadence_min} minutes"
+  schedule_expression = "rate(${each.value.cadence_min} minutes)"
 }
 
 resource "aws_cloudwatch_event_target" "run_tasks" {
-  for_each = toset(local.test_names)
+  for_each = { for test in local.test_definitions : test.id => test }
 
   rule      = aws_cloudwatch_event_rule.test_schedules[each.key].name
-  target_id = "test-${each.value}-fargate-task"
+  target_id = "test-${each.value.id}-fargate-task"
   arn       = aws_ecs_cluster.this.arn
   role_arn  = aws_iam_role.events_invoke_ecs.arn
 
