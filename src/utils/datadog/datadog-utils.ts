@@ -1,10 +1,12 @@
-// Minimal Datadog client for our synth tests.
+// src/utils/datadog/datadog-utils.ts
+// Minimal Datadog client for our synth tests with improved internal logging.
 // - Safe no-op if DD_API_KEY is missing
 // - 5s HTTP timeout; never throws to callers
 // - Low-cardinality, consistent tags
 // - Logs only on route failures; rebalancer logs always
 
 import os from "os";
+import { logger } from "../logger/logging-utils";
 
 // ----- Config (keep defaults tiny) ------------------------------------------
 const DD_API_KEY = process.env.DD_API_KEY || process.env.DATADOG_API_KEY || "";
@@ -13,6 +15,7 @@ const DD_SERVICE = process.env.DD_SERVICE || "dos-synth";
 const DD_SOURCE = process.env.DD_SOURCE || "playwright";
 const HOSTNAME = os.hostname();
 const DD_DRY_RUN = process.env.DD_DRY_RUN === "1";
+const DD_VERBOSE = process.env.DD_VERBOSE === "1"; // extra logs about requests/results
 
 // Metric names
 const METRIC_ROUTE_RESULT = process.env.DD_METRIC_ROUTE_RESULT || "synth.route.result";
@@ -80,17 +83,26 @@ export function createTelemetryContext(cfg: {
       const tags = baseTags;
       await sendRouteResultMetric(args.passed, tags);
       if (!args.passed) {
-        await sendRouteLog(`${op}.error`, {
-          route: routeSummaryForLog(route),
-          tx_hash: args.txHash,
-          error_stage: args.errorStage ?? "submit_or_finality",
-          error: toErrorLike(args.error),
-        }, tags);
+        await sendRouteLog(
+          `${op}.error`,
+          {
+            route: routeSummaryForLog(route),
+            tx_hash: args.txHash,
+            error_stage: args.errorStage ?? "submit_or_finality",
+            error: toErrorLike(args.error),
+          },
+          tags
+        );
+      } else if (DD_VERBOSE) {
+        logger.info("DD: route success metric sent", { metric: METRIC_ROUTE_RESULT, tags });
       }
     },
 
     // Optional explicit route log (use if you want success logs occasionally)
-    async routeLog(event: "deposit.ok" | "deposit.error" | "withdraw.ok" | "withdraw.error", payload?: Record<string, unknown>) {
+    async routeLog(
+      event: "deposit.ok" | "deposit.error" | "withdraw.ok" | "withdraw.error",
+      payload?: Record<string, unknown>
+    ) {
       const tags = baseTags;
       await sendRouteLog(event, { route: routeSummaryForLog(route), ...(payload || {}) }, tags);
     },
@@ -117,11 +129,7 @@ export function createTelemetryContext(cfg: {
 
     // Wallet balance gauges (emit one per token/chain)
     async walletBalance(p: { alias: string; token: string; chain: string; amount: number }) {
-      const tags = normalizeTags([
-        `wallet_alias:${p.alias}`,
-        `token:${p.token}`,
-        `chain:${p.chain}`,
-      ].concat(staticTags));
+      const tags = normalizeTags([`wallet_alias:${p.alias}`, `token:${p.token}`, `chain:${p.chain}`].concat(staticTags));
       await sendGauge(METRIC_WALLET_BALANCE, p.amount, tags);
     },
   };
@@ -144,7 +152,7 @@ function makeRouteTags(route: RouteSummary, wallet: WalletType, operation: Opera
 
 function withOperation(tags: string[], operation: Operation): string[] {
   // replace or append operation:<...>
-  const rest = tags.filter(t => !t.startsWith("operation:"));
+  const rest = tags.filter((t) => !t.startsWith("operation:"));
   return rest.concat(`operation:${operation}`);
 }
 
@@ -159,62 +167,89 @@ async function sendRebalanceResultMetric(passed: boolean, tags: string[]) {
 async function sendGauge(metric: string, value: number, tags: string[]) {
   if (!enabled()) return;
   const now = Math.floor(Date.now() / 1000);
-  const body = { series: [{ metric, type: "gauge", points: [[now, value]], tags, resources: [{ name: DD_SERVICE, type: "service" }] }] };
+  const body = {
+    series: [
+      {
+        metric,
+        type: "gauge",
+        points: [[now, value]],
+        tags,
+        resources: [{ name: DD_SERVICE, type: "service" }],
+      },
+    ],
+  };
   if (DD_DRY_RUN) {
-    console.log("[DD METRIC]", metric, value, tags);
+    logger.info("DD (dry-run) metric", { metric, value, tags });
     return;
   }
-  await postJSON(METRICS_URL, body, { "Content-Type": "application/json" });
+  const size = byteLen(body);
+  if (DD_VERBOSE) logger.debug("DD: sending metric", { metric, value, tags, bytes: size });
+  await postJSON(METRICS_URL, body, { "Content-Type": "application/json" }, { kind: "metric", metric });
 }
 
 async function sendRouteLog(event: string, payload: Record<string, unknown>, tags: string[]) {
   if (!enabled()) return;
 
   const ddtags = normalizeTags(tags).concat([`service:${DD_SERVICE}`]).join(",");
-  const items = [{
-    message: `[${event}] ${summarize(payload)}`,
-    status: payload && (payload as any).error ? "error" : "info",
-    ddtags,
-    ddsource: DD_SOURCE,
-    service: DD_SERVICE,
-    hostname: HOSTNAME,
-    attributes: sanitizeAttrs({ event, ...payload }),
-  }];
+  const items = [
+    {
+      message: `[${event}] ${summarize(payload)}`,
+      status: payload && (payload as any).error ? "error" : "info",
+      ddtags,
+      ddsource: DD_SOURCE,
+      service: DD_SERVICE,
+      hostname: HOSTNAME,
+      attributes: sanitizeAttrs({ event, ...payload }),
+    },
+  ];
 
   if (DD_DRY_RUN) {
-    console.log("[DD LOG]", event, items[0]);
+    logger.info("DD (dry-run) log", { event, tags, preview: summarize(payload) });
     return;
   }
-  await postJSON(LOGS_URL, items, {
-    "Content-Type": "application/json",
-    "DD-API-KEY": DD_API_KEY,
-  });
+  const size = byteLen(items);
+  if (DD_VERBOSE) logger.debug("DD: sending log", { event, tags, bytes: size });
+  await postJSON(
+    LOGS_URL,
+    items,
+    {
+      "Content-Type": "application/json",
+      "DD-API-KEY": DD_API_KEY,
+    },
+    { kind: "log", event }
+  );
 }
 
 // ----- Helpers --------------------------------------------------------------
 
+let warnedDisabled = false;
 function enabled(): boolean {
-  return Boolean(DD_API_KEY);
+  const ok = Boolean(DD_API_KEY);
+  if (!ok && !warnedDisabled) {
+    warnedDisabled = true;
+    logger.warning("Datadog disabled (missing DD_API_KEY). Telemetry will be a no-op.");
+  }
+  return ok;
 }
 
 function normalizeTags(tags: Array<string | null | undefined>): string[] {
-  return (tags || []).map(String).map(s => s.trim()).filter(Boolean);
+  return (tags || []).map(String).map((s) => s.trim()).filter(Boolean);
 }
 
 // Summarize the route for logs (keeps payload compact & stable)
 function routeSummaryForLog(route: RouteSummary) {
-    return {
-      id: route.id,
-      kind: route.kind,
-      wallet_type: route.wallet_type,
-      wallet_alias: route.wallet_alias,
-      route_kind: route.route_kind,
-      amount: route.amount,
-      src_chain: route.src_chain,
-      dst_chain: route.dst_chain,
-    };
-  }
-  
+  return {
+    id: route.id,
+    kind: route.kind,
+    wallet_type: route.wallet_type,
+    wallet_alias: route.wallet_alias,
+    route_kind: route.route_kind,
+    amount: route.amount,
+    src_chain: route.src_chain,
+    dst_chain: route.dst_chain,
+  };
+}
+
 function summarize(obj: Record<string, unknown>): string {
   try {
     const keys = Object.keys(obj || {});
@@ -233,8 +268,18 @@ function summarize(obj: Record<string, unknown>): string {
 function sanitizeAttrs(obj: Record<string, unknown>): Record<string, unknown> {
   // Basic redaction – keep it here to avoid coupling
   const REDACT_KEYS = new Set([
-    "password","passphrase","secret","seed","mnemonic","privateKey",
-    "token","authorization","apiKey","api_key","accessToken","refreshToken",
+    "password",
+    "passphrase",
+    "secret",
+    "seed",
+    "mnemonic",
+    "privateKey",
+    "token",
+    "authorization",
+    "apiKey",
+    "api_key",
+    "accessToken",
+    "refreshToken",
   ]);
   const out: any = Array.isArray(obj) ? [] : {};
   for (const [k, v] of Object.entries(obj || {})) {
@@ -260,12 +305,68 @@ function toErrorLike(e: ErrorLike): ErrorLike {
   return { message: String(e) };
 }
 
-async function postJSON(url: string, body: unknown, headers: Record<string, string>) {
+function byteLen(body: unknown): number {
+  try {
+    return Buffer.byteLength(JSON.stringify(body), "utf8");
+  } catch {
+    return 0;
+  }
+}
+
+async function postJSON(
+  url: string,
+  body: unknown,
+  headers: Record<string, string>,
+  meta: { kind: "metric"; metric: string } | { kind: "log"; event: string }
+) {
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), 5000);
+  const started = Date.now();
   try {
-    await fetch(url, { method: "POST", headers, body: JSON.stringify(body), signal: ctl.signal }).catch(() => {});
+    const res = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+      signal: ctl.signal,
+    }).catch((err) => {
+      if (DD_VERBOSE) logger.warning("DD: fetch error", { target: url, kind: meta.kind, error: String(err?.message || err) });
+      // swallow
+      return undefined as any;
+    });
+
+    const elapsed = Date.now() - started;
+
+    if (!res) return;
+    if (!("ok" in res)) return; // defensive for odd runtimes
+
+    if (!res.ok) {
+      const text = await safeReadText(res);
+      logger.warning("DD: non-2xx response", {
+        target: url,
+        kind: meta.kind,
+        code: res.status,
+        elapsed_ms: elapsed,
+        body_preview: text?.slice(0, 300),
+      });
+      return;
+    }
+
+    if (DD_VERBOSE) {
+      logger.debug("DD: sent successfully", {
+        kind: meta.kind,
+        code: res.status,
+        elapsed_ms: elapsed,
+      });
+    }
   } finally {
     clearTimeout(t);
+  }
+}
+
+async function safeReadText(res: any): Promise<string | undefined> {
+  try {
+    return await res.text();
+  } catch {
+    return undefined;
   }
 }

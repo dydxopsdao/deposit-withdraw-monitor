@@ -4,56 +4,56 @@ routes:
   # ---------------------------
   # WITHDRAWALS
   # ---------------------------
-  - id: wd-ethereum-usdc-metamask-10
+  - id: metamask-ethereum-usdc-withdrawal
     kind: withdraw
-    description: "$10 USDC to Ethereum Withdrawal with MetaMask"
+    description: "$101 USDC to Ethereum Withdrawal with MetaMask"
     wallet_type: metamask
-    wallet_alias: mm_wd_eth_1
-    amount: "10"
+    wallet_alias: metamask-ethereum-usdc-withdrawal
+    amount: "101"
     src_chain: dydx
     dst_chain: ethereum
     cadence_min: 30
     enabled: true
 
-  - id: wd-polygon-usdc-metamask-10
+  - id: metamask-polygon-usdc-withdrawal
     kind: withdraw
-    description: "$10 USDC to Polygon Withdrawal with MetaMask"
+    description: "$101 USDC to Polygon Withdrawal with MetaMask"
     wallet_type: metamask
-    wallet_alias: mm_wd_poly_1
-    amount: "10"
+    wallet_alias: metamask-polygon-usdc-withdrawal
+    amount: "101"
     src_chain: dydx
     dst_chain: polygon
     cadence_min: 30
     enabled: true
 
-  - id: wd-arbitrum-usdc-metamask-10
+  - id: metamask-arbitrum-usdc-withdrawal
     kind: withdraw
-    description: "$10 USDC to Arbitrum Withdrawal with MetaMask"
+    description: "$101 USDC to Arbitrum Withdrawal with MetaMask"
     wallet_type: metamask
-    wallet_alias: mm_wd_arb_1
-    amount: "10"
+    wallet_alias: metamask-arbitrum-usdc-withdrawal
+    amount: "101"
     src_chain: dydx
     dst_chain: arbitrum
     cadence_min: 30
     enabled: true
 
-  - id: wd-base-usdc-metamask-10
+  - id: metamask-base-usdc-withdrawal
     kind: withdraw
-    description: "$10 USDC to Base Withdrawal with MetaMask"
+    description: "$101 USDC to Base Withdrawal with MetaMask"
     wallet_type: metamask
-    wallet_alias: mm_wd_base_1
-    amount: "10"
+    wallet_alias: metamask-base-usdc-withdrawal
+    amount: "101"
     src_chain: dydx
     dst_chain: base
     cadence_min: 30
     enabled: true
 
-  - id: wd-solana-usdc-phantom-10
+  - id: phantom-solana-usdc-withdrawal
     kind: withdraw
-    description: "$10 USDC to Solana Withdrawal with Phantom"
+    description: "$101 USDC to Solana Withdrawal with Phantom"
     wallet_type: phantom
-    wallet_alias: ph_wd_sol_1
-    amount: "10"
+    wallet_alias: phantom-solana-usdc-withdrawal
+    amount: "101"
     src_chain: dydx
     dst_chain: solana
     cadence_min: 30
@@ -62,11 +62,11 @@ routes:
   # ---------------------------
   # DEPOSITS – $10 REGULAR
   # ---------------------------
-  - id: dep-ethereum-usdc-regular-metamask-10
+  - id: metamask-ethereum-usdc-deposit-regular
     kind: deposit
     description: "$10 USDC from Ethereum Regular Deposit with MetaMask"
     wallet_type: metamask
-    wallet_alias: mm_dep_eth_reg
+    wallet_alias: metamask-ethereum-usdc-deposit-regular
     route_kind: regular
     amount: "10"
     src_chain: ethereum
@@ -74,11 +74,11 @@ routes:
     cadence_min: 30
     enabled: true
 
-  - id: dep-arbitrum-usdc-regular-metamask-10
+  - id: metamask-arbitrum-usdc-deposit-regular
     kind: deposit
     description: "$10 USDC from Arbitrum Regular Deposit with MetaMask"
     wallet_type: metamask
-    wallet_alias: mm_dep_arb_reg
+    wallet_alias: metamask-arbitrum-usdc-deposit-regular
     route_kind: regular
     amount: "10"
     src_chain: arbitrum
@@ -86,11 +86,11 @@ routes:
     cadence_min: 30
     enabled: true
 
-  - id: dep-base-usdc-regular-metamask-10
+  - id: metamask-base-usdc-deposit-regular
     kind: deposit
     description: "$10 USDC from Base Regular Deposit with MetaMask"
     wallet_type: metamask
-    wallet_alias: mm_dep_base_reg
+    wallet_alias: metamask-base-usdc-deposit-regular
     route_kind: regular
     amount: "10"
     src_chain: base
@@ -98,11 +98,11 @@ routes:
     cadence_min: 30
     enabled: true
 
-  - id: dep-polygon-usdc-regular-metamask-10
+  - id: metamask-polygon-usdc-deposit-regular
     kind: deposit
     description: "$10 USDC from Polygon Regular Deposit with MetaMask"
     wallet_type: metamask
-    wallet_alias: mm_dep_poly_reg
+    wallet_alias: metamask-polygon-usdc-deposit-regular
     route_kind: regular
     amount: "10"
     src_chain: polygon
@@ -110,11 +110,11 @@ routes:
     cadence_min: 30
     enabled: true
 
-  - id: dep-solana-usdc-regular-phantom-10
+  - id: phantom-solana-usdc-deposit
     kind: deposit
     description: "$10 USDC from Solana Regular Deposit with Phantom"
     wallet_type: phantom
-    wallet_alias: ph_dep_sol_reg
+    wallet_alias: phantom-solana-usdc-deposit
     route_kind: regular
     amount: "10"
     src_chain: solana
@@ -125,11 +125,11 @@ routes:
   # ---------------------------
   # INSTANT DEPOSITS – $101
   # ---------------------------
-  - id: dep-ethereum-usdc-instant-metamask-101
+  - id: metamask-ethereum-usdc-deposit-instant
     kind: deposit
     description: "$101 USDC from Ethereum Instant Deposit with MetaMask"
     wallet_type: metamask
-    wallet_alias: mm_dep_eth_inst
+    wallet_alias: metamask-ethereum-usdc-deposit-instant
     route_kind: instant
     amount: "101"
     src_chain: ethereum
@@ -137,11 +137,11 @@ routes:
     cadence_min: 30
     enabled: true
 
-  - id: dep-arbitrum-usdc-instant-metamask-101
+  - id: metamask-arbitrum-usdc-deposit-instant
     kind: deposit
     description: "$101 USDC from Arbitrum Instant Deposit with MetaMask"
     wallet_type: metamask
-    wallet_alias: mm_dep_arb_inst
+    wallet_alias: metamask-arbitrum-usdc-deposit-instant
     route_kind: instant
     amount: "101"
     src_chain: arbitrum
@@ -149,11 +149,11 @@ routes:
     cadence_min: 30
     enabled: true
 
-  - id: dep-base-usdc-instant-metamask-101
+  - id: metamask-base-usdc-deposit-instant
     kind: deposit
     description: "$101 USDC from Base Instant Deposit with MetaMask"
     wallet_type: metamask
-    wallet_alias: mm_dep_base_inst
+    wallet_alias: metamask-base-usdc-deposit-instant
     route_kind: instant
     amount: "101"
     src_chain: base
@@ -161,26 +161,14 @@ routes:
     cadence_min: 30
     enabled: true
 
-  - id: dep-polygon-usdc-regular-metamask-101
+  - id: metamask-polygon-usdc-deposit-instant
     kind: deposit
     description: "$101 USDC from Polygon Instant Deposit with MetaMask"
     wallet_type: metamask
-    wallet_alias: mm_dep_poly_inst
+    wallet_alias: metamask-polygon-usdc-deposit-instant
     route_kind: instant
     amount: "101"
     src_chain: polygon
     dst_chain: dydx
     cadence_min: 30
     enabled: true
-
-  # - id: dep-solana-usdc-instant-phantom-101
-  #   kind: deposit
-  #   description: "$101 USDC from Solana Instant Deposit with Phantom"
-  #   wallet_type: phantom
-  #   wallet_alias: ph_dep_sol_inst
-  #   route_kind: instant
-  #   amount: "101"
-  #   src_chain: solana
-  #   dst_chain: dydx
-  #   cadence_min: 30
-  #   enabled: true
