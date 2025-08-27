@@ -41,9 +41,9 @@ npx playwright test src/tests/deposit.spec.ts -g "deposit: dep-ethereum-usdc-reg
 
 ---
 
-## Configuration
+## Configuration [WIP]
 
-Shared constants live in `src/config/constants.ts` (paths, extension IDs, DAPP URL). Secrets live in environment variables.
+Shared constants live in `src/config/constants.ts` (paths, extension IDs, DAPP URL).
 
 | Variable                                 | Where                 | Purpose                                                        |
 | ---------------------------------------- | --------------------- | -------------------------------------------------------------- |
@@ -83,6 +83,52 @@ WALLET=phantom npx playwright test src/tests/deposit.spec.ts --list
 
 
 ---
+
+## 📦 Deployment
+
+The application is designed to run as a scheduled ECS Fargate task in AWS.
+
+The ECS task runs automatically every 60 minutes, executing the test suite in a clean container environment.
+
+**Infrastructure Management:**
+- Infrastructure is managed through **Terraform Cloud**
+- Changes are automatically planned and applied via GitHub integration
+- Manual infrastructure updates can be triggered through the Terraform Cloud web interface
+
+**GitHub Actions Integration:**
+- Docker images are automatically built and pushed to AWS ECR via GitHub Actions
+- The CI/CD pipeline handles container registry authentication and deployment
+- Images are tagged with timestamps and also maintained as `:latest`
+
+**GitHub Repository Configuration:**
+The following variables must be configured in GitHub repository settings (Settings → Secrets and variables → Actions → Variables):
+
+| Variable | Source |
+|----------|--------|
+| `AWS_REGION` | Static value: `ap-northeast-1` |
+| `AWS_ECR_REPOSITORY_URL` | Terraform Cloud output: `aws_ecr_repository_url` |
+| `AWS_GITHUB_ACTIONS_ROLE_ARN` | Terraform Cloud output: `aws_github_actions_role_arn` |
+
+*Note: The Terraform Cloud outputs can be found in the workspace's "Outputs" tab after a successful apply.*
+
+## 🐳 Local Docker Testing
+
+To test the Docker container locally:
+
+```bash
+# Build the Docker image
+docker build -t deposit-withdraw-monitor:local .
+
+# Run tests in the container
+docker run --rm deposit-withdraw-monitor:local
+```
+
+**Key features of the Docker setup:**
+- Pre-installed Playwright with Chrome dependencies
+- Chrome extensions automatically downloaded during build
+- Runs in headless mode optimized for CI environments
+- Clean, isolated environment for each test run
+- Uses `--reporter=line` for clean log output
 
 ## Docker [WIP]
 

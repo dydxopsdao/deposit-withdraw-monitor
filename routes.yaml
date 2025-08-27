@@ -1,8 +1,5 @@
 version: 1
 
-global:
-  enabled: true
-
 routes:
   # ---------------------------
   # WITHDRAWALS
@@ -176,14 +173,14 @@ routes:
     cadence_min: 30
     enabled: true
 
-  - id: dep-solana-usdc-instant-phantom-101
-    kind: deposit
-    description: "$101 USDC from Solana Instant Deposit with Phantom"
-    wallet_type: phantom
-    wallet_alias: ph_dep_sol_inst
-    route_kind: instant
-    amount: "101"
-    src_chain: solana
-    dst_chain: dydx
-    cadence_min: 30
-    enabled: true
+  # - id: dep-solana-usdc-instant-phantom-101
+  #   kind: deposit
+  #   description: "$101 USDC from Solana Instant Deposit with Phantom"
+  #   wallet_type: phantom
+  #   wallet_alias: ph_dep_sol_inst
+  #   route_kind: instant
+  #   amount: "101"
+  #   src_chain: solana
+  #   dst_chain: dydx
+  #   cadence_min: 30
+  #   enabled: true

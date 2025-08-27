@@ -1,142 +1,270 @@
-// src/utils/datadog-utils.ts
-//
-// Very rough Datadog stubs.
-// - No deps (uses global fetch in Node 18+).
-// - Safe no-op if DD_API_KEY is not set.
-// - Swallows network errors (tests should not fail from telemetry).
-//
-// Usage:
-//   await emitResult(true, ["route_id:dep-ethereum-usdc-...","env:prod"]);
-//   await emitLog("deposit.ok", { route_id: "...", tx_hash }, ["env:prod"]);
+// Minimal Datadog client for our synth tests.
+// - Safe no-op if DD_API_KEY is missing
+// - 5s HTTP timeout; never throws to callers
+// - Low-cardinality, consistent tags
+// - Logs only on route failures; rebalancer logs always
 
 import os from "os";
 
-// --- Env / config -----------------------------------------------------------
+// ----- Config (keep defaults tiny) ------------------------------------------
 const DD_API_KEY = process.env.DD_API_KEY || process.env.DATADOG_API_KEY || "";
-const DD_SITE = process.env.DD_SITE || "datadoghq.com"; // or "datadoghq.eu"
+const DD_SITE = process.env.DD_SITE || "ap1.datadoghq.com"; // we use ap1
 const DD_SERVICE = process.env.DD_SERVICE || "dos-synth";
-const DD_ENV = process.env.ENVIRONMENT || "prod";
 const DD_SOURCE = process.env.DD_SOURCE || "playwright";
 const HOSTNAME = os.hostname();
+const DD_DRY_RUN = process.env.DD_DRY_RUN === "1";
 
-// Metric names (override if you like)
-const METRIC_RESULT = process.env.DD_METRIC_RESULT || "synth.deposit.result";
+// Metric names
+const METRIC_ROUTE_RESULT = process.env.DD_METRIC_ROUTE_RESULT || "synth.route.result";
+const METRIC_REBALANCE_RESULT = process.env.DD_METRIC_REBALANCE_RESULT || "synth.rebalance.result";
+const METRIC_WALLET_BALANCE = process.env.DD_METRIC_WALLET_BALANCE || "synth.wallet.balance";
 
 // Endpoints
 const METRICS_URL = `https://api.${DD_SITE}/api/v1/series?api_key=${encodeURIComponent(DD_API_KEY)}`;
 const LOGS_URL = `https://http-intake.logs.${DD_SITE}/api/v2/logs`;
 
-// --- Public API -------------------------------------------------------------
+// ----- Types ----------------------------------------------------------------
+export type WalletType = "metamask" | "phantom";
+export type Operation = "deposit" | "withdraw" | "rebalance";
 
-/**
- * Emit a simple pass/fail metric: 1 for pass, 0 for fail.
- */
-export async function emitResult(passed: boolean, tags: string[] = []): Promise<void> {
-  if (!isEnabled()) return;
+// Single source of truth for error stages
+export const ERROR_STAGES = [
+  "setup",
+  "pre_submit",
+  "submit",
+  "finality",
+  "submit_or_finality",
+  "rebalance",
+] as const;
+export type ErrorStage = typeof ERROR_STAGES[number];
 
-  const now = Math.floor(Date.now() / 1000);
-  const series = {
-    series: [
-      {
-        metric: METRIC_RESULT,
-        type: "gauge",
-        points: [[now, passed ? 1 : 0]],
-        tags: normalizeTags(tags),
-        resources: [{ name: DD_SERVICE, type: "service" }],
-      },
-    ],
-  };
-
-  try {
-    await postJSON(METRICS_URL, series, {
-      "Content-Type": "application/json",
-    });
-  } catch {
-    // swallow
-  }
+export interface RouteSummary {
+  id: string;
+  kind: "deposit" | "withdraw";
+  wallet_type: WalletType;
+  wallet_alias?: string;
+  route_kind?: "regular" | "instant";
+  amount: string;
+  src_chain: string;
+  dst_chain: string;
 }
 
-/**
- * Emit a structured log entry to Datadog logs intake.
- * `event` becomes part of the message; payload is JSON-stringified.
- */
-export async function emitLog(
-  event: string,
-  payload: Record<string, unknown> = {},
-  tags: string[] = []
-): Promise<void> {
-  if (!isEnabled()) return;
+type ErrorLike = { name?: string; message?: string; stack?: string; code?: string } | undefined;
 
-  const ddtags = normalizeTags(tags).concat([`service:${DD_SERVICE}`, `env:${DD_ENV}`]).join(",");
+type BalanceMap =
+  | Record<string, number> // { "USDC": 15.2, "ETH": 0.01 }
+  | Array<{ token: string; chain: string; amount: number }>; // [{ token, chain, amount }]
 
-  const items = [
-    {
-      // Keep 'message' human readable; put the full object in 'attributes'
-      message: `[${event}] ${payloadSummary(payload)}`,
-      status: "info",
-      ddtags,
-      ddsource: DD_SOURCE,
-      service: DD_SERVICE,
-      hostname: HOSTNAME,
-      // Full payload goes here for searchability
-      attributes: {
-        event,
-        env: DD_ENV,
-        ...payload,
-      },
+// ----- Public API -----------------------------------------------------------
+
+export function createTelemetryContext(cfg: {
+  route: RouteSummary;
+  wallet?: WalletType;         // defaults to route.wallet_type
+  operation?: Operation;       // for route tests, set to deposit|withdraw
+  extraTags?: string[];        // optional static tags
+}) {
+  const route = cfg.route;
+  const wallet = cfg.wallet ?? route.wallet_type;
+  const op = cfg.operation ?? route.kind;
+  const staticTags = normalizeTags(cfg.extraTags ?? []);
+  const baseTags = makeRouteTags(route, wallet, op);
+
+  return {
+    // Metric + (on fail) error log
+    async routeResult(args: {
+      passed: boolean;
+      txHash?: string;
+      errorStage?: ErrorStage;
+      error?: ErrorLike;
+    }) {
+      const tags = baseTags;
+      await sendRouteResultMetric(args.passed, tags);
+      if (!args.passed) {
+        await sendRouteLog(`${op}.error`, {
+          route: routeSummaryForLog(route),
+          tx_hash: args.txHash,
+          error_stage: args.errorStage ?? "submit_or_finality",
+          error: toErrorLike(args.error),
+        }, tags);
+      }
     },
-  ];
 
-  try {
-    await postJSON(LOGS_URL, items, {
-      "Content-Type": "application/json",
-      "DD-API-KEY": DD_API_KEY,
-    });
-  } catch {
-    // swallow
-  }
+    // Optional explicit route log (use if you want success logs occasionally)
+    async routeLog(event: "deposit.ok" | "deposit.error" | "withdraw.ok" | "withdraw.error", payload?: Record<string, unknown>) {
+      const tags = baseTags;
+      await sendRouteLog(event, { route: routeSummaryForLog(route), ...(payload || {}) }, tags);
+    },
+
+    // Rebalancer: metric + always log (with balances if provided)
+    async rebalanceResult(args: {
+      passed: boolean;
+      balancesBefore?: BalanceMap;
+      balancesAfter?: BalanceMap;
+      error?: ErrorLike;
+    }) {
+      const tags = withOperation(baseTags, "rebalance");
+      await sendRebalanceResultMetric(args.passed, tags);
+      const event = args.passed ? "rebalance.ok" : "rebalance.error";
+      const payload: Record<string, unknown> = {
+        route_id: route.id,
+        wallet_alias: route.wallet_alias,
+        balances_before: args.balancesBefore,
+        balances_after: args.balancesAfter,
+      };
+      if (!args.passed) payload.error = toErrorLike(args.error);
+      await sendRouteLog(event, payload, tags);
+    },
+
+    // Wallet balance gauges (emit one per token/chain)
+    async walletBalance(p: { alias: string; token: string; chain: string; amount: number }) {
+      const tags = normalizeTags([
+        `wallet_alias:${p.alias}`,
+        `token:${p.token}`,
+        `chain:${p.chain}`,
+      ].concat(staticTags));
+      await sendGauge(METRIC_WALLET_BALANCE, p.amount, tags);
+    },
+  };
 }
 
-// --- Helpers ----------------------------------------------------------------
+// ----- Implementation -------------------------------------------------------
 
-function isEnabled(): boolean {
+function makeRouteTags(route: RouteSummary, wallet: WalletType, operation: Operation): string[] {
+  const tags = [
+    `route_id:${route.id}`,
+    `wallet:${wallet}`,
+    `operation:${operation}`,
+    route.route_kind ? `route_kind:${route.route_kind}` : null,
+    route.src_chain ? `src:${route.src_chain}` : null,
+    route.dst_chain ? `dst:${route.dst_chain}` : null,
+    route.wallet_alias ? `wallet_alias:${route.wallet_alias}` : null,
+  ];
+  return normalizeTags(tags);
+}
+
+function withOperation(tags: string[], operation: Operation): string[] {
+  // replace or append operation:<...>
+  const rest = tags.filter(t => !t.startsWith("operation:"));
+  return rest.concat(`operation:${operation}`);
+}
+
+async function sendRouteResultMetric(passed: boolean, tags: string[]) {
+  await sendGauge(METRIC_ROUTE_RESULT, passed ? 1 : 0, tags);
+}
+
+async function sendRebalanceResultMetric(passed: boolean, tags: string[]) {
+  await sendGauge(METRIC_REBALANCE_RESULT, passed ? 1 : 0, tags);
+}
+
+async function sendGauge(metric: string, value: number, tags: string[]) {
+  if (!enabled()) return;
+  const now = Math.floor(Date.now() / 1000);
+  const body = { series: [{ metric, type: "gauge", points: [[now, value]], tags, resources: [{ name: DD_SERVICE, type: "service" }] }] };
+  if (DD_DRY_RUN) {
+    console.log("[DD METRIC]", metric, value, tags);
+    return;
+  }
+  await postJSON(METRICS_URL, body, { "Content-Type": "application/json" });
+}
+
+async function sendRouteLog(event: string, payload: Record<string, unknown>, tags: string[]) {
+  if (!enabled()) return;
+
+  const ddtags = normalizeTags(tags).concat([`service:${DD_SERVICE}`]).join(",");
+  const items = [{
+    message: `[${event}] ${summarize(payload)}`,
+    status: payload && (payload as any).error ? "error" : "info",
+    ddtags,
+    ddsource: DD_SOURCE,
+    service: DD_SERVICE,
+    hostname: HOSTNAME,
+    attributes: sanitizeAttrs({ event, ...payload }),
+  }];
+
+  if (DD_DRY_RUN) {
+    console.log("[DD LOG]", event, items[0]);
+    return;
+  }
+  await postJSON(LOGS_URL, items, {
+    "Content-Type": "application/json",
+    "DD-API-KEY": DD_API_KEY,
+  });
+}
+
+// ----- Helpers --------------------------------------------------------------
+
+function enabled(): boolean {
   return Boolean(DD_API_KEY);
 }
 
-function normalizeTags(tags: string[]): string[] {
-  // Datadog expects "key:value" strings. We assume caller provides that shape.
-  // Filter empties and whitespace.
-  return (tags || []).map((t) => String(t).trim()).filter(Boolean);
+function normalizeTags(tags: Array<string | null | undefined>): string[] {
+  return (tags || []).map(String).map(s => s.trim()).filter(Boolean);
 }
 
-function payloadSummary(obj: Record<string, unknown>): string {
+// Summarize the route for logs (keeps payload compact & stable)
+function routeSummaryForLog(route: RouteSummary) {
+    return {
+      id: route.id,
+      kind: route.kind,
+      wallet_type: route.wallet_type,
+      wallet_alias: route.wallet_alias,
+      route_kind: route.route_kind,
+      amount: route.amount,
+      src_chain: route.src_chain,
+      dst_chain: route.dst_chain,
+    };
+  }
+  
+function summarize(obj: Record<string, unknown>): string {
   try {
-    // very small summary string; avoid dumping massive JSON in 'message'
     const keys = Object.keys(obj || {});
     if (!keys.length) return "";
-    const preview = keys.slice(0, 5).reduce((acc, k) => {
+    const preview: Record<string, unknown> = {};
+    for (const k of keys.slice(0, 6)) {
       const v = (obj as any)[k];
-      acc[k] = typeof v === "string" ? v.slice(0, 120) : v;
-      return acc;
-    }, {} as Record<string, unknown>);
+      preview[k] = typeof v === "string" ? v.slice(0, 160) : v;
+    }
     return JSON.stringify(preview);
   } catch {
     return "";
   }
 }
 
+function sanitizeAttrs(obj: Record<string, unknown>): Record<string, unknown> {
+  // Basic redaction – keep it here to avoid coupling
+  const REDACT_KEYS = new Set([
+    "password","passphrase","secret","seed","mnemonic","privateKey",
+    "token","authorization","apiKey","api_key","accessToken","refreshToken",
+  ]);
+  const out: any = Array.isArray(obj) ? [] : {};
+  for (const [k, v] of Object.entries(obj || {})) {
+    if (REDACT_KEYS.has(k)) {
+      out[k] = "[REDACTED]";
+      continue;
+    }
+    if (v && typeof v === "object") {
+      out[k] = sanitizeAttrs(v as any);
+      continue;
+    }
+    out[k] = v;
+  }
+  return out;
+}
+
+function toErrorLike(e: ErrorLike): ErrorLike {
+  if (!e) return undefined;
+  if (typeof e === "object" && ("message" in e || "name" in e || "stack" in e)) {
+    const stack = (e as any).stack ? String((e as any).stack).slice(0, 4000) : undefined;
+    return { name: (e as any).name, message: (e as any).message, stack, code: (e as any).code };
+  }
+  return { message: String(e) };
+}
+
 async function postJSON(url: string, body: unknown, headers: Record<string, string>) {
-  // 5s timeout guard
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), 5000);
-
   try {
-    await fetch(url, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(body),
-      signal: ctl.signal,
-    }).catch(() => {});
+    await fetch(url, { method: "POST", headers, body: JSON.stringify(body), signal: ctl.signal }).catch(() => {});
   } finally {
     clearTimeout(t);
   }
