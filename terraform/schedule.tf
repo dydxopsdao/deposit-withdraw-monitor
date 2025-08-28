@@ -4,13 +4,13 @@ locals {
   # Read routes.yaml dynamically
   routes_yaml = yamldecode(file("${path.module}/../routes.yaml"))
 
-  # Transform routes into test definitions, filtering only enabled routes
+  # Transform routes into test definitions
   test_definitions = [
     for route in local.routes_yaml.routes : {
       id          = route.id
       cadence_min = route.cadence_min
+      enabled     = route.enabled
     }
-    if lookup(route, "enabled", false) == true
   ]
 }
 
@@ -58,6 +58,7 @@ resource "aws_ecs_task_definition" "this" {
 resource "aws_cloudwatch_event_rule" "test_schedules" {
   for_each = { for test in local.test_definitions : test.id => test }
 
+  state               = each.value.enabled ? "ENABLED" : "DISABLED"
   name                = each.value.id
   description         = "Runs the ECS Fargate task for ${each.value.id} every ${each.value.cadence_min} minutes"
   schedule_expression = "rate(${each.value.cadence_min} minutes)"
