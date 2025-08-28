@@ -17,7 +17,8 @@ import { test, expect } from "../fixtures";
 import { logger } from "../utils/logger/logging-utils";
 import { getRoutesSync, type Route, type WalletType } from "../utils/route/routes";
 import { createTelemetryContext, type ErrorStage } from "../utils/datadog/datadog-utils";
-import { openApp } from "../targets/dydx/flows";
+import { openApp, connectWallet } from "../targets/dydx/flows";
+import { logExtensionsOnce } from '../utils/debug/extensions';
 
 // ---- Route discovery (sync so tests can be defined at import time) ----------
 const onlyRouteId = process.env.ROUTE_ID?.trim();
@@ -70,6 +71,15 @@ for (const route of depositRoutes) {
     });
 
     try {
+      const p = await context.newPage();
+      const cdp = await context.newCDPSession(p);
+      const { targetInfos } = await cdp.send("Target.getTargets");
+      const mm = targetInfos.find(t =>
+        t.url.startsWith("chrome-extension://") && /metamask/i.test(t.title || "")
+      );
+      console.log("[MM ID]", mm?.url.split("/")[2]);
+      await p.close();
+
       // -------- Pre-submit block (open, connect, navigate, fill amount) ----
       try {
         await test.step("Open app", async () => {
@@ -77,7 +87,7 @@ for (const route of depositRoutes) {
         });
 
         await test.step(`Connect wallet (${route.wallet_type})`, async () => {
-          await connectWallet(page, context, route.wallet_type); // TODO
+          await connectWallet(page, context, route.wallet_type);
         });
 
         await test.step("Navigate to Deposit", async () => {
@@ -149,10 +159,6 @@ for (const route of depositRoutes) {
    Keep this spec readable — implement these in targets flows.ts
    ========================= */
 
-
-async function connectWallet(_page: any, _context: any, _wallet: WalletType) {
-  // TODO
-}
 
 async function navToDeposit(_page: any) {
   // TODO: DYDX flows.navToDeposit(page)

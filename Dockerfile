@@ -1,58 +1,34 @@
-# Use official Node.js runtime as base image
-FROM node:24-bookworm-slim
+FROM mcr.microsoft.com/playwright:v1.55.0-jammy   
+WORKDIR /
+# prevent tzdata from prompting
+ARG DEBIAN_FRONTEND=noninteractive
+ENV TZ=Etc/UTC
 
-# Install system dependencies for Playwright and Chrome
-RUN apt-get update && apt-get install -y \
-    libnss3 \
-    libnspr4 \
-    libatk1.0-0 \
-    libatk-bridge2.0-0 \
-    libcups2 \
-    libdrm2 \
-    libxkbcommon0 \
-    libgtk-3-0 \
-    libxcomposite1 \
-    libxdamage1 \
-    libxrandr2 \
-    libgbm1 \
-    libxss1 \
-    libasound2 \
-    fonts-liberation \
-    libappindicator3-1 \
-    xdg-utils \
-    wget \
-    ca-certificates \
-    unzip \
-    && rm -rf /var/lib/apt/lists/*
+# X stack for headed/VNC runs (non-interactive)
+ARG DEBIAN_FRONTEND=noninteractive
+ENV TZ=Etc/UTC
+RUN apt-get update && apt-get install -y --no-install-recommends tzdata xvfb x11vnc fluxbox \
+ && ln -fs /usr/share/zoneinfo/$TZ /etc/localtime \
+ && dpkg-reconfigure -f noninteractive tzdata \
+ && rm -rf /var/lib/apt/lists/*
 
-# Set working directory
-WORKDIR /app
-
-# Copy package files
 COPY package*.json ./
-
-# Install Node.js dependencies (including devDependencies for Playwright CLI)
 RUN npm ci
 
-# Install Playwright browsers
-RUN npx playwright install chromium
-RUN npx playwright install-deps chromium
-
-# Copy application code
+# copy everything; rely on .dockerignore
 COPY . .
 
-# Create directories for extensions and user data
-RUN mkdir -p extensions user-data test-results
-
-# Download required extensions
-RUN npm run download-extensions
-
-# Set environment variables for non-interactive mode
+ENV EXT_DIR=/extensions
+ENV USER_DATA_DIR=/user-data
 ENV CI=true
 ENV NODE_ENV=production
 
-# Expose any necessary ports (if needed)
-# EXPOSE 3000
+# sanity check: prove script exists at build time (remove later)
+RUN ls -la src/scripts && test -f src/scripts/run-tests.sh
 
-# Set the entrypoint to run tests in non-interactive mode
-CMD ["npx", "playwright", "test", "--reporter=line"]
+# make sure unix + executable (only after the check above)
+RUN apt-get update && apt-get install -y dos2unix && \
+    dos2unix src/scripts/run-tests.sh && chmod +x src/scripts/run-tests.sh
+
+ENTRYPOINT ["bash", "src/scripts/run-tests.sh"]
+CMD ["--reporter=line"]

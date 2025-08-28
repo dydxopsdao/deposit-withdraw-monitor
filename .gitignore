@@ -15,7 +15,6 @@ test-results/
 extensions/phantom/
 extensions/metamask/
 
-user-data/
 
 # Terraform
 *.tfstate

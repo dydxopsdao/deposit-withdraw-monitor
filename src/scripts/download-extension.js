@@ -22,7 +22,7 @@ if (!extensionId || !extensionName) {
 const webstoreUrl = `https://chrome.google.com/webstore/detail/${extensionName}/${extensionId}`;
 
 // Set output directory as absolute path
-const outputDir = path.join(__dirname, '..', 'extensions', extensionName);
+const outputDir = path.join(process.cwd(), 'extensions', extensionName);
 
 async function extractZip(zipPath, extractDir) {
   console.log('📦 Extracting ZIP file...');

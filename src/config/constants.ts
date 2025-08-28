@@ -1,6 +1,8 @@
 import path from "path";
 
-export const USER_DATA_DIR = path.resolve(process.cwd(), "user-data");
+export const USER_DATA_DIR = process.env.USER_DATA_DIR
+  ? process.env.USER_DATA_DIR
+  : path.resolve(process.cwd(), "user-data");
 export const DAPP_URL = "https://dydx.trade/portfolio/overview";
 
 export const PHANTOM_EXT_PATH = path.resolve(
