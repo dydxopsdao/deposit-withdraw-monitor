@@ -1,0 +1,45 @@
+2025/08/28-11:54:52.764 1df Reusing MANIFEST /user-data/deposits/regular/metamask-ethereum-usdc-deposit-regular/Default/Local Extension Settings/jibkefgfabnkaofdfaijkbboehojflbm/MANIFEST-000001
+2025/08/28-11:54:52.765 1df Recovering log #49
+2025/08/28-11:54:52.765 1df Reusing old log /user-data/deposits/regular/metamask-ethereum-usdc-deposit-regular/Default/Local Extension Settings/jibkefgfabnkaofdfaijkbboehojflbm/000049.log 
+2025/08/28-11:55:00.006 1e0 Level-0 table #54: started
+2025/08/28-11:55:00.062 1e0 Level-0 table #54: 11745930 bytes OK
+2025/08/28-11:55:00.064 1e0 Delete type=0 #49
+2025/08/28-11:55:00.064 1e0 Compacting 1@1 + 2@2 files
+2025/08/28-11:55:00.107 1e0 Generated table #55@1: 1 keys, 11745615 bytes
+2025/08/28-11:55:00.108 1e0 Generated table #56@1: 2 keys, 415 bytes
+2025/08/28-11:55:00.108 1e0 Compacted 1@1 + 2@2 files => 11746030 bytes
+2025/08/28-11:55:00.109 1e0 compacted to: files[ 0 0 2 0 0 0 0 ]
+2025/08/28-11:55:00.110 1e0 Delete type=2 #42
+2025/08/28-11:55:00.110 1e0 Delete type=2 #54
+2025/08/28-11:55:00.110 1e0 Delete type=2 #51
+2025/08/28-11:55:31.722 1e0 Level-0 table #58: started
+2025/08/28-11:55:31.757 1e0 Level-0 table #58: 11735261 bytes OK
+2025/08/28-11:55:31.759 1e0 Delete type=0 #53
+2025/08/28-11:55:31.759 1e0 Compacting 1@1 + 2@2 files
+2025/08/28-11:55:31.804 1e0 Generated table #59@1: 1 keys, 11734859 bytes
+2025/08/28-11:55:31.806 1e0 Generated table #60@1: 2 keys, 418 bytes
+2025/08/28-11:55:31.806 1e0 Compacted 1@1 + 2@2 files => 11735277 bytes
+2025/08/28-11:55:31.806 1e0 compacted to: files[ 0 0 2 0 0 0 0 ]
+2025/08/28-11:55:31.807 1e0 Delete type=2 #58
+2025/08/28-11:55:31.807 1e0 Delete type=2 #56
+2025/08/28-11:55:31.807 1e0 Delete type=2 #55
+2025/08/28-11:55:35.008 1e0 Level-0 table #62: started
+2025/08/28-11:55:35.045 1e0 Level-0 table #62: 11785138 bytes OK
+2025/08/28-11:55:35.047 1e0 Delete type=0 #57
+2025/08/28-11:55:35.047 1e0 Compacting 1@1 + 1@2 files
+2025/08/28-11:55:35.101 1e0 Generated table #63@1: 1 keys, 11785138 bytes
+2025/08/28-11:55:35.101 1e0 Compacted 1@1 + 1@2 files => 11785138 bytes
+2025/08/28-11:55:35.102 1e0 compacted to: files[ 0 0 2 0 0 0 0 ]
+2025/08/28-11:55:35.102 1e0 Delete type=2 #62
+2025/08/28-11:55:35.102 1e0 Delete type=2 #59
+2025/08/28-11:55:50.117 1e0 Level-0 table #65: started
+2025/08/28-11:55:50.148 1e0 Level-0 table #65: 11795706 bytes OK
+2025/08/28-11:55:50.150 1e0 Delete type=0 #61
+2025/08/28-11:55:50.150 1e0 Compacting 1@1 + 2@2 files
+2025/08/28-11:55:50.197 1e0 Generated table #66@1: 1 keys, 11795390 bytes
+2025/08/28-11:55:50.198 1e0 Generated table #67@1: 2 keys, 416 bytes
+2025/08/28-11:55:50.198 1e0 Compacted 1@1 + 2@2 files => 11795806 bytes
+2025/08/28-11:55:50.198 1e0 compacted to: files[ 0 0 2 0 0 0 0 ]
+2025/08/28-11:55:50.199 1e0 Delete type=2 #63
+2025/08/28-11:55:50.199 1e0 Delete type=2 #60
+2025/08/28-11:55:50.199 1e0 Delete type=2 #65

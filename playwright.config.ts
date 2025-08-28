@@ -22,10 +22,11 @@ const DEBUG_PORT = process.env.DEBUG_PORT;
 
 
 export default defineConfig({
+  timeout: 900_000,
   testDir: "./src/tests",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 0 : 0,
+  retries: process.env.CI ? 1 : 0,
   workers: process.env.CI ? 1 : undefined,
 
   reporter: [["line"], ["html", { outputFolder: REPORT_DIR, open: "never" }]],

@@ -1,0 +1,6 @@
+2025/08/28-11:54:52.077 1fc Reusing MANIFEST /user-data/deposits/regular/metamask-ethereum-usdc-deposit-regular/Default/Local Storage/leveldb/MANIFEST-000001
+2025/08/28-11:54:52.081 1fc Recovering log #4
+2025/08/28-11:54:52.085 1fc Reusing old log /user-data/deposits/regular/metamask-ethereum-usdc-deposit-regular/Default/Local Storage/leveldb/000004.log 
+2025/08/28-11:55:52.091 203 Level-0 table #7: started
+2025/08/28-11:55:52.096 203 Level-0 table #7: 44526 bytes OK
+2025/08/28-11:55:52.099 203 Delete type=0 #4

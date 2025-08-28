@@ -83,10 +83,13 @@ for (const route of depositRoutes) {
       // -------- Pre-submit block (open, connect, navigate, fill amount) ----
       try {
         await test.step("Open app", async () => {
-          await openApp(context); // TODO
+        
+          await openApp(context); 
+    
         });
 
         await test.step(`Connect wallet (${route.wallet_type})`, async () => {
+          await page.pause();
           await connectWallet(page, context, route.wallet_type);
         });
 
@@ -181,3 +184,4 @@ async function waitForFinality(_args: { route: Route; txHash?: string }): Promis
 async function rebalanceNow(_route: Route, _opts: { reason: string; last_tx?: string; passed: boolean }) {
   // TODO: implement; return { balancesBefore?: {...}, balancesAfter?: {...} } if you can
 }
+

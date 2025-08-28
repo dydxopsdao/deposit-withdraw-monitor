@@ -12,9 +12,6 @@ playwright-report/
 test-results/
 .DS_Store
 
-extensions/phantom/
-extensions/metamask/
-
 
 # Terraform
 *.tfstate

@@ -14,7 +14,6 @@ if [ -n "${USER_DATA_DIR:-}" ] && [ -d "$USER_DATA_DIR" ]; then
         "$USER_DATA_DIR/SingletonSocket" \
         "$USER_DATA_DIR/DevToolsActivePort" 2>/dev/null || true
 fi
-
 # Download the extension only if it's missing
 if [ ! -f "$EXT_DIR/$WALLET/manifest.json" ]; then
   echo "→ Downloading $WALLET into $EXT_DIR/$WALLET ..."

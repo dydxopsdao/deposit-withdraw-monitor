@@ -37,7 +37,7 @@ npx playwright test src/tests/ --list
 npx playwright test src/tests/ --reporter=line
 
 # 4) (Optional) Run specific test (uses routes.yaml)
-npx playwright test src/tests/deposit.spec.ts -g "deposit: dep-ethereum-usdc-regular-metamask-10"
+npx playwright test src/tests/deposit.spec.ts -g "deposit: metamask-ethereum-usdc-deposit-regular"
 
 ---
 
@@ -81,6 +81,37 @@ ROUTE_ID=dep-ethereum-usdc-regular-metamask-10 \
 WALLET=phantom npx playwright test src/tests/deposit.spec.ts --list
 ```
 
+### Run through docker
+```bash
+ROUTE_DIR="user-data/metamask/deposits/regular/metamask-ethereum-usdc-deposit-regular"; \
+docker run --rm \
+  -e CI=1 -e HEADFUL=1 \
+  -e WALLET=metamask \
+  -e EXT_DIR=/extensions \
+  -e USER_DATA_DIR=/user-data \
+  -v "$PWD/extensions:/extensions:ro" \
+  -v "$PWD/$ROUTE_DIR:/user-data-ro:ro" \
+  --tmpfs /user-data:rw,size=1g \
+  -v "$PWD/playwright-report:/playwright-report" \
+  -v "$PWD/test-results:/test-results" \
+  --entrypoint bash \
+  dwm:local -lc 'set -e; cp -a /user-data-ro/. /user-data/; exec bash src/scripts/run-tests.sh --grep "deposit: metamask-ethereum-usdc-deposit-regular" --retries=0'
+```
+
+### Run through docker with VNC
+```bash
+docker run --rm \
+  -e CI=0 \
+  -e HEADFUL=1 -e VNC=1 -e VNC_PORT=5900 -e VNC_PASSWORD='s3cret' \
+  -e WALLET=metamask \
+  -e EXT_DIR=/extensions \
+  -e USER_DATA_DIR=/user-data/deposits/regular/metamask-ethereum-usdc-deposit-regular \
+  -v "$PWD/extensions:/extensions:ro" \
+  -v "$PWD/user-data/metamask/deposits/regular/metamask-ethereum-usdc-deposit-regular:/user-data" \
+  -p 5900:5900 \
+  dwm:local \
+  --grep "deposit: metamask-ethereum-usdc-deposit-regular"
+```
 
 ---
 
