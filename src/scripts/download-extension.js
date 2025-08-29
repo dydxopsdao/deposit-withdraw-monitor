@@ -1,12 +1,8 @@
 import { fetchExtensionZip } from 'chrome-extension-fetch';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import fs from 'fs';
 import { Extract } from 'unzipper';
 
-// Get current directory for ES6 modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // Get extension name and ID from command line arguments
 const extensionName = process.argv[2];
@@ -21,8 +17,8 @@ if (!extensionId || !extensionName) {
 // Construct the Chrome Web Store URL from the extension ID
 const webstoreUrl = `https://chrome.google.com/webstore/detail/${extensionName}/${extensionId}`;
 
-// Set output directory as absolute path
-const outputDir = path.join(__dirname, '..', 'extensions', extensionName);
+// Set output directory relative to project root (i.e. where `npm run` would be called)
+const outputDir = path.join(process.cwd(), 'extensions', extensionName);
 
 async function extractZip(zipPath, extractDir) {
   console.log('📦 Extracting ZIP file...');
