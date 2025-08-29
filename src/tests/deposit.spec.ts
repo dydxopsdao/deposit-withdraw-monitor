@@ -17,7 +17,8 @@ import { test, expect } from "../fixtures";
 import { logger } from "../utils/logger/logging-utils";
 import { getRoutesSync, type Route, type WalletType } from "../utils/route/routes";
 import { createTelemetryContext, type ErrorStage } from "../utils/datadog/datadog-utils";
-import { openApp } from "../targets/dydx/flows";
+import { openApp, connectWallet } from "../targets/dydx/flows";
+import { dydxSelectors } from "../targets/dydx/selectors";
 
 // ---- Route discovery (sync so tests can be defined at import time) ----------
 const onlyRouteId = process.env.ROUTE_ID?.trim();
@@ -73,11 +74,19 @@ for (const route of depositRoutes) {
       // -------- Pre-submit block (open, connect, navigate, fill amount) ----
       try {
         await test.step("Open app", async () => {
-          await openApp(context); // TODO
+          await openApp(context, {
+            waitUntil: "domcontentloaded",
+            maxRetries: 3,
+            retryDelayMs: 1500,
+            waitFor: [dydxSelectors.connectWalletBtn],
+            afterNavigate: async (page) => {
+              // e.g. build in click notifications etc
+            },
+          });
         });
 
         await test.step(`Connect wallet (${route.wallet_type})`, async () => {
-          await connectWallet(page, context, route.wallet_type); // TODO
+          await connectWallet(page, context, route.wallet_type); 
         });
 
         await test.step("Navigate to Deposit", async () => {
@@ -149,10 +158,6 @@ for (const route of depositRoutes) {
    Keep this spec readable — implement these in targets flows.ts
    ========================= */
 
-
-async function connectWallet(_page: any, _context: any, _wallet: WalletType) {
-  // TODO
-}
 
 async function navToDeposit(_page: any) {
   // TODO: DYDX flows.navToDeposit(page)
