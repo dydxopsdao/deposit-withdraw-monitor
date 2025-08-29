@@ -1,5 +1,16 @@
 // targets/dydx/flows.ts
 
+
+import { expect, type BrowserContext, type Page, type Locator } from "@playwright/test";
+import { DAPP_URL } from "../../config/constants";
+import { logger } from "../../utils/logger/logging-utils";
+import { WalletType } from "../../utils/route/routes";
+import { TEST_TIMEOUTS } from "../../config/timeouts";
+import { handleMetaMaskPopup } from "../wallets/metamask/flows";
+import { handlePhantomPopup } from "../wallets/phantom/flows";
+import { dydxSelectors } from "./selectors";
+
+//#region openApp
 /**
  * openApp
  * -----------------------------------------------------------------------------
@@ -44,14 +55,6 @@
  *   - Retries swallow intermediate errors and keep logs; the last error is
  *     rethrown for Playwright to report.
  */
-
-import { expect, type BrowserContext, type Page, type Locator } from "@playwright/test";
-import { DAPP_URL } from "../../config/constants";
-import { logger } from "../../utils/logger/logging-utils";
-import { WalletType } from "../../utils/route/routes";
-import { TEST_TIMEOUTS } from "../../config/timeouts";
-
-// ✅ Do NOT import `selectors` from "@playwright/test" here — it shadows your own selectors module.
 
 type WaitTarget = string | ((page: Page) => Locator);
 
@@ -178,8 +181,103 @@ export async function openApp(
   );
   throw lastError;
 }
+//#endregion
 
-export async function connectWallet(page: Page, _context: BrowserContext, _wallet: WalletType): Promise<Page> {
-  await page.pause(); // TODO: remove in CI; this is for local debugging only.
+//#region connectWallet
+/**
+ * Connect a wallet to the dApp.
+ *
+ * What this does (high-level):
+ *  - If needed, clicks "Connect wallet".
+ *  - Picks the requested wallet provider (MetaMask | Phantom).
+ *  - Clicks "Send request" if the dApp shows it.
+ *  - Confirms the connection in the extension popup (handles common variants).
+ *  - Verifies the dApp looks connected (account menu visible).
+ *
+ * Why we structure it this way:
+ *  - dApps differ slightly across sessions (fresh vs already connected).
+ *  - Wallet extensions spawn separate popup pages we must confirm in.
+ *  - We keep logs granular so CI failures are diagnosable from output alone.
+ */
+export async function connectWallet(
+  page: Page,
+  context: BrowserContext,
+  wallet: WalletType
+): Promise<Page> {
+  logger.step(`Connecting wallet: ${wallet}`);
+
+  // 1) If already connected, short-circuit (account/user menu present)
+  if (await dydxSelectors.accountMenuButton(page).isVisible()) {
+    logger.info("Wallet appears already connected (account menu visible)");
+    return page;
+  }
+
+  // 2) Open the wallet picker if needed
+  if (await dydxSelectors.connectWalletBtn(page).isVisible()) {
+    await dydxSelectors.connectWalletBtn(page).click();
+  } else {
+    // Sometimes the picker is open already (from a previous run or hot reload)
+    logger.info(`Connect button not visible — assuming wallet picker may be open`);
+  }
+
+  // 3) Choose provider and trigger the request from within the dApp
+  if (wallet === "metamask") {
+    await chooseProvider(page, dydxSelectors.metamaskOption(page), "MetaMask");
+  } else if (wallet === "phantom") {
+    await chooseProvider(page, dydxSelectors.phantomOption(page), "Phantom");
+  } else {
+    throw new Error(`Unsupported wallet: ${wallet}`);
+  }
+
+  // Optional: some UIs require an explicit "Send request" button press in-page
+  //await clickIfVisible(dydxSelectors.sendRequestBtn(page), "Send request");
+
+  // 4) Handle the extension popup (MetaMask/Phantom)
+  if (wallet === "metamask") {
+    await handleMetaMaskPopup(context);
+  } else {
+    await handlePhantomPopup(context);
+  }
+
+  // 5) Assert the dApp now shows a connected state
+  await expect(dydxSelectors.accountMenuButton(page)).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
+  logger.success(`Wallet connected: ${wallet}`);
+
   return page;
 }
+
+/* =========================
+   Helpers (small, focused)
+   ========================= */
+
+// Click the provider tile/button in the wallet picker.
+async function chooseProvider(page: Page, provider: Locator, name: string) {
+  logger.info(`Selecting wallet provider: ${name}`);
+  await expect(provider).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
+  await provider.click();
+}
+
+// Click a locator if it’s visible; log what happened.
+async function clickIfVisible(locator: Locator, label: string) {
+  if (await locator.first().isVisible()) {
+    logger.info(`Clicking: ${label}`);
+    await locator.first().click();
+  } else {
+    logger.debug(`"${label}" not visible — skipping`);
+  }
+}
+
+// Wait for an extension popup page and return it (or undefined if none spawned).
+export async function waitForExtensionPopup(context: BrowserContext): Promise<Page | undefined> {
+  try {
+    const popup = await context.waitForEvent("page", {
+      timeout: TEST_TIMEOUTS.POPUP_TIMEOUT,
+      predicate: (p) => p.url().startsWith("chrome-extension://"),
+    });
+    await popup.bringToFront().catch(() => {});
+    return popup;
+  } catch {
+    return undefined;
+  }
+}
+//#endregion

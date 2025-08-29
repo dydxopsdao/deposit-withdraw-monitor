@@ -3,6 +3,9 @@ import { findPageWithUrl } from '../../../utils/helpers/windows';
 import { PHANTOM_EXT_PATH, PHANTOM_EXT_ID, USER_DATA_DIR, DAPP_URL } from "../../../config/constants";
 import { SEED_PHRASE, WALLET_PASSWORD, assertPhantomSecrets } from "./constants";
 import { phantomSelectors as s } from './selectors';
+import { logger } from '../../../utils/logger/logging-utils';
+import { clickAnyButton } from '../../../utils/helpers/ui-helper';
+import { waitForExtensionPopup } from '../../dydx/flows';
 
 export async function launchContextWithExtension(
   userDataSubdir = 'phantom',
@@ -96,4 +99,36 @@ export async function connect(page: Page, context: BrowserContext) {
 
   // Sanity: dapp should now consider the wallet connected
   await expect(page.getByText(/Connected/i)).toBeVisible({ timeout: 30_000 }).catch(() => {});
+}
+
+/**
+ * Phantom usually shows a single “Approve/Connect” button.
+ * In their UI it’s commonly data-testid="primary-button".
+ * We also try visible “Approve”/“Connect” by role to be resilient.
+ */
+export async function handlePhantomPopup(context: BrowserContext) {
+  logger.info("Waiting for Phantom popup…");
+  const ph = await waitForExtensionPopup(context);
+
+  if (!ph) {
+    logger.warning("Phantom popup did not appear; assuming connected or silent approval");
+    return;
+  }
+
+  try {
+    // First try canonical test id:
+    const primary = ph.getByTestId("primary-button");
+    if (await primary.isVisible()) {
+      await primary.click();
+    } else {
+      // Fallback to common labels:
+      await clickAnyButton(ph, [/^Approve$/i, /^Connect$/i, /^Confirm$/i], "Phantom connect flow");
+    }
+
+    await ph.close().catch(() => {});
+    logger.info("Phantom popup handled");
+  } catch (e: any) {
+    logger.warning(`Phantom popup handling had issues: ${e?.message ?? e}`);
+    try { await ph.close(); } catch {}
+  }
 }

@@ -4,6 +4,9 @@ import { METAMASK_EXT_PATH, USER_DATA_DIR, DAPP_URL } from "../../../config/cons
 import { SEED_PHRASE, WALLET_PASSWORD, assertMetamaskSecrets } from "./constants";
 import { metamaskSelectors as s } from "./selectors";
 import { findPageWithUrl } from "../../../utils/helpers/windows";
+import { clickAnyButton } from "../../../utils/helpers/ui-helper";
+import { logger } from "../../../utils/logger/logging-utils";
+import { waitForExtensionPopup } from "../../dydx/flows";
 
 /**
  * Launch a persistent context with the MetaMask extension loaded.
@@ -114,4 +117,34 @@ export async function connect(page: Page, context: BrowserContext) {
   const popup3 = await findPageWithUrl(context, s.urls.notification);
   await popup3.locator(s.popup.confirmFooterBtn).click();
   await popup3.close();
+}
+
+/**
+ * MetaMask connection popup flows vary slightly by version/permissions.
+ * We try a short sequence of common buttons: Next → Connect → Approve.
+ * (If a Sign prompt appears later during auth, handle it in your auth flow.)
+ */
+export async function handleMetaMaskPopup(context: BrowserContext) {
+  logger.info("Waiting for MetaMask popup…");
+  const mm = await waitForExtensionPopup(context);
+
+  if (!mm) {
+    logger.warning("MetaMask popup did not appear; assuming connected or silent approval");
+    return;
+  }
+
+  try {
+    // Some builds show a "MetaMask Notification" title, others keep it blank.
+    logger.debug(`MetaMask popup URL: ${mm.url()}`);
+
+    // Defensive: click the common flow buttons if present
+    await clickAnyButton(mm, [/^Next$/, /^Connect$/, /^Approve$/], "MetaMask connect flow");
+
+    // Close if MetaMask leaves the window open
+    await mm.close().catch(() => {});
+    logger.info("MetaMask popup handled");
+  } catch (e: any) {
+    logger.warning(`MetaMask popup handling had issues: ${e?.message ?? e}`);
+    try { await mm.close(); } catch {}
+  }
 }
