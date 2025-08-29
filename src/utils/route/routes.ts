@@ -4,8 +4,9 @@
 // - Reads ./routes.yaml from project root (process.cwd())
 // - Merges top-level `defaults` into each route (route values override defaults)
 // - Normalises a few fields (wallet_type → lower-case; amount → string)
+// - Expands environment variables in the format ${VAR_NAME}
 //
-// Install dependency: npm i yaml
+// Install dependency: npm i js-yaml @types/js-yaml
 //
 // Usage:
 //   import { getRoutesSync } from "../utils/routes";
@@ -13,7 +14,7 @@
 
 import fs from "fs";
 import path from "path";
-import YAML from "yaml";
+import jsYaml from "js-yaml";
 
 export type WalletType = "metamask" | "phantom";
 export type RouteKind = "deposit" | "withdraw";
@@ -25,6 +26,8 @@ export interface Route {
   description?: string;
   wallet_type: WalletType;
   wallet_alias?: string;
+  wallet_address: string;
+  wallet_seed: string;
   route_kind?: DepositRouteKind;
   amount: string;
   src_chain: string;
@@ -42,9 +45,27 @@ interface RoutesYaml {
 
 const ROUTES_FILE = path.resolve(process.cwd(), "routes.yaml");
 
+// Custom implicit type for environment variable substitution with `js-yaml`
+const envVarType = new jsYaml.Type('!env-var', {
+  kind: 'scalar',
+  resolve: (data: any) => typeof data === 'string' && data.includes('${'),
+  construct: (data: string) => {
+    return data.replace(/\${([^}]+)}/g, (_, varName) => {
+      const value = process.env[varName];
+      if (!value) throw new Error(`Missing environment variable: ${varName}`);
+      return value;
+    });
+  },
+});
+
+// Custom schema with our implicit type
+const envVarSchema = jsYaml.DEFAULT_SCHEMA.extend({
+  implicit: [envVarType]
+});
+
 export function getRoutesSync(): Route[] {
   const raw = fs.readFileSync(ROUTES_FILE, "utf8");
-  const doc = YAML.parse(raw) as RoutesYaml;
+  const doc = jsYaml.load(raw, { schema: envVarSchema }) as RoutesYaml;
 
   if (!doc || !Array.isArray(doc.routes)) {
     throw new Error(`Invalid routes.yaml: missing 'routes' array`);
