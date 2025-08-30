@@ -1,3 +1,4 @@
+import { logger } from "../logger/logging-utils";
 
 /**
  * Finds a page with a given URL pattern in the context
@@ -14,10 +15,10 @@ export async function findPageWithUrl(
     maxRetries: number = 10, 
     retryDelay: number = 1000
   ) {
-    console.log(`⏳ Waiting for page with URL pattern: ${urlPattern}`);
+    logger.debug(`Waiting for page with URL pattern: ${urlPattern}`);
   
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      console.log(`🔄 Attempt ${attempt}/${maxRetries}`);
+      logger.debug(`Attempt ${attempt}/${maxRetries}`);
       
       const pages = await context.pages();
       const existingPopup = await pages.find(page => {
@@ -31,14 +32,14 @@ export async function findPageWithUrl(
       
       if (existingPopup) {
         await existingPopup.waitForLoadState('domcontentloaded');
-        console.log("✅ Found existing popup");
+        logger.debug("Found existing popup");
         return existingPopup;
       }
   
-      console.log(`⏳ No page found, waiting ${retryDelay}ms before retry...`);
+      logger.debug(`No page found, waiting ${retryDelay}ms before retry...`);
       await new Promise(resolve => setTimeout(resolve, retryDelay));
     }
   
-    console.log("❌ No page found after all retries");
+    logger.error("No page found after all retries");
     return null;
   }

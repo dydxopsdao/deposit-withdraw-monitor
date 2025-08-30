@@ -8,6 +8,7 @@ export const metamaskSelectors = {
   // URLs that MM uses
   urls: {
     onboarding: /chrome-extension:\/\/.*\/home\.html#onboarding\/welcome/,
+    unlock: /chrome-extension:\/\/.*\/home\.html#unlock/,
     notification: /chrome-extension:\/\/.*\/notification\.html/,
   },
 
@@ -42,5 +43,10 @@ export const metamaskSelectors = {
     done:            '[data-testid="onboarding-complete-done"]',
     pinDone:         '[data-testid="pin-extension-done"]',
     notNow:          '[data-testid="not-now-button"]',
+  },
+
+  unlock: {
+    pw:              '[data-testid="unlock-password"]',
+    pwSubmit:        '[data-testid="unlock-submit"]',
   },
 } as const;

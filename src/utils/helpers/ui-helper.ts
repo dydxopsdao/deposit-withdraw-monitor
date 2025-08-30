@@ -9,7 +9,8 @@ export async function clickAnyButton(page: Page, names: RegExp[], contextLabel: 
         logger.debug(`${contextLabel}: clicking "${re.source}"`);
         await btn.first().click();
         // Some flows show two steps (e.g. Next → Connect). Keep trying others for a short time.
-        await page.waitForTimeout(250);
+        await page.waitForTimeout(250)
+          .catch(() => {/* pop-ups get closed by the time we get here - ignore*/});
       }
     }
   }

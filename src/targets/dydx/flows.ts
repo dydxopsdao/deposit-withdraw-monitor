@@ -6,8 +6,8 @@ import { DAPP_URL } from "../../config/constants";
 import { logger } from "../../utils/logger/logging-utils";
 import { WalletType } from "../../utils/route/routes";
 import { TEST_TIMEOUTS } from "../../config/timeouts";
-import { handleMetaMaskPopup } from "../wallets/metamask/flows";
-import { handlePhantomPopup } from "../wallets/phantom/flows";
+import { handleWalletPopup as handleMetaMaskPopup } from "../wallets/metamask/flows";
+import { handleWalletPopup as handlePhantomPopup } from "../wallets/phantom/flows";
 import { dydxSelectors } from "./selectors";
 
 //#region openApp
@@ -87,12 +87,10 @@ export type OpenAppOptions = {
  *   openApp(context, { path: "/trade/BTC-USD" })  // base + path + waits/retries
  */
 export async function openApp(
+  page: Page,
   context: BrowserContext,
   urlOrOptions?: string | OpenAppOptions
 ): Promise<Page> {
-  // Reuse the first tab if present; otherwise open a new one.
-  const page = context.pages()[0] ?? (await context.newPage());
-
   // Normalize options: support a string URL for ergonomics.
   const opts: OpenAppOptions =
     typeof urlOrOptions === "string" ? { url: urlOrOptions } : (urlOrOptions ?? {});
@@ -207,7 +205,7 @@ export async function connectWallet(
   logger.step(`Connecting wallet: ${wallet}`);
 
   // 1) If already connected, short-circuit (account/user menu present)
-  if (await dydxSelectors.accountMenuButton(page).isVisible()) {
+  if (await dydxSelectors.accountMenuButton(page, wallet).isVisible()) {
     logger.info("Wallet appears already connected (account menu visible)");
     return page;
   }
@@ -215,32 +213,35 @@ export async function connectWallet(
   // 2) Open the wallet picker if needed
   if (await dydxSelectors.connectWalletBtn(page).isVisible()) {
     await dydxSelectors.connectWalletBtn(page).click();
+    logger.debug("Connect button clicked");
   } else {
     // Sometimes the picker is open already (from a previous run or hot reload)
     logger.info(`Connect button not visible — assuming wallet picker may be open`);
   }
 
   // 3) Choose provider and trigger the request from within the dApp
-  if (wallet === "metamask") {
-    await chooseProvider(page, dydxSelectors.metamaskOption(page), "MetaMask");
-  } else if (wallet === "phantom") {
-    await chooseProvider(page, dydxSelectors.phantomOption(page), "Phantom");
-  } else {
-    throw new Error(`Unsupported wallet: ${wallet}`);
-  }
-
-  // Optional: some UIs require an explicit "Send request" button press in-page
-  //await clickIfVisible(dydxSelectors.sendRequestBtn(page), "Send request");
+  await chooseProvider(page, dydxSelectors.chooseProviderBtn(page, wallet), wallet);
 
   // 4) Handle the extension popup (MetaMask/Phantom)
-  if (wallet === "metamask") {
-    await handleMetaMaskPopup(context);
+  await handleWalletPopup(context, wallet);
+
+  // Optional: some UIs require an explicit "Send request" button press in-page
+  const sendRequestBtnVisible = await clickIfVisible( dydxSelectors.sendRequestBtn(page), "Send request", TEST_TIMEOUTS.ELEMENT);
+  if (sendRequestBtnVisible) {
+    logger.debug("Send request button clicked");
+    await handleWalletPopup(context, wallet);
   } else {
-    await handlePhantomPopup(context);
+    logger.debug("Send request button not visible — skipping");
   }
 
-  // 5) Assert the dApp now shows a connected state
-  await expect(dydxSelectors.accountMenuButton(page)).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
+  // 5) Confirm signature request
+  await handleWalletPopup(context, wallet);
+
+  // 6) Close Deposit pop-up if it's open
+  await clickIfVisible(dydxSelectors.depositPopupXButton(page), "Deposit popup X button", TEST_TIMEOUTS.ELEMENT);
+
+  // 7) Assert the dApp now shows a connected state
+  await expect(dydxSelectors.accountMenuButton(page, wallet)).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
   logger.success(`Wallet connected: ${wallet}`);
 
   return page;
@@ -257,27 +258,24 @@ async function chooseProvider(page: Page, provider: Locator, name: string) {
   await provider.click();
 }
 
-// Click a locator if it’s visible; log what happened.
-async function clickIfVisible(locator: Locator, label: string) {
-  if (await locator.first().isVisible()) {
-    logger.info(`Clicking: ${label}`);
-    await locator.first().click();
+async function handleWalletPopup(context: BrowserContext, wallet: WalletType) {
+  if (wallet === "metamask") {
+    await handleMetaMaskPopup(context);
   } else {
-    logger.debug(`"${label}" not visible — skipping`);
+    await handlePhantomPopup(context);
   }
 }
 
-// Wait for an extension popup page and return it (or undefined if none spawned).
-export async function waitForExtensionPopup(context: BrowserContext): Promise<Page | undefined> {
-  try {
-    const popup = await context.waitForEvent("page", {
-      timeout: TEST_TIMEOUTS.POPUP_TIMEOUT,
-      predicate: (p) => p.url().startsWith("chrome-extension://"),
-    });
-    await popup.bringToFront().catch(() => {});
-    return popup;
-  } catch {
-    return undefined;
+// Click a locator if it’s visible; log what happened.
+async function clickIfVisible(locator: Locator, label: string, timeout: number ): Promise<boolean> {
+  await locator.first().waitFor({ state: "visible", timeout }).catch(() => {});
+  if (await locator.first().isVisible()) {
+    logger.info(`Clicking: ${label}`);
+    await locator.first().click();
+    return true;
+  } else {
+    logger.debug(`"${label}" not visible — skipping`);
+    return false;
   }
 }
 //#endregion
