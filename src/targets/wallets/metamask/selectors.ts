@@ -9,7 +9,7 @@ export const metamaskSelectors = {
   urls: {
     onboarding: /chrome-extension:\/\/.*\/home\.html#onboarding\/welcome/,
     unlock: /chrome-extension:\/\/.*\/home\.html#unlock/,
-    notification: /chrome-extension:\/\/.*\/notification\.html/,
+    notification: /chrome-extension:\/\/.*\/notification\.html(?:#confirm-transaction\/.*|#connect\/.*)/,
   },
 
   // dApp-side buttons

@@ -254,7 +254,7 @@ export async function connectWallet(
 // Click the provider tile/button in the wallet picker.
 async function chooseProvider(page: Page, provider: Locator, name: string) {
   logger.info(`Selecting wallet provider: ${name}`);
-  await expect(provider).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
+  await provider.isVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
   await provider.click();
 }
 
