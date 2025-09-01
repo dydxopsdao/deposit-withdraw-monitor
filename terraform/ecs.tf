@@ -61,7 +61,7 @@ resource "aws_iam_role_policy" "ecr_permissions" {
   })
 }
 
-# --- IAM: (optional) Task role for your app (minimal/no perms here) ---
+# --- IAM: Task role for your app ---
 resource "aws_iam_role" "task_role" {
   name = "deposit-withdraw-monitor-ecsTaskRole-scheduled"
   assume_role_policy = jsonencode({
