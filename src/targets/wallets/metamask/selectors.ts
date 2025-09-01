@@ -8,7 +8,8 @@ export const metamaskSelectors = {
   // URLs that MM uses
   urls: {
     onboarding: /chrome-extension:\/\/.*\/home\.html#onboarding\/welcome/,
-    notification: /chrome-extension:\/\/.*\/notification\.html/,
+    unlock: /chrome-extension:\/\/.*\/home\.html#unlock/,
+    notification: /^chrome-extension:\/\/[^/]+\/notification\.html(?:\?.*)?(?:#\/?(?:connect|confirm-transaction)(?:[/?].*)?)?$/i,
   },
 
   // dApp-side buttons
@@ -42,5 +43,11 @@ export const metamaskSelectors = {
     done:            '[data-testid="onboarding-complete-done"]',
     pinDone:         '[data-testid="pin-extension-done"]',
     notNow:          '[data-testid="not-now-button"]',
+    downloadAppContinue:      '[data-testid="download-app-continue"]',
+  },
+
+  unlock: {
+    pw:              '[data-testid="unlock-password"]',
+    pwSubmit:        '[data-testid="unlock-submit"]',
   },
 } as const;

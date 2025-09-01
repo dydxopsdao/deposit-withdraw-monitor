@@ -71,7 +71,7 @@ npx playwright test src/tests/ --list
 ### Run a single test by route id (YAML mode)
 
 ```bash
-ROUTE_ID=dep-ethereum-usdc-regular-metamask-10 \
+ROUTE_ID=metamask-ethereum-usdc-deposit-regular \
   npx playwright test src/tests/deposit.spec.ts --reporter=line
 ```
 

@@ -6,8 +6,8 @@ import { DAPP_URL } from "../../config/constants";
 import { logger } from "../../utils/logger/logging-utils";
 import { WalletType } from "../../utils/route/routes";
 import { TEST_TIMEOUTS } from "../../config/timeouts";
-import { handleMetaMaskPopup } from "../wallets/metamask/flows";
-import { handlePhantomPopup } from "../wallets/phantom/flows";
+import { handleMetamaskPopup as handleMetamaskPopup } from "../wallets/metamask/flows";
+import { handlePhantomPopup as handlePhantomPopup } from "../wallets/phantom/flows";
 import { dydxSelectors } from "./selectors";
 
 //#region openApp
@@ -87,12 +87,10 @@ export type OpenAppOptions = {
  *   openApp(context, { path: "/trade/BTC-USD" })  // base + path + waits/retries
  */
 export async function openApp(
+  page: Page,
   context: BrowserContext,
   urlOrOptions?: string | OpenAppOptions
 ): Promise<Page> {
-  // Reuse the first tab if present; otherwise open a new one.
-  const page = context.pages()[0] ?? (await context.newPage());
-
   // Normalize options: support a string URL for ergonomics.
   const opts: OpenAppOptions =
     typeof urlOrOptions === "string" ? { url: urlOrOptions } : (urlOrOptions ?? {});
@@ -132,7 +130,8 @@ export async function openApp(
       if (bringToFront) await page.bringToFront();
 
       // UI readiness gates: wait until the *real* controls we need are visible.
-      if (waitFor) {
+      //TODO Handle concurrent runs with connected vs not.
+      /* if (waitFor) {
         const list = Array.isArray(waitFor) ? waitFor : [waitFor];
         logger.info(`Waiting for ${list.length} selector(s) to be visible`);
         for (const item of list) {
@@ -153,7 +152,7 @@ export async function openApp(
             });
           }
         }
-      }
+      } */
 
       // Post-nav hook: last chance to tidy up (cookie/region banners, etc).
       if (afterNavigate) {
@@ -205,42 +204,38 @@ export async function connectWallet(
   wallet: WalletType
 ): Promise<Page> {
   logger.step(`Connecting wallet: ${wallet}`);
-
+  //TODO add hahndling of the warning / disconnect
   // 1) If already connected, short-circuit (account/user menu present)
-  if (await dydxSelectors.accountMenuButton(page).isVisible()) {
+  if (await dydxSelectors.accountMenuButton(page, wallet).isVisible()) {
     logger.info("Wallet appears already connected (account menu visible)");
     return page;
   }
 
   // 2) Open the wallet picker if needed
-  if (await dydxSelectors.connectWalletBtn(page).isVisible()) {
-    await dydxSelectors.connectWalletBtn(page).click();
-  } else {
-    // Sometimes the picker is open already (from a previous run or hot reload)
-    logger.info(`Connect button not visible — assuming wallet picker may be open`);
-  }
+  await openWalletPicker(page);
 
   // 3) Choose provider and trigger the request from within the dApp
-  if (wallet === "metamask") {
-    await chooseProvider(page, dydxSelectors.metamaskOption(page), "MetaMask");
-  } else if (wallet === "phantom") {
-    await chooseProvider(page, dydxSelectors.phantomOption(page), "Phantom");
-  } else {
-    throw new Error(`Unsupported wallet: ${wallet}`);
-  }
+  logger.info("Choose provider");
+  await chooseProvider(page, dydxSelectors.chooseProviderBtn(page, wallet), wallet);
 
-  // Optional: some UIs require an explicit "Send request" button press in-page
-  //await clickIfVisible(dydxSelectors.sendRequestBtn(page), "Send request");
+  // 5) Handle the extension popup (delegated to wallet-specific helpers)
+  logger.info("Handling wallet popup");
+  await handleWalletPopup(context, wallet);
 
-  // 4) Handle the extension popup (MetaMask/Phantom)
-  if (wallet === "metamask") {
-    await handleMetaMaskPopup(context);
-  } else {
-    await handlePhantomPopup(context);
-  }
+  // 6) Send request 
+  logger.info("Sending request");
+  await sendRequest(page, dydxSelectors.sendRequestBtn(page));
 
-  // 5) Assert the dApp now shows a connected state
-  await expect(dydxSelectors.accountMenuButton(page)).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
+  // 7) Confirm the request
+  logger.info("Confirming request");
+  await handleWalletPopup(context, wallet);
+
+  // 7.1) Confirm the request
+  logger.info("Confirming request");
+  await handleWalletPopup(context, wallet);
+
+  // 7) Assert the dApp now shows a connected state
+  await expect(dydxSelectors.accountMenuButton(page, wallet)).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
   logger.success(`Wallet connected: ${wallet}`);
 
   return page;
@@ -253,31 +248,64 @@ export async function connectWallet(
 // Click the provider tile/button in the wallet picker.
 async function chooseProvider(page: Page, provider: Locator, name: string) {
   logger.info(`Selecting wallet provider: ${name}`);
-  await expect(provider).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
+  await provider.isVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
   await provider.click();
 }
 
-// Click a locator if it’s visible; log what happened.
-async function clickIfVisible(locator: Locator, label: string) {
-  if (await locator.first().isVisible()) {
-    logger.info(`Clicking: ${label}`);
-    await locator.first().click();
+async function handleWalletPopup(context: BrowserContext, wallet: WalletType) {
+  if (wallet === "metamask") {
+    await handleMetamaskPopup(context);
+    logger.info("MetaMask wallet popup handled");
   } else {
-    logger.debug(`"${label}" not visible — skipping`);
+    await handlePhantomPopup(context);
+    logger.info("Phantom wallet popup handled");
   }
 }
 
-// Wait for an extension popup page and return it (or undefined if none spawned).
-export async function waitForExtensionPopup(context: BrowserContext): Promise<Page | undefined> {
-  try {
-    const popup = await context.waitForEvent("page", {
-      timeout: TEST_TIMEOUTS.POPUP_TIMEOUT,
-      predicate: (p) => p.url().startsWith("chrome-extension://"),
-    });
-    await popup.bringToFront().catch(() => {});
-    return popup;
-  } catch {
-    return undefined;
+// Click a locator if it’s visible; log what happened.
+async function clickIfVisible(locator: Locator, label: string, timeout: number ): Promise<boolean> {
+  await locator.first().waitFor({ state: "visible", timeout }).catch(() => {});
+  if (await locator.first().isVisible()) {
+    logger.info(`Clicking: ${label}`);
+    await locator.first().click();
+    return true;
+  } else {
+    logger.debug(`"${label}" not visible — skipping`);
+    return false;
   }
+}
+
+async function sendRequest(page: Page, locator: Locator) {
+  logger.info("Sending request");
+  await locator.isVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
+  await locator.click();
+}
+
+/** Click Connect Wallet → verify picker appeared → retry if not */
+export async function openWalletPicker(page: Page, retries = 2) {
+  // If already open, we're done
+  if (await isPickerOpen(page)) return;
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    // 1) wait for button, then click
+    await expect(dydxSelectors.connectWalletBtn(page)).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
+    await dydxSelectors.connectWalletBtn(page).click();
+
+    // 2) confirm picker appeared
+    if (await isPickerOpen(page)) return;
+
+    // optional small wait before next try
+    if (attempt < retries) await page.waitForTimeout(500);
+  }
+
+  throw new Error("Wallet picker did not appear after clicking Connect wallet.");
+}
+
+/** Picker is "open" if any wallet option is visible */
+async function isPickerOpen(page: Page) {
+  return (
+    (await dydxSelectors.chooseProviderBtn(page, "metamask").isVisible()) ||
+    (await dydxSelectors.chooseProviderBtn(page, "phantom").isVisible())
+  );
 }
 //#endregion

@@ -1,19 +1,21 @@
-import { chromium, BrowserContext, Page, expect } from '@playwright/test';
+// src/targets/wallets/phantom/flows.ts
+import { chromium, BrowserContext } from '@playwright/test';
+import { PHANTOM_EXT_PATH } from "../../../config/constants";
+import { WALLET_PASSWORD, assertPhantomSecrets } from "./constants";
 import { findPageWithUrl } from '../../../utils/helpers/windows';
-import { PHANTOM_EXT_PATH, PHANTOM_EXT_ID, USER_DATA_DIR, DAPP_URL } from "../../../config/constants";
-import { SEED_PHRASE, WALLET_PASSWORD, assertPhantomSecrets } from "./constants";
-import { phantomSelectors as s } from './selectors';
-import { logger } from '../../../utils/logger/logging-utils';
 import { clickAnyButton } from '../../../utils/helpers/ui-helper';
-import { waitForExtensionPopup } from '../../dydx/flows';
+import { logger } from '../../../utils/logger/logging-utils';
+import { phantomSelectors as s } from './selectors';
+import { TEST_TIMEOUTS } from "../../../config/timeouts";
+
 
 export async function launchContextWithExtension(
-  userDataSubdir = 'phantom',
+  userDataDir: string,
   headless = !!process.env.CI
 ): Promise<BrowserContext> {
   assertPhantomSecrets();
 
-  const context = await chromium.launchPersistentContext(`${USER_DATA_DIR}/${userDataSubdir}`, {
+  const context = await chromium.launchPersistentContext(userDataDir, {
     headless,
     ignoreDefaultArgs: ['--enable-automation'],
     args: [
@@ -34,71 +36,92 @@ export async function launchContextWithExtension(
   return context;
 }
 
-export async function setupWallet(context: BrowserContext) {
+export async function setupWallet(context: BrowserContext, seedPhrase: string) {
+  logger.step("Setting up Phantom wallet");
+
   // idempotent-ish: if onboarding is already completed, this page might redirect/close quickly
   const onboarding = await context.newPage();
-  await onboarding.goto(`chrome-extension://${PHANTOM_EXT_ID}/onboarding.html`, { waitUntil: 'domcontentloaded' });
+  await onboarding.goto(s.urls.onboarding, { waitUntil: 'domcontentloaded' });
+  logger.debug("Phantom onboarding page loaded");
 
   try {
-    await onboarding.locator(s.onboarding.alreadyHaveWallet).click({ timeout: 5_000 });
+    await (await onboarding.waitForSelector(s.onboarding.alreadyHaveWallet, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
+    logger.debug("Phantom onboarding: Already have wallet button clicked");
   } catch {
     // Likely already onboarded
     await onboarding.close();
     return;
   }
 
-  await onboarding.locator(s.onboarding.importRecovery).click();
-
-  const words = SEED_PHRASE.split(' ').filter(Boolean);
+  await (await onboarding.waitForSelector(s.onboarding.importRecovery, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
+  logger.debug("Phantom onboarding: Import Recovery Phrase button clicked");
+  const words = seedPhrase.split(' ').filter(Boolean);
   for (let i = 0; i < 12; i++) {
     await onboarding.locator(s.onboarding.seedInput(i)).fill(words[i] ?? '');
   }
-  await onboarding.locator(s.onboarding.submit).click();
+  await (await onboarding.waitForSelector(s.onboarding.submit, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
+  logger.debug("Phantom onboarding: Submit button clicked");
 
   // Continue
-  await onboarding.locator(`${s.onboarding.submit}:has-text("Continue")`).click({ timeout: 30_000 });
+  await (await onboarding.waitForSelector(`${s.onboarding.submit}:has-text("Continue")`, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
+  logger.debug("Phantom onboarding: Continue button clicked");
 
-  await onboarding.locator(s.onboarding.password).fill(WALLET_PASSWORD);
-  await onboarding.locator(s.onboarding.confirmPassword).fill(WALLET_PASSWORD);
-  await onboarding.locator(s.onboarding.tosCheckbox).check();
-  await onboarding.locator(s.onboarding.submit).click();
+  await (await onboarding.waitForSelector(s.onboarding.password, { timeout: TEST_TIMEOUTS.ELEMENT })).fill(WALLET_PASSWORD);
+  await (await onboarding.waitForSelector(s.onboarding.confirmPassword, { timeout: TEST_TIMEOUTS.ELEMENT })).fill(WALLET_PASSWORD);
+  await (await onboarding.waitForSelector(s.onboarding.tosCheckbox, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
+  await (await onboarding.waitForSelector(s.onboarding.submit, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
+  logger.debug("Phantom onboarding: Password set");
 
   // Get Started
-  await onboarding.locator(`${s.onboarding.submit}:has-text("Get Started")`).click({ timeout: 30_000 });
+  await (await onboarding.waitForSelector(`${s.onboarding.submit}:has-text("Get Started")`, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
+  logger.debug("Phantom onboarding: Get Started button clicked");
 
   await onboarding.close();
+  logger.info("Phantom wallet setup complete");
 }
 
-export async function openDapp(context: BrowserContext, url = DAPP_URL): Promise<Page> {
-  const [page] = context.pages().length ? context.pages() : [await context.newPage()];
-  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60_000 });
-  return page;
-}
+export async function unlockPhantomWallet(
+  context: BrowserContext, 
+  maxRetries = 3, 
+  retryDelay = 1000
+) {
+  logger.step("Unlocking Phantom wallet");
 
-export async function connect(page: Page, context: BrowserContext) {
-  // Initial Phantom notification
-  const notifUrl = `chrome-extension://${PHANTOM_EXT_ID}/notification.html`;
-  const popup1 = await findPageWithUrl(context, notifUrl);
-  await popup1.locator(s.popup.primaryBtn).click();
-  await popup1.close();
+  // Retry logic for page load
+  let unlock: any = null;
+  
+  // Sometimes the page would load but for whatever reason will then crash and selectors would not be found
+  // This is a workaround to retry the page load
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      unlock = await context.newPage();
+      await unlock.goto(s.urls.unlock, { waitUntil: 'domcontentloaded' });
+      logger.debug("Phantom unlock page loaded: " + unlock.url());
 
-  // Dapp: request connect
-  await page.getByRole(s.dapp.connectBtn.role, { name: s.dapp.connectBtn.name }).click();
-  await page.getByRole(s.dapp.phantomSolanaBtn.role, { name: s.dapp.phantomSolanaBtn.name }).click();
-  await page.getByRole(s.dapp.sendRequestBtn.role, { name: s.dapp.sendRequestBtn.name }).click();
+      // Proceed with unlock flow
+      await (await unlock.waitForSelector(s.unlock.pw, { timeout: TEST_TIMEOUTS.ELEMENT })).fill(WALLET_PASSWORD);
+      await (await unlock.waitForSelector(s.unlock.pwSubmit, { timeout: TEST_TIMEOUTS.ELEMENT })).click(); 
+      logger.debug("Phantom unlock flow completed");
 
-  // Generate dYdX wallet → approve
-  const popup2 = await findPageWithUrl(context, notifUrl);
-  await popup2.locator(s.popup.primaryBtn).click();
-  await popup2.close();
+      break; // Success - exit the retry loop
+      
+    } catch (error) {
+      if (unlock) {
+        await unlock.close().catch(() => {}); // Clean up failed page
+      }
+      
+      if (attempt === maxRetries) {
+        logger.error(`Failed to load Phantom unlock page after ${maxRetries} attempts`);
+        throw error; // Re-throw the error after all retries exhausted
+      }
+      
+      logger.debug(`Phantom unlock page load failed (attempt ${attempt}/${maxRetries}), retrying in ${retryDelay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, retryDelay));
+    }
+  }
 
-  // Compatibility prompt
-  const popup3 = await findPageWithUrl(context, notifUrl);
-  await popup3.locator(s.popup.primaryBtn).click();
-  await popup3.close();
-
-  // Sanity: dapp should now consider the wallet connected
-  await expect(page.getByText(/Connected/i)).toBeVisible({ timeout: 30_000 }).catch(() => {});
+  await unlock.close();
+  logger.info("Phantom unlocked");
 }
 
 /**
@@ -108,7 +131,7 @@ export async function connect(page: Page, context: BrowserContext) {
  */
 export async function handlePhantomPopup(context: BrowserContext) {
   logger.info("Waiting for Phantom popup…");
-  const ph = await waitForExtensionPopup(context);
+  const ph = await findPageWithUrl(context, s.urls.notification);
 
   if (!ph) {
     logger.warning("Phantom popup did not appear; assuming connected or silent approval");
@@ -116,6 +139,8 @@ export async function handlePhantomPopup(context: BrowserContext) {
   }
 
   try {
+    logger.debug(`Phantom popup URL: ${ph.url()}`);
+
     // First try canonical test id:
     const primary = ph.getByTestId("primary-button");
     if (await primary.isVisible()) {

@@ -1,15 +1,58 @@
 import { Page } from "@playwright/test";
 import { logger } from "../logger/logging-utils";
 
-// Click the first visible button matching any of the provided regexes.
-export async function clickAnyButton(page: Page, names: RegExp[], contextLabel: string) {
+type ClickAnyOpts = {
+  /** Total time to keep scanning/clicking */
+  overallTimeoutMs?: number;
+  /** Poll interval while waiting for buttons to appear */
+  pollMs?: number;
+  /** Stop after this many clicks (default: unlimited until timeout) */
+  maxClicks?: number;
+};
+
+export async function clickAnyButton(
+  page: Page,
+  names: RegExp[],
+  contextLabel: string,
+  opts: ClickAnyOpts = {}
+): Promise<number> {
+  const {
+    overallTimeoutMs = 10_000,
+    pollMs = 150,
+    maxClicks = Number.POSITIVE_INFINITY,
+  } = opts;
+
+  const deadline = Date.now() + overallTimeoutMs;
+  let clicks = 0;
+
+  while (!page.isClosed() && Date.now() < deadline && clicks < maxClicks) {
+    let clickedThisLoop = false;
+
     for (const re of names) {
-      const btn = page.getByRole("button", { name: re });
-      if (await btn.first().isVisible()) {
-        logger.debug(`${contextLabel}: clicking "${re.source}"`);
-        await btn.first().click();
-        // Some flows show two steps (e.g. Next → Connect). Keep trying others for a short time.
-        await page.waitForTimeout(250);
+      const btn = page.getByRole("button", { name: re }).first();
+      // `isVisible()` is cheap; we poll until one appears
+      const visible = await btn.isVisible().catch(() => false);
+      if (!visible) continue;
+
+      logger.debug(`${contextLabel}: clicking "${re.source}"`);
+      try {
+        await btn.click();
+        clicks++;
+        clickedThisLoop = true;
+        // Small gap for the next step (e.g. Next → Connect)
+        await page.waitForTimeout(250).catch(() => {});
+      } catch (e: any) {
+        // Button may disappear due to instant navigation/close — ignore and continue
+        logger.debug(`${contextLabel}: click failed for "${re.source}" (${e?.message ?? e})`);
       }
+      if (clicks >= maxClicks) break;
+    }
+
+    if (!clickedThisLoop) {
+      // Nothing to click yet — wait a bit and scan again
+      await page.waitForTimeout(pollMs).catch(() => {});
     }
   }
+
+  return clicks; // how many buttons we actually clicked
+}
