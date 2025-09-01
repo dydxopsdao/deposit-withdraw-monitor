@@ -12,6 +12,9 @@ resource "aws_s3_bucket_lifecycle_configuration" "traces" {
     id     = "delete_old_traces"
     status = "Enabled"
 
+    # Apply to all objects
+    filter {}
+
     expiration {
       days = 30
     }
