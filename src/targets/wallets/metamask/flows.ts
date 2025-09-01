@@ -81,11 +81,15 @@ export async function setupWallet(context: BrowserContext, seedPhrase: string) {
     logger.debug("MetaMask onboarding: Telemetry → No thanks (optional)");
     await noThanks.click();
   }
-
   // Click Done
   await (await onboarding.waitForSelector(s.onboarding.done, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
   logger.debug("MetaMask onboarding: Done button clicked");
 
+  const downloadAppContinue = await onboarding.waitForSelector(s.onboarding.downloadAppContinue, { timeout: TEST_TIMEOUTS.ELEMENT }).catch(() => null);
+  if (downloadAppContinue) {
+    logger.debug("MetaMask onboarding: Telemetry → download app continue");
+    await downloadAppContinue.click();
+  }
   // Pin extension suggestion → Done (optional)
   const pin = await onboarding.waitForSelector(s.onboarding.pinDone, { timeout: TEST_TIMEOUTS.ELEMENT }).catch(() => null);
   if (pin) {
@@ -97,11 +101,10 @@ export async function setupWallet(context: BrowserContext, seedPhrase: string) {
   logger.info("Wallet setup complete");
 }
 
-export async function unlockWallet(context: BrowserContext) {
+export async function unlockMetamaskWallet(context: BrowserContext) {
   logger.step("Unlocking MetaMask wallet");
-
   // MetaMask uses dynamic extension URLs → use regex from selectors
-  const unlock = await findPageWithUrl(context, s.urls.unlock);
+  const unlock = await findPageWithUrl(context, s.urls.unlock); //TODO this is failing sometimes on the URL pattern /chrome-extension:\/\/.*\/home\.html#unlock/ vs chrome-extension://gipjnhcfkablljbiijlkcohbaniiimdi/home.html#onboarding/unlock
   logger.debug(`MetaMask unlock page: ${unlock.url()}`);
   
   await (await unlock.waitForSelector(s.unlock.pw, { timeout: TEST_TIMEOUTS.ELEMENT })).fill(WALLET_PASSWORD);
@@ -116,8 +119,9 @@ export async function unlockWallet(context: BrowserContext) {
  * We try a short sequence of common buttons: Next → Connect → Approve.
  * (If a Sign prompt appears later during auth, handle it in your auth flow.)
  */
-export async function handleWalletPopup(context: BrowserContext) {
+export async function handleMetamaskPopup(context: BrowserContext) {
   logger.info("Waiting for MetaMask popup…");
+
   const mm = await findPageWithUrl(context, s.urls.notification);
 
   if (!mm) {
@@ -128,9 +132,12 @@ export async function handleWalletPopup(context: BrowserContext) {
   try {
     // Some builds show a "MetaMask Notification" title, others keep it blank.
     logger.debug(`MetaMask popup URL: ${mm.url()}`);
-
     // Defensive: click the common flow buttons if present
-    await clickAnyButton(mm, [/^Next$/, /^Connect$/, /^Approve$/, /^Confirm$/], "MetaMask connect flow");
+    await clickAnyButton(mm, [/^Next$/, /^Connect$/, /^Approve$/, /^Confirm$/], "MetaMask connect flow", {
+      overallTimeoutMs: 10000,
+      pollMs: 150,
+      maxClicks: 10,
+    });
 
     // Close if MetaMask leaves the window open
     await mm.close().catch(() => {});

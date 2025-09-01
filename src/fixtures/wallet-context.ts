@@ -6,14 +6,15 @@ import { type Route } from '../utils/route/routes';
 import {
   launchContextWithExtension as launchMetamaskContext,
   setupWallet as setupMetamaskWallet,
-  unlockWallet as unlockMetamaskWallet,
+  unlockMetamaskWallet as unlockMetamaskWallet,
 } from '../targets/wallets/metamask/flows';
 import {
   launchContextWithExtension as launchPhantomContext,
   setupWallet as setupPhantomWallet,
-  unlockWallet as unlockPhantomWallet,
+  unlockPhantomWallet as unlockPhantomWallet,
 } from '../targets/wallets/phantom/flows';
 import { logger } from '../utils/logger/logging-utils';
+import path from 'path';
 
 export const walletContextTest = test.extend<{
   route: Route;
@@ -32,6 +33,12 @@ export const walletContextTest = test.extend<{
     logger.info(`Launching ${route.wallet_type} context with wallet alias ${route.wallet_alias}`);
 
     const userDataDir = `${USER_DATA_DIR}/${route.wallet_alias}`;
+    //Sanitize the userDataDir
+    const resolved = path.resolve(userDataDir);
+    const base = path.resolve(USER_DATA_DIR);
+    if (!resolved.startsWith(base)) throw new Error("Refusing to delete outside USER_DATA_DIR");
+    fs.rmSync(resolved, { recursive: true, force: true });
+      
     const userDataDirExists = fs.existsSync(userDataDir);
 
     // Use wallet-specific context creation based on route

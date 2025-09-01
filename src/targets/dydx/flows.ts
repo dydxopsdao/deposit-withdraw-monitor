@@ -6,8 +6,8 @@ import { DAPP_URL } from "../../config/constants";
 import { logger } from "../../utils/logger/logging-utils";
 import { WalletType } from "../../utils/route/routes";
 import { TEST_TIMEOUTS } from "../../config/timeouts";
-import { handleWalletPopup as handleMetaMaskPopup } from "../wallets/metamask/flows";
-import { handleWalletPopup as handlePhantomPopup } from "../wallets/phantom/flows";
+import { handleMetamaskPopup as handleMetamaskPopup } from "../wallets/metamask/flows";
+import { handlePhantomPopup as handlePhantomPopup } from "../wallets/phantom/flows";
 import { dydxSelectors } from "./selectors";
 
 //#region openApp
@@ -130,7 +130,8 @@ export async function openApp(
       if (bringToFront) await page.bringToFront();
 
       // UI readiness gates: wait until the *real* controls we need are visible.
-      if (waitFor) {
+      //TODO Handle concurrent runs with connected vs not.
+      /* if (waitFor) {
         const list = Array.isArray(waitFor) ? waitFor : [waitFor];
         logger.info(`Waiting for ${list.length} selector(s) to be visible`);
         for (const item of list) {
@@ -151,7 +152,7 @@ export async function openApp(
             });
           }
         }
-      }
+      } */
 
       // Post-nav hook: last chance to tidy up (cookie/region banners, etc).
       if (afterNavigate) {
@@ -203,7 +204,7 @@ export async function connectWallet(
   wallet: WalletType
 ): Promise<Page> {
   logger.step(`Connecting wallet: ${wallet}`);
-
+  //TODO add hahndling of the warning / disconnect
   // 1) If already connected, short-circuit (account/user menu present)
   if (await dydxSelectors.accountMenuButton(page, wallet).isVisible()) {
     logger.info("Wallet appears already connected (account menu visible)");
@@ -211,34 +212,27 @@ export async function connectWallet(
   }
 
   // 2) Open the wallet picker if needed
-  if (await dydxSelectors.connectWalletBtn(page).isVisible()) {
-    await dydxSelectors.connectWalletBtn(page).click();
-    logger.debug("Connect button clicked");
-  } else {
-    // Sometimes the picker is open already (from a previous run or hot reload)
-    logger.info(`Connect button not visible — assuming wallet picker may be open`);
-  }
+  await openWalletPicker(page);
 
   // 3) Choose provider and trigger the request from within the dApp
+  logger.info("Choose provider");
   await chooseProvider(page, dydxSelectors.chooseProviderBtn(page, wallet), wallet);
 
-  // 4) Handle the extension popup (MetaMask/Phantom)
+  // 5) Handle the extension popup (delegated to wallet-specific helpers)
+  logger.info("Handling wallet popup");
   await handleWalletPopup(context, wallet);
 
-  // Optional: some UIs require an explicit "Send request" button press in-page
-  const sendRequestBtnVisible = await clickIfVisible( dydxSelectors.sendRequestBtn(page), "Send request", TEST_TIMEOUTS.ELEMENT);
-  if (sendRequestBtnVisible) {
-    logger.debug("Send request button clicked");
-    await handleWalletPopup(context, wallet);
-  } else {
-    logger.debug("Send request button not visible — skipping");
-  }
+  // 6) Send request 
+  logger.info("Sending request");
+  await sendRequest(page, dydxSelectors.sendRequestBtn(page));
 
-  // 5) Confirm signature request
+  // 7) Confirm the request
+  logger.info("Confirming request");
   await handleWalletPopup(context, wallet);
 
-  // 6) Close Deposit pop-up if it's open
-  await clickIfVisible(dydxSelectors.depositPopupXButton(page), "Deposit popup X button", TEST_TIMEOUTS.ELEMENT);
+  // 7.1) Confirm the request
+  logger.info("Confirming request");
+  await handleWalletPopup(context, wallet);
 
   // 7) Assert the dApp now shows a connected state
   await expect(dydxSelectors.accountMenuButton(page, wallet)).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
@@ -260,9 +254,11 @@ async function chooseProvider(page: Page, provider: Locator, name: string) {
 
 async function handleWalletPopup(context: BrowserContext, wallet: WalletType) {
   if (wallet === "metamask") {
-    await handleMetaMaskPopup(context);
+    await handleMetamaskPopup(context);
+    logger.info("MetaMask wallet popup handled");
   } else {
     await handlePhantomPopup(context);
+    logger.info("Phantom wallet popup handled");
   }
 }
 
@@ -277,5 +273,39 @@ async function clickIfVisible(locator: Locator, label: string, timeout: number )
     logger.debug(`"${label}" not visible — skipping`);
     return false;
   }
+}
+
+async function sendRequest(page: Page, locator: Locator) {
+  logger.info("Sending request");
+  await locator.isVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
+  await locator.click();
+}
+
+/** Click Connect Wallet → verify picker appeared → retry if not */
+export async function openWalletPicker(page: Page, retries = 2) {
+  // If already open, we're done
+  if (await isPickerOpen(page)) return;
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    // 1) wait for button, then click
+    await expect(dydxSelectors.connectWalletBtn(page)).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
+    await dydxSelectors.connectWalletBtn(page).click();
+
+    // 2) confirm picker appeared
+    if (await isPickerOpen(page)) return;
+
+    // optional small wait before next try
+    if (attempt < retries) await page.waitForTimeout(500);
+  }
+
+  throw new Error("Wallet picker did not appear after clicking Connect wallet.");
+}
+
+/** Picker is "open" if any wallet option is visible */
+async function isPickerOpen(page: Page) {
+  return (
+    (await dydxSelectors.chooseProviderBtn(page, "metamask").isVisible()) ||
+    (await dydxSelectors.chooseProviderBtn(page, "phantom").isVisible())
+  );
 }
 //#endregion

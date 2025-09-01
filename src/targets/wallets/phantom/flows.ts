@@ -80,7 +80,7 @@ export async function setupWallet(context: BrowserContext, seedPhrase: string) {
   logger.info("Phantom wallet setup complete");
 }
 
-export async function unlockWallet(
+export async function unlockPhantomWallet(
   context: BrowserContext, 
   maxRetries = 3, 
   retryDelay = 1000
@@ -129,7 +129,7 @@ export async function unlockWallet(
  * In their UI it’s commonly data-testid="primary-button".
  * We also try visible “Approve”/“Connect” by role to be resilient.
  */
-export async function handleWalletPopup(context: BrowserContext) {
+export async function handlePhantomPopup(context: BrowserContext) {
   logger.info("Waiting for Phantom popup…");
   const ph = await findPageWithUrl(context, s.urls.notification);
 
