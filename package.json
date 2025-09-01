@@ -25,8 +25,9 @@
     "@types/js-yaml": "^4.0.9",
     "chrome-extension-fetch": "^1.0.0",
     "dotenv": "^16.5.0",
-    "js-yaml": "^4.1.0",
-    "unzipper": "^0.10.14"
+    "extract-zip": "^2.0.1",
+    "unzipper": "^0.10.14",
+    "yaml": "^2.8.1"
   },
   "devDependencies": {
     "@types/node": "^24.0.3"
