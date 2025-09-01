@@ -42,6 +42,14 @@ resource "aws_ecs_task_definition" "this" {
           name  = "ROUTE_ID"
           value = each.value.id
         },
+        {
+          name  = "AWS_REGION"
+          value = data.aws_region.current.id
+        },
+        {
+          name  = "AWS_TRACES_BUCKET_NAME"
+          value = aws_s3_bucket.traces.bucket
+        },
       ]
       logConfiguration = {
         logDriver = "awslogs",
