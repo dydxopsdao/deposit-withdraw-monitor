@@ -45,7 +45,11 @@ for (const route of depositRoutes) {
 
   test(title, async ({ page, context }, testInfo) => {
     // Start tracing
-    await context.tracing.start();
+    await context.tracing.start({
+        screenshots: true,
+        snapshots: true,
+        sources: true,
+      });
 
     // Datadog context (keeps tags consistent, sends metrics/logs)
     const dd = createTelemetryContext({
