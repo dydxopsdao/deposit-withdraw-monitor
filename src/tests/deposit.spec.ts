@@ -161,9 +161,13 @@ for (const route of depositRoutes) {
       });
 
       // Stop tracing and process the trace file
-      const tracePath = path.join(testInfo.outputDir, `trace-${route.id}-${timestamp}/trace.zip`);
-      await context.tracing.stop({ path: tracePath });
-      await processTraceFile(tracePath, route.id, timestamp);
+      try {
+        const tracePath = path.join(testInfo.outputDir, `trace-${route.id}-${timestamp}/trace.zip`);
+        await context.tracing.stop({ path: tracePath });
+        await processTraceFile(tracePath, route.id, timestamp);
+      } catch (e: any) {
+        logger.error("Trace file processing failed", e?.message, { route_id: route.id });
+      }
     }
   });
 }
