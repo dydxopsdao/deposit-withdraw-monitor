@@ -1,4 +1,5 @@
 import { logger } from "../logger/logging-utils";
+import { Page } from "@playwright/test";
 
 /**
  * Finds a page with a given URL pattern in the context
@@ -21,7 +22,7 @@ export async function findPageWithUrl(
       logger.debug(`Attempt ${attempt}/${maxRetries}`);
       
       const pages = await context.pages();
-      const existingPopup = await pages.find(page => {
+      const existingPopup = await pages.find((page: Page) => {
         const url = page.url();
         if (urlPattern instanceof RegExp) {
           return urlPattern.test(url);
