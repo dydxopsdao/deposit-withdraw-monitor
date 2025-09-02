@@ -20,7 +20,7 @@ export const serializeError = (err: unknown) => {
 
 const DEFAULT_REDACT = new Set([
   "password","passphrase","secret","seed","mnemonic","privateKey",
-  "token","authorization","apiKey","api_key","accessToken","refreshToken","wallet_seed",
+  "token","authorization","apiKey","api_key","accessToken","refreshToken","wallet_seed","dydx_seed",
 ]);
 
 export const safeStringify = (value: unknown, redactions = DEFAULT_REDACT, space?: number): string => {

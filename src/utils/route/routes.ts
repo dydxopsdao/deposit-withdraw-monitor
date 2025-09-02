@@ -28,6 +28,8 @@ export interface Route {
   wallet_alias?: string;
   wallet_address: string;
   wallet_seed: string;
+  dydx_address: string;
+  dydx_seed: string;
   route_kind?: DepositRouteKind;
   amount: string;
   src_chain: string;
