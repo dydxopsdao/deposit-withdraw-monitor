@@ -55,6 +55,7 @@ for (const route of depositRoutes) {
     
     test(title, async ({ page, context }, testInfo) => {
       // Start tracing
+      logger.info("Starting tracing", { route_id: route.id });
       await context.tracing.start({
         screenshots: true,
         snapshots: true,
@@ -174,6 +175,7 @@ for (const route of depositRoutes) {
 
         // Stop tracing and process the trace file
         try {
+          logger.info("Stopping tracing", { route_id: route.id });
           const tracePath = path.join(testInfo.outputDir, `trace-${route.id}-${timestamp}/trace.zip`);
           await context.tracing.stop({ path: tracePath });
           await uploadTraceToS3(tracePath, route.id, timestamp);
