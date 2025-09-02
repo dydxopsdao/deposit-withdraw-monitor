@@ -6,17 +6,31 @@ import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 
 
 export async function processTraceFile(tracePath: string, routeId: string, timestamp: string) {
-  logger.info("Processing trace file", { tracePath });
-
   // Unzip the trace file
+  logger.info("Unzipping trace file", { tracePath });
   const data = fs.readFileSync(tracePath);
   const zip = await JSZip.loadAsync(data);
   const files = Object.keys(zip.files);
 
+  if (!process.env.AWS_TRACES_BUCKET_NAME) {
+    logger.info("AWS_TRACES_BUCKET_NAME is not set, skipping upload to S3");
+    return;
+  }
+
+  if (!process.env.AWS_REGION) {
+    logger.info("AWS_REGION is not set, skipping upload to S3");
+    return;
+  }
+
   // Upload the trace file to S3
+  logger.info("Uploading trace file to S3", { tracePath });
+
   const s3 = new S3Client({
     region: process.env.AWS_REGION,
   });
+
+  // Append the zip file itself to the list of files, so that we upload it as well
+  files.push("trace.zip");
 
   // Upload each trace file to S3 under a common directory
   for (const file of files) {
@@ -30,9 +44,6 @@ export async function processTraceFile(tracePath: string, routeId: string, times
       await s3.send(new PutObjectCommand(uploadParams));
     }
   }
-
-  // Remove the zip file after extraction
-  fs.unlinkSync(tracePath);
 
   logger.info("Trace file processed");
 }
