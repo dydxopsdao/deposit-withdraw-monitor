@@ -234,9 +234,12 @@ export async function connectWallet(
   logger.info("Confirming request");
   await handleWalletPopup(context, wallet);
 
-  await page.pause();
-  // 7) Assert the dApp now shows a connected state
-  await expect(dydxSelectors.accountMenuButton(page, wallet)).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
+  // 8) Assert the dApp now shows a connected state
+  const acctBtn = dydxSelectors
+  .accountMenuButton(page, wallet)
+  .or(dydxSelectors.accountMenuButtonLoose(page));
+
+  await expect(acctBtn).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
   logger.success(`Wallet connected: ${wallet}`);
 
   return page;
@@ -252,7 +255,7 @@ async function chooseProvider(page: Page, provider: Locator, name: string) {
   await provider.isVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
   await provider.click();
 }
-
+//TODO improve this as it doesn'throw or inform if not found properly
 async function handleWalletPopup(context: BrowserContext, wallet: WalletType) {
   if (wallet === "metamask") {
     await handleMetamaskPopup(context);
@@ -329,11 +332,10 @@ export async function deposit(
   logger.step(`Depositing ${amount} ${token} from ${src_chain}`);
 
   // Open the deposit dialog
-  await expect(s.depositButton(page)).toBeVisible({ timeout: T });
-  await s.depositButton(page).click();
-  await expect(s.depositDialog(page)).toBeVisible({ timeout: T });
+  await clickAnyDeposit(page);
+  await expect(dydxSelectors.depositDialog(page)).toBeVisible({ timeout: T });
 
-  // Pick the right token+chain
+  // Pick the right token+chain 
   await selectToken(page, token, src_chain);
 
   // Enter amount
@@ -341,39 +343,62 @@ export async function deposit(
 }
 
 /** Click the token chip → pick "token on chain" */
-async function selectToken(page: Page, token: string, chain: string) {
-  const dialog = dydxSelectors.depositDialog(page);
-  await expect(dialog).toBeVisible({ timeout: T });
+export async function selectToken(page: Page, token: string, src_chain: string) {
+  // open picker via the *pill* (not the X)
+  const pill = dydxSelectors.tokenPillButton(page);
+  await expect(pill).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
+  await pill.click();
 
-  // Open the token picker by clicking the chip in the Amount row
-  await expect(dydxSelectors.tokenSelectorBtn(page)).toBeVisible({ timeout: T });
-  await dydxSelectors.tokenSelectorBtn(page).click();
-
-  const picker = dydxSelectors.tokenPickerDialog(page);
-  await expect(picker).toBeVisible({ timeout: T });
-
-  // Row: a button that contains both the token symbol and the chain label
-  const row = picker
-    .getByRole("button", { name: re(token) })
-    .filter({ hasText: re(chain) })
-    .first();
-
-  // If wallet tokens are at the top, this should already be visible; still be safe:
-  await row.scrollIntoViewIfNeeded().catch(() => {});
-  await expect(row).toBeVisible({ timeout: T });
+  const row = dydxSelectors.tokenPickerRow(page, token, src_chain);
+  await expect(row).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
   await row.click();
-
-  // Confirm picker closed and chip updated (token text visible on chip)
-  await expect(picker).toBeHidden({ timeout: T });
-  await expect(dydxSelectors.tokenSelectorButton(page)).toContainText(re(token), { timeout: T });
 }
 
 /** Fill the Amount input and blur to trigger validation */
 async function enterAmount(page: Page, amount: string) {
   const input = dydxSelectors.amountInput(page);
-  await expect(input).toBeVisible({ timeout: T });
-  await input.fill(""); // clear just in case
+  await expect(input).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
+  await input.fill("");
   await input.fill(amount);
   await page.keyboard.press("Tab").catch(() => {}); // blur
+}
+
+export async function clickAnyDeposit(page: Page) {
+  const btns = dydxSelectors.depositButtons(page);
+  const n = await btns.count();
+
+  for (let i = 0; i < n; i++) {
+    const btn = btns.nth(i);
+    if (await btn.isVisible() && await btn.isEnabled()) {
+      await btn.scrollIntoViewIfNeeded().catch(() => {});
+      await btn.click();
+      return;
+    }
+  }
+  throw new Error('No clickable "Deposit" button found (all hidden or disabled).');
+}
+
+export async function submitDeposit(page: Page, context: BrowserContext, wallet: WalletType): Promise<void> {
+  const btn = dydxSelectors.depositFundsButton(page);
+
+  // Make sure the dialog is present and the button is on-screen
+  await expect(btn).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
+
+  // Trigger validation (some UIs only enable after blur)
+  await dydxSelectors.amountInput(page).press("Tab").catch(() => {});
+
+  // Wait until it’s actually enabled (handles disabled/aria-disabled)
+  await expect(btn).toBeEnabled({ timeout: T });
+
+  // Click for real
+  await btn.click();
+
+  // Add / Approve Network
+  await handleWalletPopup(context, wallet);
+
+  // Confirm the transaction
+  // TODO handle alert for network costs
+  await handleWalletPopup(context, wallet);
+
 }
 //#endregion

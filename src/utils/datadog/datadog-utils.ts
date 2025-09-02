@@ -79,6 +79,7 @@ export function createTelemetryContext(cfg: {
     async routeResult(args: {
       passed: boolean;
       txHash?: string;
+      explorerUrl?: string;
       errorStage?: ErrorStage;
       error?: ErrorLike;
     }) {
@@ -90,6 +91,7 @@ export function createTelemetryContext(cfg: {
           {
             route: routeSummaryForLog(route),
             tx_hash: args.txHash,
+            explorer_url: args.explorerUrl,
             error_stage: args.errorStage ?? "submit_or_finality",
             error: toErrorLike(args.error),
           },

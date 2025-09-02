@@ -2,76 +2,59 @@
 import type { Page, Locator } from "@playwright/test";
 import type { WalletType } from "../../utils/route/routes";
 
-type Selector = (page: Page, ...args: any[]) => Locator;
-const re = (s: string) => new RegExp(`\\b${s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
+type Selector = (p: Page, ...args: any[]) => Locator;
+
+const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const re  = (s: string) => new RegExp(`\\b${esc(s)}\\b`, "i");
+const DYDX_ADDRESS_RE = /dydx1[a-z0-9]+(?:\u2026|\.\.\.)[a-z0-9]+/i;
 
 export const dydxSelectors = {
-  /* ---------- Global / header ---------- */
-
-  connectWalletBtn: ((p) =>
-    p.getByRole("button", { name: /connect wallet/i })) as Selector,
-
-  walletPickerDialog: ((p) =>
-    p.getByRole("dialog", { name: /connect (your )?wallet/i })) as Selector,
-
-  // Account/user button once connected (works for both wallets)
+  /* header */
+  connectWalletBtn: ((p) => p.getByRole("button", { name: /connect wallet/i })) as Selector,
+  walletPickerDialog: ((p) => p.getByRole("dialog", { name: /connect (your )?wallet/i })) as Selector,
   accountMenuButton: ((p) =>
-    p.getByRole("button", { name: /^dydx1[a-z0-9]+\.\.\.[a-z0-9]+$/i })) as Selector,
-
-  // Choose provider tile inside the wallet picker
-  chooseProviderBtn: ((p, walletType: WalletType) => {
+    p.getByRole("button", { name: new RegExp(`^(?:MetaMask|Phantom)?\\s*${DYDX_ADDRESS_RE.source}`, "i") })
+  ) as Selector,
+  accountMenuButtonLoose: ((p) => p.getByRole("button", { name: DYDX_ADDRESS_RE })) as Selector,
+  chooseProviderBtn: ((p, wallet: WalletType) => {
     const dlg = dydxSelectors.walletPickerDialog(p);
-    if (walletType === "metamask") {
-      return dlg.getByRole("button", { name: /metamask/i });
-    }
-    if (walletType === "phantom") {
-      // allow “Phantom (Solana)” or just “Phantom”
-      return dlg.getByRole("button", { name: /phantom(\s*\(solana\))?/i });
-    }
-    throw new Error(`Unsupported wallet type: ${walletType}`);
+    if (wallet === "metamask") return dlg.getByRole("button", { name: /metamask/i });
+    if (wallet === "phantom")  return dlg.getByRole("button", { name: /phantom(\s*\(solana\))?/i });
+    throw new Error(`Unsupported wallet: ${wallet}`);
+  }) as Selector,
+  sendRequestBtn: ((p) => p.getByRole("button", { name: /^send request$/i })) as Selector,
+
+  /* deposit */
+  depositDialog: ((p) => p.getByRole("dialog", { name: /^deposit$/i })) as Selector,
+  tokenPickerDialog: ((p) => p.getByText('Your tokens')) as Selector,
+  amountInput: ((p) => dydxSelectors.depositDialog(p).getByPlaceholder("0.00")) as Selector,
+  depositButtons: ((p) => p.getByRole("button", { name: /^deposit$/i })) as Selector,
+  depositClickableButton: ((p) => p.locator('button:has-text("Deposit"):not(:disabled)').first()) as Selector,
+  depositFundsButton: ((p) =>
+    dydxSelectors.depositDialog(p).getByRole("button", { name: /^deposit funds$/i })
+  ) as Selector,
+
+  /**
+   * Token pill next to the Amount input.
+   * Strategy: take the Amount input → its *nearest* container → first enabled button.
+   * This avoids the header "X" and skips disabled token rows elsewhere.
+   */
+  tokenPillButton: ((p: Page) => {
+    const input = (dydxSelectors.amountInput as Selector)(p);
+    const container = input.locator("xpath=ancestor::div[1]");
+    return container.locator("button:enabled").first();
   }) as Selector,
 
-  // Optional in-page step after provider selection
-  sendRequestBtn: ((p) =>
-    p.getByRole("button", { name: /^send request$/i })) as Selector,
+  tokenPickerRow: ((p: Page, token: string, src_chain: string) =>
+    p.getByRole('button', { name: `${token} ${src_chain}`})
+  ) as Selector,
 
-  /* ---------- Deposit flow ---------- */
 
-  // Button that opens the Deposit dialog (on Portfolio/wherever it shows)
-  depositButton: ((p) =>
-    p.getByRole("button", { name: /^deposit$/i })) as Selector,
+  depositInProgress: (p) =>
+    dydxSelectors.depositDialog(p).getByText(/deposit in progress/i),
+  depositCompleted: (p) =>
+    dydxSelectors.depositDialog(p).getByText(/deposit completed/i),
+  depositTxLink: (p) =>
+    dydxSelectors.depositDialog(p).locator('a[href*="/tx/0x"]').first(),
 
-  // The Deposit dialog itself
-  depositDialog: ((p) =>
-    p.getByRole("dialog", { name: /^deposit$/i })) as Selector,
-
-  // The “Deposit funds” CTA *inside* the dialog
-  depositFundsButton: ((p) =>
-    dydxSelectors.depositDialog(p).getByRole("button", { name: /^deposit funds$/i })) as Selector,
-
-  // Amount input inside the dialog
-  amountInput: ((p) =>
-    dydxSelectors.depositDialog(p).getByPlaceholder("0.00")) as Selector,
-
-  // The small pill-like button next to Amount showing the current token (e.g., “USDC”).
-  // We look for any button in the Amount row that contains a token-ish label.
-  tokenSelectorButton: ((p) =>
-    dydxSelectors
-      .depositDialog(p)
-      .locator('div:has-text("^Amount")')
-      .locator("button")
-      .filter({ hasText: /[A-Z]{2,6}/ })
-      .first()) as Selector,
-
-  // The “Select token” picker dialog that opens after clicking the token pill
-  tokenPickerDialog: ((p) =>
-    p.getByRole("dialog", { name: /select token/i })) as Selector,
-
-  // A specific token+chain row in the picker: e.g. token="USDC", chain="Polygon"
-  tokenPickerRow: ((p, token: string, chain: string) =>
-    dydxSelectors
-      .tokenPickerDialog(p)
-      .getByRole("button", { name: re(token) })
-      .filter({ hasText: re(chain) })
-      .first()) as Selector,
 };

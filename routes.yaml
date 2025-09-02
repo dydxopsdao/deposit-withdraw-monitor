@@ -127,7 +127,7 @@ routes:
     route_kind: regular
     amount: "10"
     token: USDC
-    src_chain: polygon-ethereum
+    src_chain: polygon
     dst_chain: dydx
     cadence_min: 30
     enabled: true

@@ -17,9 +17,10 @@ import { test, expect } from "../fixtures";
 import { logger } from "../utils/logger/logging-utils";
 import { getRoutesSync, type Route, type WalletType } from "../utils/route/routes";
 import { createTelemetryContext, type ErrorStage } from "../utils/datadog/datadog-utils";
-import { openApp, connectWallet, deposit } from "../targets/dydx/flows";
+import { openApp, connectWallet, deposit, submitDeposit } from "../targets/dydx/flows";
 import { dydxSelectors } from "../targets/dydx/selectors";
 import { TEST_TIMEOUTS } from "../config/timeouts";
+import { waitForFinality } from "../utils/finality/finality";
 
 // ---- Route discovery (sync so tests can be defined at import time) ----------
 const onlyRouteId = process.env.ROUTE_ID?.trim();
@@ -37,6 +38,7 @@ if (depositRoutes.length === 0) {
   test("no deposit routes matched", () => { test.skip(); });
 }
 
+
 // ---- Per-route test definitions -------------------------------------------
 for (const route of depositRoutes) {
   const title = `deposit: ${route.id} — ${route.wallet_type} — ${route.src_chain}→${route.dst_chain} — $${route.amount} — ${route.token}`;
@@ -51,6 +53,7 @@ for (const route of depositRoutes) {
     });
     
     test(title, async ({ page, context }) => {
+
       // Datadog context (keeps tags consistent, sends metrics/logs)
       const dd = createTelemetryContext({
         route: {
@@ -69,6 +72,7 @@ for (const route of depositRoutes) {
       });
 
       let txHash: string | undefined;
+      let explorerUrl: string | undefined;
       let passed = false; // becomes true ONLY after finality succeeds
       let error_stage: ErrorStage | "none" = "none";
 
@@ -104,7 +108,6 @@ for (const route of depositRoutes) {
           });
 
           await test.step("Deposit", async () => {
-            await page.pause();
             await deposit(page, context, route.amount, route.src_chain, route.token);
           });
 
@@ -119,25 +122,27 @@ for (const route of depositRoutes) {
 
         // -------- Submit + finality block ------------------------------------
         try {
-          txHash = await test.step("Submit deposit", async () => {
-            return await submitDeposit(page); // TODO: return tx hash if available
+          await test.step("Submit deposit", async () => {
+            return await submitDeposit(page, context, route.wallet_type);
           });
+
 
           await test.step("Wait for finality", async () => {
-            const ok = await waitForFinality({ route, txHash }); // TODO
-            expect(ok).toBeTruthy();
-            passed = true; // finality success → mark test as passed
+            const res = await waitForFinality(page);
+            txHash = res.txHash;          
+            explorerUrl = res.explorerUrl;
+            expect(res.ok).toBeTruthy();
+            passed = true;
           });
-
-          logger.success("Deposit flow complete", { route_id: route.id, txHash });
-
+          logger.success("Deposit flow complete", { route_id: route.id, txHash, explorerUrl });
+          
           // Datadog: success metric (no success log needed)
-          await dd.routeResult({ passed: true, txHash });
+          await dd.routeResult({ passed: true, txHash, explorerUrl });
         } catch (e: any) {
           error_stage = "submit_or_finality";
-          logger.error("Submit/finality failed", e, { route_id: route.id, txHash });
+          logger.error("Submit/finality failed", e, { route_id: route.id, txHash, explorerUrl });
           // Datadog: failure metric + failure log at submit/finality stage
-          await dd.routeResult({ passed: false, errorStage: error_stage, error: e, txHash });
+          await dd.routeResult({ passed: false, errorStage: error_stage, error: e, txHash, explorerUrl });
           throw e;
         }
 
@@ -172,22 +177,6 @@ for (const route of depositRoutes) {
    Keep this spec readable — implement these in targets flows.ts
    ========================= */
 
-
-
-
-async function fillAmount(_page: any, _amount: string) {
-  // TODO: locator → fill
-}
-
-async function submitDeposit(_page: any): Promise<string | undefined> {
-  // TODO: click "Deposit funds", wait for UI success; optionally parse tx hash
-  return undefined;
-}
-
-async function waitForFinality(_args: { route: Route; txHash?: string }): Promise<boolean> {
-  // TODO: poll indexer/RPC until finalised; return true/false or throw
-  return true;
-}
 
 async function rebalanceNow(_route: Route, _opts: { reason: string; last_tx?: string; passed: boolean }) {
   // TODO: implement; return { balancesBefore?: {...}, balancesAfter?: {...} } if you can
