@@ -1,17 +1,10 @@
-import path from "path";
 import fs from "fs";
 import { logger } from "../logger/logging-utils";
 import JSZip from "jszip";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 
 
-export async function processTraceFile(tracePath: string, routeId: string, timestamp: string) {
-  // Unzip the trace file
-  logger.info("Unzipping trace file", { tracePath });
-  const data = fs.readFileSync(tracePath);
-  const zip = await JSZip.loadAsync(data);
-  const files = Object.keys(zip.files);
-
+export async function uploadTraceToS3(tracePath: string, routeId: string, timestamp: string) {
   if (!process.env.AWS_TRACES_BUCKET_NAME) {
     logger.info("AWS_TRACES_BUCKET_NAME is not set, skipping upload to S3");
     return;
@@ -22,19 +15,23 @@ export async function processTraceFile(tracePath: string, routeId: string, times
     return;
   }
 
-  // Upload the trace file to S3
   logger.info("Uploading trace file to S3", { tracePath });
+
+  // Read the zip
+  const data = fs.readFileSync(tracePath);
+  const zip = await JSZip.loadAsync(data);
+  const files = Object.keys(zip.files);
+
+  // Append the zip file itself to the list of files, so that we upload it as well
+  files.push("trace.zip");
 
   const s3 = new S3Client({
     region: process.env.AWS_REGION,
   });
 
-  // Append the zip file itself to the list of files, so that we upload it as well
-  files.push("trace.zip");
-
   // Upload each trace file to S3 under a common directory
   for (const file of files) {
-    if (!zip.files[file].dir) { // Skip directories - we assume the only file is the trace file
+    if (!zip.files[file].dir) { // Skip directories - we assume there are only files in the zip
       const fileContent = await zip.files[file].async("nodebuffer");
       const uploadParams = {
         Bucket: process.env.AWS_TRACES_BUCKET_NAME,
@@ -45,5 +42,5 @@ export async function processTraceFile(tracePath: string, routeId: string, times
     }
   }
 
-  logger.info("Trace file processed");
+  logger.info("Trace file uploaded to S3");
 }

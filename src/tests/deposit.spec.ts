@@ -21,7 +21,7 @@ import { createTelemetryContext, type ErrorStage } from "../utils/datadog/datado
 import { openApp, connectWallet } from "../targets/dydx/flows";
 import { dydxSelectors } from "../targets/dydx/selectors";
 import { TEST_TIMEOUTS } from "../config/timeouts";
-import { processTraceFile } from "../utils/helpers/tracing";
+import { uploadTraceToS3 } from "../utils/helpers/tracing";
 
 // ---- Route discovery (sync so tests can be defined at import time) ----------
 const onlyRouteId = process.env.ROUTE_ID?.trim();
@@ -176,7 +176,7 @@ for (const route of depositRoutes) {
         try {
           const tracePath = path.join(testInfo.outputDir, `trace-${route.id}-${timestamp}/trace.zip`);
           await context.tracing.stop({ path: tracePath });
-          await processTraceFile(tracePath, route.id, timestamp);
+          await uploadTraceToS3(tracePath, route.id, timestamp);
         } catch (e: any) {
           logger.error("Trace file processing failed", e?.message, { route_id: route.id });
         }
