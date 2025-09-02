@@ -234,6 +234,7 @@ export async function connectWallet(
   logger.info("Confirming request");
   await handleWalletPopup(context, wallet);
 
+  await page.pause();
   // 7) Assert the dApp now shows a connected state
   await expect(dydxSelectors.accountMenuButton(page, wallet)).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
   logger.success(`Wallet connected: ${wallet}`);
@@ -307,5 +308,72 @@ async function isPickerOpen(page: Page) {
     (await dydxSelectors.chooseProviderBtn(page, "metamask").isVisible()) ||
     (await dydxSelectors.chooseProviderBtn(page, "phantom").isVisible())
   );
+}
+//#endregion
+
+//#region deposit
+/**
+ * Deposit funds to the dApp.
+ */
+const T = TEST_TIMEOUTS.ELEMENT ?? 30_000;
+const re = (txt: string) => new RegExp(`\\b${txt.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
+
+/** High-level flow */
+export async function deposit(
+  page: Page,
+  _context: BrowserContext,
+  amount: string,
+  src_chain: string, // e.g. "polygon"
+  token: string      // e.g. "USDC"
+) {
+  logger.step(`Depositing ${amount} ${token} from ${src_chain}`);
+
+  // Open the deposit dialog
+  await expect(s.depositButton(page)).toBeVisible({ timeout: T });
+  await s.depositButton(page).click();
+  await expect(s.depositDialog(page)).toBeVisible({ timeout: T });
+
+  // Pick the right token+chain
+  await selectToken(page, token, src_chain);
+
+  // Enter amount
+  await enterAmount(page, amount);
+}
+
+/** Click the token chip → pick "token on chain" */
+async function selectToken(page: Page, token: string, chain: string) {
+  const dialog = dydxSelectors.depositDialog(page);
+  await expect(dialog).toBeVisible({ timeout: T });
+
+  // Open the token picker by clicking the chip in the Amount row
+  await expect(dydxSelectors.tokenSelectorBtn(page)).toBeVisible({ timeout: T });
+  await dydxSelectors.tokenSelectorBtn(page).click();
+
+  const picker = dydxSelectors.tokenPickerDialog(page);
+  await expect(picker).toBeVisible({ timeout: T });
+
+  // Row: a button that contains both the token symbol and the chain label
+  const row = picker
+    .getByRole("button", { name: re(token) })
+    .filter({ hasText: re(chain) })
+    .first();
+
+  // If wallet tokens are at the top, this should already be visible; still be safe:
+  await row.scrollIntoViewIfNeeded().catch(() => {});
+  await expect(row).toBeVisible({ timeout: T });
+  await row.click();
+
+  // Confirm picker closed and chip updated (token text visible on chip)
+  await expect(picker).toBeHidden({ timeout: T });
+  await expect(dydxSelectors.tokenSelectorButton(page)).toContainText(re(token), { timeout: T });
+}
+
+/** Fill the Amount input and blur to trigger validation */
+async function enterAmount(page: Page, amount: string) {
+  const input = dydxSelectors.amountInput(page);
+  await expect(input).toBeVisible({ timeout: T });
+  await input.fill(""); // clear just in case
+  await input.fill(amount);
+  await page.keyboard.press("Tab").catch(() => {}); // blur
 }
 //#endregion

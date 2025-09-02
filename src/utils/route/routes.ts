@@ -30,6 +30,7 @@ export interface Route {
   wallet_seed: string;
   route_kind?: DepositRouteKind;
   amount: string;
+  token: string;
   src_chain: string;
   dst_chain: string;
   cadence_min?: number;

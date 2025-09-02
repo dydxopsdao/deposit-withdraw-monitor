@@ -51,6 +51,7 @@ export interface RouteSummary {
   amount: string;
   src_chain: string;
   dst_chain: string;
+  token?: string;
 }
 
 type ErrorLike = { name?: string; message?: string; stack?: string; code?: string } | undefined;
@@ -248,6 +249,7 @@ function routeSummaryForLog(route: RouteSummary) {
     amount: route.amount,
     src_chain: route.src_chain,
     dst_chain: route.dst_chain,
+    token: route.token,
   };
 }
 

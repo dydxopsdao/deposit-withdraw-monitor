@@ -81,6 +81,7 @@ routes:
     wallet_seed: ${SEED_PHRASE_METAMASK_ETHEREUM_USDC_DEPOSIT_REGULAR}
     route_kind: regular
     amount: "10"
+    token: USDC
     src_chain: ethereum
     dst_chain: dydx
     cadence_min: 30
@@ -95,6 +96,7 @@ routes:
     wallet_seed: ${SEED_PHRASE_METAMASK_ARBITRUM_USDC_DEPOSIT_REGULAR}
     route_kind: regular
     amount: "10"
+    token: USDC
     src_chain: arbitrum
     dst_chain: dydx
     cadence_min: 30
@@ -109,6 +111,7 @@ routes:
     wallet_seed: ${SEED_PHRASE_METAMASK_BASE_USDC_DEPOSIT_REGULAR}
     route_kind: regular
     amount: "10"
+    token: USDC
     src_chain: base
     dst_chain: dydx
     cadence_min: 30
@@ -123,7 +126,8 @@ routes:
     wallet_seed: ${SEED_PHRASE_METAMASK_POLYGON_USDC_DEPOSIT_REGULAR}
     route_kind: regular
     amount: "10"
-    src_chain: polygon
+    token: USDC
+    src_chain: polygon-ethereum
     dst_chain: dydx
     cadence_min: 30
     enabled: true
@@ -137,6 +141,7 @@ routes:
     wallet_seed: ${SEED_PHRASE_PHANTOM_SOLANA_USDC_DEPOSIT}
     route_kind: regular
     amount: "10"
+    token: USDC
     src_chain: solana
     dst_chain: dydx
     cadence_min: 30
@@ -154,6 +159,7 @@ routes:
     wallet_seed: ${SEED_PHRASE_METAMASK_ETHEREUM_USDC_DEPOSIT_INSTANT}
     route_kind: instant
     amount: "101"
+    token: USDC
     src_chain: ethereum
     dst_chain: dydx
     cadence_min: 30
@@ -168,6 +174,7 @@ routes:
     wallet_seed: ${SEED_PHRASE_METAMASK_ARBITRUM_USDC_DEPOSIT_INSTANT}
     route_kind: instant
     amount: "101"
+    token: USDC
     src_chain: arbitrum
     dst_chain: dydx
     cadence_min: 30
@@ -182,6 +189,7 @@ routes:
     wallet_seed: ${SEED_PHRASE_METAMASK_BASE_USDC_DEPOSIT_INSTANT}
     route_kind: instant
     amount: "101"
+    token: USDC
     src_chain: base
     dst_chain: dydx
     cadence_min: 30
@@ -196,6 +204,7 @@ routes:
     wallet_seed: ${SEED_PHRASE_METAMASK_POLYGON_USDC_DEPOSIT_INSTANT}
     route_kind: instant
     amount: "101"
+    token: USDC
     src_chain: polygon
     dst_chain: dydx
     cadence_min: 30

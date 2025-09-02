@@ -17,7 +17,7 @@ import { test, expect } from "../fixtures";
 import { logger } from "../utils/logger/logging-utils";
 import { getRoutesSync, type Route, type WalletType } from "../utils/route/routes";
 import { createTelemetryContext, type ErrorStage } from "../utils/datadog/datadog-utils";
-import { openApp, connectWallet } from "../targets/dydx/flows";
+import { openApp, connectWallet, deposit } from "../targets/dydx/flows";
 import { dydxSelectors } from "../targets/dydx/selectors";
 import { TEST_TIMEOUTS } from "../config/timeouts";
 
@@ -39,7 +39,7 @@ if (depositRoutes.length === 0) {
 
 // ---- Per-route test definitions -------------------------------------------
 for (const route of depositRoutes) {
-  const title = `deposit: ${route.id} — ${route.wallet_type} — ${route.src_chain}→${route.dst_chain} — $${route.amount}`;
+  const title = `deposit: ${route.id} — ${route.wallet_type} — ${route.src_chain}→${route.dst_chain} — $${route.amount} — ${route.token}`;
 
   // Create a describe block for each route to isolate the test.use() scope
   test.describe(`Route: ${route.id}`, () => {
@@ -63,6 +63,7 @@ for (const route of depositRoutes) {
           amount: String(route.amount),
           src_chain: route.src_chain,
           dst_chain: route.dst_chain,
+          token: route.token,
         },
         operation: "deposit",
       });
@@ -80,6 +81,7 @@ for (const route of depositRoutes) {
         amount: route.amount,
         src_chain: route.src_chain,
         dst_chain: route.dst_chain,
+        token: route.token,
       });
 
       try {
@@ -101,13 +103,12 @@ for (const route of depositRoutes) {
             await connectWallet(page, context, route.wallet_type); 
           });
 
-          await test.step("Navigate to Deposit", async () => {
-            await navToDeposit(page); // TODO
+          await test.step("Deposit", async () => {
+            await page.pause();
+            await deposit(page, context, route.amount, route.src_chain, route.token);
           });
 
-          await test.step("Enter amount", async () => {
-            await fillAmount(page, route.amount); // TODO
-          });
+        
         } catch (e: any) {
           error_stage = "pre_submit";
           logger.error("Pre-submit step failed", e, { route_id: route.id });
@@ -172,9 +173,7 @@ for (const route of depositRoutes) {
    ========================= */
 
 
-async function navToDeposit(_page: any) {
-  // TODO: DYDX flows.navToDeposit(page)
-}
+
 
 async function fillAmount(_page: any, _amount: string) {
   // TODO: locator → fill
