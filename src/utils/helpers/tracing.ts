@@ -15,32 +15,44 @@ export async function uploadTraceToS3(tracePath: string, routeId: string, timest
     return;
   }
 
-  logger.info("Uploading trace file to S3", { tracePath });
+  logger.info("Uploading trace files to S3", { tracePath });
 
   // Read the zip
   const data = fs.readFileSync(tracePath);
   const zip = await JSZip.loadAsync(data);
   const files = Object.keys(zip.files);
 
-  // Append the zip file itself to the list of files, so that we upload it as well
-  files.push("trace.zip");
-
   const s3 = new S3Client({
     region: process.env.AWS_REGION,
   });
 
+  async function upload(key, fileContent) {
+    const uploadParams = {
+      Bucket: process.env.AWS_TRACES_BUCKET_NAME,
+      Key: key,
+      Body: fileContent,
+    };
+    await s3.send(new PutObjectCommand(uploadParams));
+  }
+
   // Upload each trace file to S3 under a common directory
+  let i = 0;
   for (const file of files) {
-    if (!zip.files[file].dir) { // Skip directories - we assume there are only files in the zip
+    if (i % 20 === 0) {
+      logger.info(`Progress: ${Math.round(i / files.length * 100)}%...`);
+    }
+    i++;
+
+    if (!zip.files[file].dir) { // Skip directories
+      const key = `${routeId}/${timestamp}/${file}`;
       const fileContent = await zip.files[file].async("nodebuffer");
-      const uploadParams = {
-        Bucket: process.env.AWS_TRACES_BUCKET_NAME,
-        Key: `${routeId}/${timestamp}/${file}`,
-        Body: fileContent,
-      };
-      await s3.send(new PutObjectCommand(uploadParams));
+      await upload(key, fileContent);
     }
   }
 
-  logger.info("Trace file uploaded to S3");
+  logger.info("Uploading trace zip file");
+  const key = `${routeId}/${timestamp}/trace.zip`;
+  await upload(key, data);
+
+  logger.info("Trace files uploaded to S3");
 }
