@@ -9,16 +9,19 @@ A synthetic E2E test harness for dYdX deposits/withdrawals using **MetaMask** an
 
 ## Contents
 
-* [Quick start](#quick-start)
-* [Configuration](#configuration)
-* [Routes: how tests are generated](#routes-how-tests-are-generated)
-* [Running tests](#running-tests)
-* [Docker](#docker)
-* [AWS (EventBridge → ECS Fargate) — IaC](#aws-eventbridge--ecs-fargate--iac)
-* [Project structure](#project-structure)
-* [Telemetry (Datadog)](#telemetry-datadog)
-* [Troubleshooting](#troubleshooting)
-* [Contributing](#contributing)
+- [Deposit–Withdraw Monitor](#depositwithdraw-monitor)
+  - [Contents](#contents)
+  - [Quick start](#quick-start)
+    - [Run a single test by route id (YAML mode)](#run-a-single-test-by-route-id-yaml-mode)
+    - [Run by wallet (YAML mode)](#run-by-wallet-yaml-mode)
+  - [📦 Deployment](#-deployment)
+  - [🐳 Local Docker Testing](#-local-docker-testing)
+  - [Docker \[WIP\]](#docker-wip)
+  - [Running locally with traces written to S3](#running-locally-with-traces-written-to-s3)
+  - [AWS (EventBridge → ECS Fargate) — IaC \[WIP\]](#aws-eventbridge--ecs-fargate--iac-wip)
+  - [Project structure](#project-structure)
+  - [Telemetry (Datadog) \[WIP\]](#telemetry-datadog-wip)
+  - [Troubleshooting \[WIP\]](#troubleshooting-wip)
 
 ---
 
@@ -141,6 +144,37 @@ Use a **single** image (official Playwright base) that contains browsers + both 
 * Extensions require **headful** Chromium; the Playwright base image uses Xvfb so headful is OK in CI.
 
 ---
+
+## Running locally with traces written to S3
+
+* In ~/.aws/config you should have the following entries:
+
+  ```
+  [sso-session dydxopsdao]
+  sso_start_url = https://dydxopsservices.awsapps.com/start/
+  sso_region = ap-northeast-1
+  sso_registration_scopes = sso:account:access
+
+  [profile deposit-withdraw-monitor]
+  sso_session = dydxopsdao
+  sso_account_id = 987747149454
+  sso_role_name = Administrator
+  ```
+
+* Log in to AWS for CLI:
+
+  ```
+  aws sso login --sso-session dydxopsdao
+  ```
+
+* Run tests with the required env vars, e.g.:
+
+  ```
+  AWS_PROFILE=deposit-withdraw-monitor \
+  AWS_REGION=ap-northeast-1 \
+  AWS_TRACES_BUCKET_NAME=dydxopsdao-deposit-withdraw-monitor-traces \
+  npx playwright test src/tests/ --reporter=line -g metamask-ethereum-usdc-deposit-regular
+  ```
 
 ## AWS (EventBridge → ECS Fargate) — IaC [WIP]
 
