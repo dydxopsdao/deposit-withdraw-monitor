@@ -22,6 +22,7 @@
   "homepage": "https://github.com/dydxopsdao/deposit-withdraw-monitor#readme",
   "dependencies": {
     "@aws-sdk/client-s3": "^3.879.0",
+    "@aws-sdk/client-secrets-manager": "^3.879.0",
     "@playwright/test": "^1.54.2",
     "@types/js-yaml": "^4.0.9",
     "chrome-extension-fetch": "^1.0.0",
