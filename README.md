@@ -114,6 +114,17 @@ The following variables must be configured in GitHub repository settings (Settin
 
 *Note: The Terraform Cloud outputs can be found in the workspace's "Outputs" tab after a successful apply.*
 
+**Available Terraform Cloud Outputs:**
+The following outputs are available after infrastructure deployment:
+
+| Output | Description | Usage |
+|--------|-------------|-------|
+| `aws_ecr_repository_url` | ECR repository URL for Docker images | GitHub Actions CI/CD |
+| `aws_github_actions_role_arn` | IAM role ARN for GitHub Actions | GitHub Actions authentication |
+| `seed_phrases_secret_arn` | ARN of seed phrases secret in AWS Secrets Manager | Application runtime configuration |
+| `seed_phrases_secret_name` | Name of seed phrases secret in AWS Secrets Manager | Application runtime configuration |
+| `traces_bucket_name` | S3 bucket name for storing test traces | Local development with AWS |
+
 **Terraform Cloud Secret Variables:**
 The following sensitive variables must be configured in Terraform Cloud workspace (Variables tab → Terraform Variables):
 
