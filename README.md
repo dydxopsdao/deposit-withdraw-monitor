@@ -50,7 +50,11 @@ Shared constants live in `src/config/constants.ts` (paths, extension IDs, DAPP U
 
 | Variable                                 | Where                 | Purpose                                                        |
 | ---------------------------------------- | --------------------- | -------------------------------------------------------------- |
-| `DD_API_KEY`                             | env                   | Datadog HTTP intake key (optional locally).                    |
+| `DD_API_KEY`                             | env                   | Datadog HTTP intake key (optional locally, overridden by AWS Secrets Manager).                    |
+| `DD_SERVICE`                             | env                   | Datadog service name for tagging.                              |
+| `DD_SITE`                                | env                   | Datadog site (e.g., datadoghq.com, datadoghq.eu).             |
+| `DD_SOURCE`                              | env                   | Datadog source name for logs.                                  |
+| `WALLET_PASSWORD`                        | env                   | Wallet password for wallet setup and operations (overridden by AWS Secrets Manager).               |
 | `DAPP_URL`                               | `config/constants.ts` | Defaults to `https://dydx.trade/portfolio/overview`.           |
 | `SEED_PHRASES_SECRET_ARN`                | env (ECS runtime)     | ARN of AWS Secrets Manager secret containing seed phrases.     |
 | `WALLET_PASSWORD_SECRET_ARN`             | env (ECS runtime)     | ARN of AWS Secrets Manager secret containing wallet password.  |
@@ -136,7 +140,10 @@ The following sensitive variables must be configured in Terraform Cloud workspac
 |----------|------|--------|-------------|
 | `seed_phrases` | `map(string)` | HCL | Map of environment variable names to seed phrases (as defined in routes.yaml) |
 | `wallet_password` | `string` | HCL | Password used for wallet setup and operations |
-| `datadog_api_key` | `string` | HCL | Datadog API key for telemetry and monitoring |
+| `datadog_api_key` | `string` | HCL | Datadog API key for data collection |
+| `datadog_service` | `string` | HCL | Datadog service name for tagging (default: "dos-synth") |
+| `datadog_site` | `string` | HCL | Datadog site (default: "ap1.datadoghq.com") |
+| `datadog_source` | `string` | HCL | Datadog source name for logs (default: "playwright") |
 
 **Example format for `seed_phrases` variable in Terraform Cloud:**
 
@@ -151,9 +158,10 @@ Set the variable type to "HCL" and use the following format:
 ```
 
 ⚠️ **Important**: 
-- Mark these variables as "Sensitive" in Terraform Cloud
+- Mark the sensitive variables (`seed_phrases`, `wallet_password`, `datadog_api_key`) as "Sensitive" in Terraform Cloud
 - The `seed_phrases` variable will be stored in AWS Secrets Manager as a JSON object accessible by the ECS tasks. Each wallet type should have its corresponding seed phrase entry
 - The `wallet_password` and `datadog_api_key` variables will be stored in AWS Secrets Manager as strings accessible by the ECS tasks
+- The `datadog_service`, `datadog_site`, and `datadog_source` variables are passed as regular environment variables to the ECS tasks
 
 ## 🐳 Local Docker Testing
 

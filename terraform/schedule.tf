@@ -51,6 +51,18 @@ resource "aws_ecs_task_definition" "this" {
           value = aws_s3_bucket.traces.bucket
         },
         {
+          name  = "DD_SERVICE"
+          value = var.datadog_service
+        },
+        {
+          name  = "DD_SITE"
+          value = var.datadog_site
+        },
+        {
+          name  = "DD_SOURCE"
+          value = var.datadog_source
+        },        
+        {
           name  = "SEED_PHRASES_SECRET_ARN"
           value = aws_secretsmanager_secret.secrets["seed_phrases"].arn
         },
