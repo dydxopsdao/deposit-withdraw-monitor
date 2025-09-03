@@ -27,3 +27,9 @@ variable "wallet_password" {
   type        = string
   sensitive   = true
 }
+
+variable "datadog_api_key" {
+  description = "Datadog API key for data collection"
+  type        = string
+  sensitive   = true
+}

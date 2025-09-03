@@ -20,3 +20,8 @@ output "wallet_password_secret_arn" {
   value = aws_secretsmanager_secret.secrets["wallet_password"].arn
   description = "ARN of the AWS Secrets Manager secret containing wallet password"
 }
+
+output "datadog_api_key_secret_arn" {
+  value = aws_secretsmanager_secret.secrets["datadog_api_key"].arn
+  description = "ARN of the AWS Secrets Manager secret containing Datadog API key"
+}

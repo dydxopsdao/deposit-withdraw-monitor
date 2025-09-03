@@ -7,6 +7,7 @@ import { logger } from '../logger/logging-utils';
 export async function loadSecretsFromAWS(): Promise<void> {
   await loadSeedPhrases();
   await loadWalletPassword();
+  await loadDatadogApiKey();
 }
 
 /**
@@ -14,7 +15,7 @@ export async function loadSecretsFromAWS(): Promise<void> {
  */
 async function loadSeedPhrases(): Promise<void> {
   const secretArn = process.env.SEED_PHRASES_SECRET_ARN;
-  
+
   // Skip if no AWS secrets configured
   if (!secretArn) {
     logger.info("No AWS Secrets Manager secrets configured, skipping seed phrases load");
@@ -22,9 +23,9 @@ async function loadSeedPhrases(): Promise<void> {
   }
 
   const secretString = await getSecretFromAWS(secretArn);
-  
+
   const seedPhrases = JSON.parse(secretString) as Record<string, string>;
-  
+
   // Overwrite process.env with seed phrases
   for (const [key, value] of Object.entries(seedPhrases)) {
     process.env[key] = value;
@@ -38,7 +39,7 @@ async function loadSeedPhrases(): Promise<void> {
  */
 async function loadWalletPassword(): Promise<void> {
   const secretArn = process.env.WALLET_PASSWORD_SECRET_ARN;
-  
+
   // Skip if no AWS secrets configured
   if (!secretArn) {
     logger.info("No AWS Secrets Manager wallet password secret configured, skipping wallet password load");
@@ -46,11 +47,31 @@ async function loadWalletPassword(): Promise<void> {
   }
 
   const secretString = await getSecretFromAWS(secretArn);
-  
+
   // Set the wallet password directly in process.env
   process.env.WALLET_PASSWORD = secretString;
 
   logger.info(`🔐 Loaded wallet password from AWS Secrets Manager`);
+}
+
+/**
+ * Loads Datadog API key. Only runs when DATADOG_API_KEY_SECRET_ARN is present
+ */
+async function loadDatadogApiKey(): Promise<void> {
+  const secretArn = process.env.DATADOG_API_KEY_SECRET_ARN;
+
+  // Skip if no AWS secrets configured
+  if (!secretArn) {
+    logger.info("No AWS Secrets Manager Datadog API key secret configured, skipping Datadog API key load");
+    return;
+  }
+
+  const secretString = await getSecretFromAWS(secretArn);
+
+  // Set the Datadog API key directly in process.env
+  process.env.DD_API_KEY = secretString;
+
+  logger.info(`📊 Loaded Datadog API key from AWS Secrets Manager`);
 }
 
 /**
@@ -67,7 +88,7 @@ async function getSecretFromAWS(secretArn: string): Promise<string> {
     });
 
     const response = await client.send(command);
-    
+
     if (!response.SecretString) {
       throw new Error(`Secret value is empty or binary (expected string)`);
     }

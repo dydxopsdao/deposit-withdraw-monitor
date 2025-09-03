@@ -10,6 +10,11 @@ locals {
       description = "Wallet password for deposit-withdraw-monitor wallets"
       value       = var.wallet_password
     }
+    datadog_api_key = {
+      name        = "deposit-withdraw-monitor/datadog-api-key"
+      description = "Datadog API key for deposit-withdraw-monitor data collection"
+      value       = var.datadog_api_key
+    }
   }
 }
 
