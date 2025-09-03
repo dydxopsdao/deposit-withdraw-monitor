@@ -152,9 +152,8 @@ Set the variable type to "HCL" and use the following format:
 
 ⚠️ **Important**: 
 - Mark these variables as "Sensitive" in Terraform Cloud
-- The `seed_phrases` variable will be stored in AWS Secrets Manager as a JSON object accessible by the ECS tasks
+- The `seed_phrases` variable will be stored in AWS Secrets Manager as a JSON object accessible by the ECS tasks. Each wallet type should have its corresponding seed phrase entry
 - The `wallet_password` and `datadog_api_key` variables will be stored in AWS Secrets Manager as strings accessible by the ECS tasks
-- Each wallet type should have its corresponding seed phrase entry
 
 ## 🐳 Local Docker Testing
 
