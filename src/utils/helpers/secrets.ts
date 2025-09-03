@@ -5,7 +5,7 @@ import { logger } from '../logger/logging-utils';
  * Loads seed phrases from AWS Secrets Manager and populates process.env
  * Only runs when SEED_PHRASES_SECRET_ARN or SEED_PHRASES_SECRET_NAME are present
  */
-export async function loadSeedPhrases(): Promise<void> {
+export async function loadSecretsFromAWS(): Promise<void> {
   const secretArn = process.env.SEED_PHRASES_SECRET_ARN;
   const secretName = process.env.SEED_PHRASES_SECRET_NAME;
   
