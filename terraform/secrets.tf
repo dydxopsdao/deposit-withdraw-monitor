@@ -2,12 +2,6 @@
 resource "aws_secretsmanager_secret" "seed_phrases" {
   name        = "deposit-withdraw-monitor/seed-phrases"
   description = "Seed phrases for deposit-withdraw-monitor wallets"
-
-  tags = {
-    Name        = "deposit-withdraw-monitor-seed-phrases"
-    Environment = "production"
-    Service     = "deposit-withdraw-monitor"
-  }
 }
 
 # --- Secret version containing the actual seed phrase data ---

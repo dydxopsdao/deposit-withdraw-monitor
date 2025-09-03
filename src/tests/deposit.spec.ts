@@ -24,7 +24,7 @@ import { TEST_TIMEOUTS } from "../config/timeouts";
 import { uploadTraceToS3 } from "../utils/helpers/tracing";
 import { loadSecretsFromAWS } from "../utils/helpers/secrets.js";
 
-// ---- Load secrets from AWS Secrets Manager, if configured, overwriting process.env entries ----
+// ---- Load secrets from AWS Secrets Manager, if configured, overwriting corresponding process.env entries ----
 await loadSecretsFromAWS();
 
 // ---- Route discovery (sync so tests can be defined at import time) ----------

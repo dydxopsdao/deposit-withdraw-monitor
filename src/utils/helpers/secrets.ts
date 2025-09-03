@@ -2,15 +2,20 @@ import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-sec
 import { logger } from '../logger/logging-utils';
 
 /**
- * Loads seed phrases from AWS Secrets Manager and populates process.env
- * Only runs when SEED_PHRASES_SECRET_ARN or SEED_PHRASES_SECRET_NAME are present
+ * Loads secrets from AWS Secrets Manager and populates process.env
  */
 export async function loadSecretsFromAWS(): Promise<void> {
+  await loadSeedPhrases();
+}
+
+/**
+ * Loads seed phrases. Only runs when SEED_PHRASES_SECRET_ARN is present
+ */
+async function loadSeedPhrases(): Promise<void> {
   const secretArn = process.env.SEED_PHRASES_SECRET_ARN;
-  const secretName = process.env.SEED_PHRASES_SECRET_NAME;
   
   // Skip if no AWS secrets configured
-  if (!secretArn && !secretName) {
+  if (!secretArn) {
     logger.info("No AWS Secrets Manager secrets configured, skipping seed phrases load");
     return;
   }
@@ -21,7 +26,7 @@ export async function loadSecretsFromAWS(): Promise<void> {
     });
 
     const command = new GetSecretValueCommand({
-      SecretId: secretArn || secretName
+      SecretId: secretArn
     });
 
     const response = await client.send(command);

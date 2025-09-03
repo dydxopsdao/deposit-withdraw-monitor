@@ -54,10 +54,6 @@ resource "aws_ecs_task_definition" "this" {
           name  = "SEED_PHRASES_SECRET_ARN"
           value = aws_secretsmanager_secret.seed_phrases.arn
         },
-        {
-          name  = "SEED_PHRASES_SECRET_NAME"
-          value = aws_secretsmanager_secret.seed_phrases.name
-        },
       ]
       logConfiguration = {
         logDriver = "awslogs",

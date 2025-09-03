@@ -53,7 +53,6 @@ Shared constants live in `src/config/constants.ts` (paths, extension IDs, DAPP U
 | `DD_API_KEY`                             | env                   | Datadog HTTP intake key (optional locally).                    |
 | `DAPP_URL`                               | `config/constants.ts` | Defaults to `https://dydx.trade/portfolio/overview`.           |
 | `SEED_PHRASES_SECRET_ARN`                | env (ECS runtime)     | ARN of AWS Secrets Manager secret containing seed phrases.     |
-| `SEED_PHRASES_SECRET_NAME`               | env (ECS runtime)     | Name of AWS Secrets Manager secret containing seed phrases.    |
 
 ---
 
@@ -124,7 +123,6 @@ The following outputs are available after infrastructure deployment:
 | `aws_ecr_repository_url` | ECR repository URL for Docker images | GitHub Actions CI/CD |
 | `aws_github_actions_role_arn` | IAM role ARN for GitHub Actions | GitHub Actions authentication |
 | `seed_phrases_secret_arn` | ARN of seed phrases secret in AWS Secrets Manager | Application runtime configuration |
-| `seed_phrases_secret_name` | Name of seed phrases secret in AWS Secrets Manager | Application runtime configuration |
 | `traces_bucket_name` | S3 bucket name for storing test traces | Local development with AWS |
 
 **Terraform Cloud Secret Variables:**
