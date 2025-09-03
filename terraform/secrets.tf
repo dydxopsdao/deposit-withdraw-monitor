@@ -1,25 +1,32 @@
-# --- AWS Secrets Manager for storing wallet seed phrases ---
-resource "aws_secretsmanager_secret" "seed_phrases" {
-  name        = "deposit-withdraw-monitor/seed-phrases"
-  description = "Seed phrases for deposit-withdraw-monitor wallets"
+locals {
+  secrets = {
+    seed_phrases = {
+      name        = "deposit-withdraw-monitor/seed-phrases"
+      description = "Seed phrases for deposit-withdraw-monitor wallets"
+      value       = jsonencode(var.seed_phrases)
+    }
+    wallet_password = {
+      name        = "deposit-withdraw-monitor/wallet-password"
+      description = "Wallet password for deposit-withdraw-monitor wallets"
+      value       = var.wallet_password
+    }
+  }
 }
 
-# --- Secret version containing the actual seed phrase data ---
-resource "aws_secretsmanager_secret_version" "seed_phrases" {
-  secret_id     = aws_secretsmanager_secret.seed_phrases.id
-  secret_string = jsonencode(var.seed_phrases)
+# --- AWS Secrets Manager secrets ---
+resource "aws_secretsmanager_secret" "secrets" {
+  for_each = local.secrets
+
+  name        = each.value.name
+  description = each.value.description
 }
 
-# --- AWS Secrets Manager for storing wallet password ---
-resource "aws_secretsmanager_secret" "wallet_password" {
-  name        = "deposit-withdraw-monitor/wallet-password"
-  description = "Wallet password for deposit-withdraw-monitor wallets"
-}
+# --- Secret versions containing the actual secret data ---
+resource "aws_secretsmanager_secret_version" "secrets" {
+  for_each = local.secrets
 
-# --- Secret version containing the actual wallet password ---
-resource "aws_secretsmanager_secret_version" "wallet_password" {
-  secret_id     = aws_secretsmanager_secret.wallet_password.id
-  secret_string = var.wallet_password
+  secret_id     = aws_secretsmanager_secret.secrets[each.key].id
+  secret_string = each.value.value
 }
 
 # --- IAM policy to allow ECS task to read the secret ---
@@ -35,10 +42,7 @@ resource "aws_iam_role_policy" "task_secrets_access" {
         Action = [
           "secretsmanager:GetSecretValue"
         ]
-        Resource = [
-          aws_secretsmanager_secret.seed_phrases.arn,
-          aws_secretsmanager_secret.wallet_password.arn
-        ]
+        Resource = values(aws_secretsmanager_secret.secrets)[*].arn
       }
     ]
   })

@@ -21,33 +21,16 @@ async function loadSeedPhrases(): Promise<void> {
     return;
   }
 
-  try {
-    const client = new SecretsManagerClient({
-      region: process.env.AWS_REGION
-    });
-
-    const command = new GetSecretValueCommand({
-      SecretId: secretArn
-    });
-
-    const response = await client.send(command);
-    
-    if (!response.SecretString) {
-      throw new Error('Secret value is empty or binary (expected JSON string)');
-    }
-
-    const seedPhrases = JSON.parse(response.SecretString) as Record<string, string>;
-    
-    // Overwrite process.env with seed phrases
-    for (const [key, value] of Object.entries(seedPhrases)) {
-      process.env[key] = value;
-    }
-
-    logger.info(`🥷 Loaded ${Object.keys(seedPhrases).length} seed phrases from AWS Secrets Manager`);
-  } catch (error) {
-    logger.error('❌ Failed to load seed phrases from AWS Secrets Manager:', error);
-    throw error;
+  const secretString = await getSecretFromAWS(secretArn);
+  
+  const seedPhrases = JSON.parse(secretString) as Record<string, string>;
+  
+  // Overwrite process.env with seed phrases
+  for (const [key, value] of Object.entries(seedPhrases)) {
+    process.env[key] = value;
   }
+
+  logger.info(`🥷 Loaded ${Object.keys(seedPhrases).length} seed phrases from AWS Secrets Manager`);
 }
 
 /**
@@ -62,6 +45,18 @@ async function loadWalletPassword(): Promise<void> {
     return;
   }
 
+  const secretString = await getSecretFromAWS(secretArn);
+  
+  // Set the wallet password directly in process.env
+  process.env.WALLET_PASSWORD = secretString;
+
+  logger.info(`🔐 Loaded wallet password from AWS Secrets Manager`);
+}
+
+/**
+ * Common function to retrieve a secret value from AWS Secrets Manager
+ */
+async function getSecretFromAWS(secretArn: string): Promise<string> {
   try {
     const client = new SecretsManagerClient({
       region: process.env.AWS_REGION
@@ -74,15 +69,12 @@ async function loadWalletPassword(): Promise<void> {
     const response = await client.send(command);
     
     if (!response.SecretString) {
-      throw new Error('Wallet password secret value is empty or binary (expected string)');
+      throw new Error(`Secret value is empty or binary (expected string)`);
     }
 
-    // Set the wallet password directly in process.env
-    process.env.WALLET_PASSWORD = response.SecretString;
-
-    logger.info(`🔐 Loaded wallet password from AWS Secrets Manager`);
+    return response.SecretString;
   } catch (error) {
-    logger.error('❌ Failed to load wallet password from AWS Secrets Manager:', error);
+    logger.error(`❌ Failed to load secret from AWS Secrets Manager:`, error);
     throw error;
   }
 }

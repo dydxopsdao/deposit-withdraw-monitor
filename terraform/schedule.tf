@@ -52,11 +52,11 @@ resource "aws_ecs_task_definition" "this" {
         },
         {
           name  = "SEED_PHRASES_SECRET_ARN"
-          value = aws_secretsmanager_secret.seed_phrases.arn
+          value = aws_secretsmanager_secret.secrets["seed_phrases"].arn
         },
         {
           name  = "WALLET_PASSWORD_SECRET_ARN"
-          value = aws_secretsmanager_secret.wallet_password.arn
+          value = aws_secretsmanager_secret.secrets["wallet_password"].arn
         },
       ]
       logConfiguration = {
