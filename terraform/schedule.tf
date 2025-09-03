@@ -50,6 +50,18 @@ resource "aws_ecs_task_definition" "this" {
           name  = "AWS_TRACES_BUCKET_NAME"
           value = aws_s3_bucket.traces.bucket
         },
+        {
+          name  = "SEED_PHRASES_SECRET_ARN"
+          value = aws_secretsmanager_secret.secrets["seed_phrases"].arn
+        },
+        {
+          name  = "WALLET_PASSWORD_SECRET_ARN"
+          value = aws_secretsmanager_secret.secrets["wallet_password"].arn
+        },
+        {
+          name  = "DATADOG_API_KEY_SECRET_ARN"
+          value = aws_secretsmanager_secret.secrets["datadog_api_key"].arn
+        },
       ]
       logConfiguration = {
         logDriver = "awslogs",

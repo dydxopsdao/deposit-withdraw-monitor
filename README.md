@@ -52,6 +52,9 @@ Shared constants live in `src/config/constants.ts` (paths, extension IDs, DAPP U
 | ---------------------------------------- | --------------------- | -------------------------------------------------------------- |
 | `DD_API_KEY`                             | env                   | Datadog HTTP intake key (optional locally).                    |
 | `DAPP_URL`                               | `config/constants.ts` | Defaults to `https://dydx.trade/portfolio/overview`.           |
+| `SEED_PHRASES_SECRET_ARN`                | env (ECS runtime)     | ARN of AWS Secrets Manager secret containing seed phrases.     |
+| `WALLET_PASSWORD_SECRET_ARN`             | env (ECS runtime)     | ARN of AWS Secrets Manager secret containing wallet password.  |
+| `DATADOG_API_KEY_SECRET_ARN`             | env (ECS runtime)     | ARN of AWS Secrets Manager secret containing Datadog API key. |
 
 ---
 
@@ -113,6 +116,44 @@ The following variables must be configured in GitHub repository settings (Settin
 | `AWS_GITHUB_ACTIONS_ROLE_ARN` | Terraform Cloud output: `aws_github_actions_role_arn` |
 
 *Note: The Terraform Cloud outputs can be found in the workspace's "Outputs" tab after a successful apply.*
+
+**Available Terraform Cloud Outputs:**
+The following outputs are available after infrastructure deployment:
+
+| Output | Description | Usage |
+|--------|-------------|-------|
+| `aws_ecr_repository_url` | ECR repository URL for Docker images | GitHub Actions CI/CD |
+| `aws_github_actions_role_arn` | IAM role ARN for GitHub Actions | GitHub Actions authentication |
+| `seed_phrases_secret_arn` | ARN of seed phrases secret in AWS Secrets Manager | Application runtime configuration |
+| `wallet_password_secret_arn` | ARN of wallet password secret in AWS Secrets Manager | Application runtime configuration |
+| `datadog_api_key_secret_arn` | ARN of Datadog API key secret in AWS Secrets Manager | Application runtime configuration |
+| `traces_bucket_name` | S3 bucket name for storing test traces | Local development with AWS |
+
+**Terraform Cloud Secret Variables:**
+The following sensitive variables must be configured in Terraform Cloud workspace (Variables tab → Terraform Variables):
+
+| Variable | Type | Format | Description |
+|----------|------|--------|-------------|
+| `seed_phrases` | `map(string)` | HCL | Map of environment variable names to seed phrases (as defined in routes.yaml) |
+| `wallet_password` | `string` | HCL | Password used for wallet setup and operations |
+| `datadog_api_key` | `string` | HCL | Datadog API key for telemetry and monitoring |
+
+**Example format for `seed_phrases` variable in Terraform Cloud:**
+
+Set the variable type to "HCL" and use the following format:
+
+```hcl
+{
+  "SEED_PHRASE_METAMASK_ETHEREUM_USDC_WITHDRAWAL" = "word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11 word12"
+  "SEED_PHRASE_DYDX_ETHEREUM_USDC_WITHDRAWAL" = "word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11 word12"
+  # ... include all seed phrase keys from routes.yaml
+}
+```
+
+⚠️ **Important**: 
+- Mark these variables as "Sensitive" in Terraform Cloud
+- The `seed_phrases` variable will be stored in AWS Secrets Manager as a JSON object accessible by the ECS tasks. Each wallet type should have its corresponding seed phrase entry
+- The `wallet_password` and `datadog_api_key` variables will be stored in AWS Secrets Manager as strings accessible by the ECS tasks
 
 ## 🐳 Local Docker Testing
 
