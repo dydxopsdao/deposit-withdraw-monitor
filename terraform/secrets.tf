@@ -10,6 +10,18 @@ resource "aws_secretsmanager_secret_version" "seed_phrases" {
   secret_string = jsonencode(var.seed_phrases)
 }
 
+# --- AWS Secrets Manager for storing wallet password ---
+resource "aws_secretsmanager_secret" "wallet_password" {
+  name        = "deposit-withdraw-monitor/wallet-password"
+  description = "Wallet password for deposit-withdraw-monitor wallets"
+}
+
+# --- Secret version containing the actual wallet password ---
+resource "aws_secretsmanager_secret_version" "wallet_password" {
+  secret_id     = aws_secretsmanager_secret.wallet_password.id
+  secret_string = var.wallet_password
+}
+
 # --- IAM policy to allow ECS task to read the secret ---
 resource "aws_iam_role_policy" "task_secrets_access" {
   name = "deposit-withdraw-monitor-secrets-access"
@@ -23,7 +35,10 @@ resource "aws_iam_role_policy" "task_secrets_access" {
         Action = [
           "secretsmanager:GetSecretValue"
         ]
-        Resource = aws_secretsmanager_secret.seed_phrases.arn
+        Resource = [
+          aws_secretsmanager_secret.seed_phrases.arn,
+          aws_secretsmanager_secret.wallet_password.arn
+        ]
       }
     ]
   })

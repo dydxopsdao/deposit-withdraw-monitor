@@ -53,6 +53,7 @@ Shared constants live in `src/config/constants.ts` (paths, extension IDs, DAPP U
 | `DD_API_KEY`                             | env                   | Datadog HTTP intake key (optional locally).                    |
 | `DAPP_URL`                               | `config/constants.ts` | Defaults to `https://dydx.trade/portfolio/overview`.           |
 | `SEED_PHRASES_SECRET_ARN`                | env (ECS runtime)     | ARN of AWS Secrets Manager secret containing seed phrases.     |
+| `WALLET_PASSWORD_SECRET_ARN`             | env (ECS runtime)     | ARN of AWS Secrets Manager secret containing wallet password.  |
 
 ---
 
@@ -123,6 +124,7 @@ The following outputs are available after infrastructure deployment:
 | `aws_ecr_repository_url` | ECR repository URL for Docker images | GitHub Actions CI/CD |
 | `aws_github_actions_role_arn` | IAM role ARN for GitHub Actions | GitHub Actions authentication |
 | `seed_phrases_secret_arn` | ARN of seed phrases secret in AWS Secrets Manager | Application runtime configuration |
+| `wallet_password_secret_arn` | ARN of wallet password secret in AWS Secrets Manager | Application runtime configuration |
 | `traces_bucket_name` | S3 bucket name for storing test traces | Local development with AWS |
 
 **Terraform Cloud Secret Variables:**
@@ -131,6 +133,7 @@ The following sensitive variables must be configured in Terraform Cloud workspac
 | Variable | Type | Format | Description |
 |----------|------|--------|-------------|
 | `seed_phrases` | `map(string)` | HCL | Map of environment variable names to seed phrases (as defined in routes.yaml) |
+| `wallet_password` | `string` | HCL | Password used for wallet setup and operations |
 
 **Example format for `seed_phrases` variable in Terraform Cloud:**
 
@@ -145,8 +148,9 @@ Set the variable type to "HCL" and use the following format:
 ```
 
 ⚠️ **Important**: 
-- Mark this variable as "Sensitive" in Terraform Cloud
-- The variable will be stored in AWS Secrets Manager as a JSON object accessible by the ECS tasks
+- Mark these variables as "Sensitive" in Terraform Cloud
+- The `seed_phrases` variable will be stored in AWS Secrets Manager as a JSON object accessible by the ECS tasks
+- The `wallet_password` variable will be stored in AWS Secrets Manager as a string accessible by the ECS tasks
 - Each wallet type should have its corresponding seed phrase entry
 
 ## 🐳 Local Docker Testing

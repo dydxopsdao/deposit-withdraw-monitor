@@ -6,6 +6,7 @@ import { logger } from '../logger/logging-utils';
  */
 export async function loadSecretsFromAWS(): Promise<void> {
   await loadSeedPhrases();
+  await loadWalletPassword();
 }
 
 /**
@@ -45,6 +46,43 @@ async function loadSeedPhrases(): Promise<void> {
     logger.info(`🥷 Loaded ${Object.keys(seedPhrases).length} seed phrases from AWS Secrets Manager`);
   } catch (error) {
     logger.error('❌ Failed to load seed phrases from AWS Secrets Manager:', error);
+    throw error;
+  }
+}
+
+/**
+ * Loads wallet password. Only runs when WALLET_PASSWORD_SECRET_ARN is present
+ */
+async function loadWalletPassword(): Promise<void> {
+  const secretArn = process.env.WALLET_PASSWORD_SECRET_ARN;
+  
+  // Skip if no AWS secrets configured
+  if (!secretArn) {
+    logger.info("No AWS Secrets Manager wallet password secret configured, skipping wallet password load");
+    return;
+  }
+
+  try {
+    const client = new SecretsManagerClient({
+      region: process.env.AWS_REGION
+    });
+
+    const command = new GetSecretValueCommand({
+      SecretId: secretArn
+    });
+
+    const response = await client.send(command);
+    
+    if (!response.SecretString) {
+      throw new Error('Wallet password secret value is empty or binary (expected string)');
+    }
+
+    // Set the wallet password directly in process.env
+    process.env.WALLET_PASSWORD = response.SecretString;
+
+    logger.info(`🔐 Loaded wallet password from AWS Secrets Manager`);
+  } catch (error) {
+    logger.error('❌ Failed to load wallet password from AWS Secrets Manager:', error);
     throw error;
   }
 }

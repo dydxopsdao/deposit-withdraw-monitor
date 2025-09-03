@@ -21,3 +21,9 @@ variable "seed_phrases" {
   type        = map(string)
   sensitive   = true
 }
+
+variable "wallet_password" {
+  description = "Password for wallet setup and operations"
+  type        = string
+  sensitive   = true
+}
