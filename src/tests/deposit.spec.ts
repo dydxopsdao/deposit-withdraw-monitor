@@ -74,6 +74,7 @@ for (const route of depositRoutes) {
           wallet_type: route.wallet_type,
           wallet_alias: route.wallet_alias,
           wallet_address: route.wallet_address,
+          dydx_address: route.dydx_address,
           route_kind: route.route_kind as any, // regular|instant
           amount: String(route.amount),
           src_chain: route.src_chain,
