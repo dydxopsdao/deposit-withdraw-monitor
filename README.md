@@ -52,6 +52,8 @@ Shared constants live in `src/config/constants.ts` (paths, extension IDs, DAPP U
 | ---------------------------------------- | --------------------- | -------------------------------------------------------------- |
 | `DD_API_KEY`                             | env                   | Datadog HTTP intake key (optional locally).                    |
 | `DAPP_URL`                               | `config/constants.ts` | Defaults to `https://dydx.trade/portfolio/overview`.           |
+| `SEED_PHRASES_SECRET_ARN`                | env (ECS runtime)     | ARN of AWS Secrets Manager secret containing seed phrases.     |
+| `SEED_PHRASES_SECRET_NAME`               | env (ECS runtime)     | Name of AWS Secrets Manager secret containing seed phrases.    |
 
 ---
 

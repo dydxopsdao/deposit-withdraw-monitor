@@ -50,6 +50,14 @@ resource "aws_ecs_task_definition" "this" {
           name  = "AWS_TRACES_BUCKET_NAME"
           value = aws_s3_bucket.traces.bucket
         },
+        {
+          name  = "SEED_PHRASES_SECRET_ARN"
+          value = aws_secretsmanager_secret.seed_phrases.arn
+        },
+        {
+          name  = "SEED_PHRASES_SECRET_NAME"
+          value = aws_secretsmanager_secret.seed_phrases.name
+        },
       ]
       logConfiguration = {
         logDriver = "awslogs",
