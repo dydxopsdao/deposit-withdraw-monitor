@@ -15,3 +15,9 @@ variable "github_repo" {
   type        = string
   default     = "deposit-withdraw-monitor"
 }
+
+variable "seed_phrases" {
+  description = "Map of wallet names to their seed phrases"
+  type        = map(string)
+  sensitive   = true
+}

@@ -114,6 +114,30 @@ The following variables must be configured in GitHub repository settings (Settin
 
 *Note: The Terraform Cloud outputs can be found in the workspace's "Outputs" tab after a successful apply.*
 
+**Terraform Cloud Secret Variables:**
+The following sensitive variables must be configured in Terraform Cloud workspace (Variables tab → Terraform Variables):
+
+| Variable | Type | Format | Description |
+|----------|------|--------|-------------|
+| `seed_phrases` | `map(string)` | HCL | Map of environment variable names to seed phrases (as defined in routes.yaml) |
+
+**Example format for `seed_phrases` variable in Terraform Cloud:**
+
+Set the variable type to "HCL" and use the following format:
+
+```hcl
+{
+  "SEED_PHRASE_METAMASK_ETHEREUM_USDC_WITHDRAWAL" = "word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11 word12"
+  "SEED_PHRASE_DYDX_ETHEREUM_USDC_WITHDRAWAL" = "word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11 word12"
+  # ... include all seed phrase keys from routes.yaml
+}
+```
+
+⚠️ **Important**: 
+- Mark this variable as "Sensitive" in Terraform Cloud
+- The variable will be stored in AWS Secrets Manager as a JSON object accessible by the ECS tasks
+- Each wallet type should have its corresponding seed phrase entry
+
 ## 🐳 Local Docker Testing
 
 To test the Docker container locally:
