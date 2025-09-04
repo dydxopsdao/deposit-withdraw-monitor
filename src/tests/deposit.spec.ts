@@ -13,6 +13,7 @@
 //   - rebalance result metric + log (with balances when provided)
 // Rebalance: never fails the test.
 
+import path from "path";
 import { test, expect } from "../fixtures";
 import { logger } from "../utils/logger/logging-utils";
 import { getRoutesSync, type Route, type WalletType } from "../utils/route/routes";
@@ -21,6 +22,11 @@ import { openApp, connectWallet, deposit, submitDeposit } from "../targets/dydx/
 import { dydxSelectors } from "../targets/dydx/selectors";
 import { TEST_TIMEOUTS } from "../config/timeouts";
 import { waitForFinality } from "../utils/finality/finality";
+import { uploadTraceToS3 } from "../utils/helpers/tracing";
+import { loadSecretsFromAWS } from "../utils/helpers/secrets.js";
+
+// ---- Load secrets from AWS Secrets Manager, if configured, overwriting corresponding process.env entries ----
+await loadSecretsFromAWS();
 
 // ---- Route discovery (sync so tests can be defined at import time) ----------
 const onlyRouteId = process.env.ROUTE_ID?.trim();
@@ -42,6 +48,7 @@ if (depositRoutes.length === 0) {
 // ---- Per-route test definitions -------------------------------------------
 for (const route of depositRoutes) {
   const title = `deposit: ${route.id} — ${route.wallet_type} — ${route.src_chain}→${route.dst_chain} — $${route.amount} — ${route.token}`;
+  const timestamp = new Date().toISOString();
 
   // Create a describe block for each route to isolate the test.use() scope
   test.describe(`Route: ${route.id}`, () => {
@@ -52,8 +59,14 @@ for (const route of depositRoutes) {
       testInfo.setTimeout(TEST_TIMEOUTS.TEST);
     });
     
-    test(title, async ({ page, context }) => {
-
+    test(title, async ({ page, context }, testInfo) => {
+      // Start tracing
+      logger.info("Starting tracing", { route_id: route.id });
+      await context.tracing.start({
+        screenshots: true,
+        snapshots: true,
+        sources: true,
+      });
       // Datadog context (keeps tags consistent, sends metrics/logs)
       const dd = createTelemetryContext({
         route: {
@@ -62,6 +75,7 @@ for (const route of depositRoutes) {
           wallet_type: route.wallet_type,
           wallet_alias: route.wallet_alias,
           wallet_address: route.wallet_address,
+          dydx_address: route.dydx_address,
           route_kind: route.route_kind as any, // regular|instant
           amount: String(route.amount),
           src_chain: route.src_chain,
@@ -81,6 +95,7 @@ for (const route of depositRoutes) {
         wallet_type: route.wallet_type,
         wallet_alias: route.wallet_alias,
         wallet_address: route.wallet_address,
+        dydx_address: route.dydx_address,
         route_kind: route.route_kind,
         amount: route.amount,
         src_chain: route.src_chain,
@@ -155,18 +170,28 @@ for (const route of depositRoutes) {
             const balancesBefore = (result as any)?.balancesBefore;
             const balancesAfter  = (result as any)?.balancesAfter;
 
-            await dd.rebalanceResult({
-              passed: true,
-              balancesBefore,
-              balancesAfter,
-            });
-          } catch (e: any) {
-            logger.warning("Rebalance failed", { route_id: route.id, error: { message: e?.message } });
-            // Datadog: rebalance failure metric + error log
-            await dd.rebalanceResult({ passed: false, error: e });
-            // swallow — do not rethrow
-          }
-        });
+              await dd.rebalanceResult({
+                passed: true,
+                balancesBefore,
+                balancesAfter,
+              });
+            } catch (e: any) {
+              logger.warning("Rebalance failed", { route_id: route.id, error: { message: e?.message } });
+              // Datadog: rebalance failure metric + error log
+              await dd.rebalanceResult({ passed: false, error: e });
+              // swallow — do not rethrow
+            }
+          });
+  
+        // Stop tracing and process the trace file
+        try {
+          logger.info("Stopping tracing", { route_id: route.id });
+          const tracePath = path.join(testInfo.outputDir, `trace-${route.id}-${timestamp}/trace.zip`);
+          await context.tracing.stop({ path: tracePath });
+          await uploadTraceToS3(tracePath, route.id, timestamp);
+        } catch (e: any) {
+          logger.error("Trace file processing failed", e?.message, { route_id: route.id });
+        }
       }
     });
   });

@@ -50,5 +50,6 @@ export const metamaskSelectors = {
   unlock: {
     pw:              '[data-testid="unlock-password"]',
     pwSubmit:        '[data-testid="unlock-submit"]',
+    downloadAppContinue:      '[data-testid="download-app-continue"]',
   },
 } as const;

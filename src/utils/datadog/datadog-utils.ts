@@ -47,6 +47,7 @@ export interface RouteSummary {
   wallet_type: WalletType;
   wallet_alias?: string;
   wallet_address: string;
+  dydx_address: string;
   route_kind?: "regular" | "instant";
   amount: string;
   src_chain: string;

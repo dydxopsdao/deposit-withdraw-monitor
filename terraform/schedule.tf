@@ -24,7 +24,7 @@ resource "aws_cloudwatch_log_group" "this" {
 resource "aws_ecs_task_definition" "this" {
   for_each = { for test in local.test_definitions : test.id => test }
 
-  family                   = "test-${each.value.id}"
+  family                   = each.value.id
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
   cpu                      = "256"
@@ -41,6 +41,38 @@ resource "aws_ecs_task_definition" "this" {
         {
           name  = "ROUTE_ID"
           value = each.value.id
+        },
+        {
+          name  = "AWS_REGION"
+          value = data.aws_region.current.id
+        },
+        {
+          name  = "AWS_TRACES_BUCKET_NAME"
+          value = aws_s3_bucket.traces.bucket
+        },
+        {
+          name  = "DD_SERVICE"
+          value = var.datadog_service
+        },
+        {
+          name  = "DD_SITE"
+          value = var.datadog_site
+        },
+        {
+          name  = "DD_SOURCE"
+          value = var.datadog_source
+        },        
+        {
+          name  = "SEED_PHRASES_SECRET_ARN"
+          value = aws_secretsmanager_secret.secrets["seed_phrases"].arn
+        },
+        {
+          name  = "WALLET_PASSWORD_SECRET_ARN"
+          value = aws_secretsmanager_secret.secrets["wallet_password"].arn
+        },
+        {
+          name  = "DATADOG_API_KEY_SECRET_ARN"
+          value = aws_secretsmanager_secret.secrets["datadog_api_key"].arn
         },
       ]
       logConfiguration = {
@@ -68,7 +100,7 @@ resource "aws_cloudwatch_event_target" "run_tasks" {
   for_each = { for test in local.test_definitions : test.id => test }
 
   rule      = aws_cloudwatch_event_rule.test_schedules[each.key].name
-  target_id = "test-${each.value.id}-fargate-task"
+  target_id = each.value.id
   arn       = aws_ecs_cluster.this.arn
   role_arn  = aws_iam_role.events_invoke_ecs.arn
 

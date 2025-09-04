@@ -9,16 +9,19 @@ A synthetic E2E test harness for dYdX deposits/withdrawals using **MetaMask** an
 
 ## Contents
 
-* [Quick start](#quick-start)
-* [Configuration](#configuration)
-* [Routes: how tests are generated](#routes-how-tests-are-generated)
-* [Running tests](#running-tests)
-* [Docker](#docker)
-* [AWS (EventBridge → ECS Fargate) — IaC](#aws-eventbridge--ecs-fargate--iac)
-* [Project structure](#project-structure)
-* [Telemetry (Datadog)](#telemetry-datadog)
-* [Troubleshooting](#troubleshooting)
-* [Contributing](#contributing)
+- [Deposit–Withdraw Monitor](#depositwithdraw-monitor)
+  - [Contents](#contents)
+  - [Quick start](#quick-start)
+    - [Run a single test by route id (YAML mode)](#run-a-single-test-by-route-id-yaml-mode)
+    - [Run by wallet (YAML mode)](#run-by-wallet-yaml-mode)
+  - [📦 Deployment](#-deployment)
+  - [🐳 Local Docker Testing](#-local-docker-testing)
+  - [Docker \[WIP\]](#docker-wip)
+  - [Running locally with traces written to S3](#running-locally-with-traces-written-to-s3)
+  - [AWS (EventBridge → ECS Fargate) — IaC \[WIP\]](#aws-eventbridge--ecs-fargate--iac-wip)
+  - [Project structure](#project-structure)
+  - [Telemetry (Datadog) \[WIP\]](#telemetry-datadog-wip)
+  - [Troubleshooting \[WIP\]](#troubleshooting-wip)
 
 ---
 
@@ -48,8 +51,15 @@ Shared constants live in `src/config/constants.ts` (paths, extension IDs, DAPP U
 
 | Variable                                 | Where                 | Purpose                                                        |
 | ---------------------------------------- | --------------------- | -------------------------------------------------------------- |
-| `DD_API_KEY`                             | env                   | Datadog HTTP intake key (optional locally).                    |
+| `DD_API_KEY`                             | env                   | Datadog HTTP intake key (optional locally, overridden by AWS Secrets Manager).                    |
+| `DD_SERVICE`                             | env                   | Datadog service name for tagging.                              |
+| `DD_SITE`                                | env                   | Datadog site (e.g., datadoghq.com, datadoghq.eu).             |
+| `DD_SOURCE`                              | env                   | Datadog source name for logs.                                  |
+| `WALLET_PASSWORD`                        | env                   | Wallet password for wallet setup and operations (overridden by AWS Secrets Manager).               |
 | `DAPP_URL`                               | `config/constants.ts` | Defaults to `https://dydx.trade/portfolio/overview`.           |
+| `SEED_PHRASES_SECRET_ARN`                | env (ECS runtime)     | ARN of AWS Secrets Manager secret containing seed phrases.     |
+| `WALLET_PASSWORD_SECRET_ARN`             | env (ECS runtime)     | ARN of AWS Secrets Manager secret containing wallet password.  |
+| `DATADOG_API_KEY_SECRET_ARN`             | env (ECS runtime)     | ARN of AWS Secrets Manager secret containing Datadog API key. |
 
 ---
 
@@ -112,6 +122,48 @@ The following variables must be configured in GitHub repository settings (Settin
 
 *Note: The Terraform Cloud outputs can be found in the workspace's "Outputs" tab after a successful apply.*
 
+**Available Terraform Cloud Outputs:**
+The following outputs are available after infrastructure deployment:
+
+| Output | Description | Usage |
+|--------|-------------|-------|
+| `aws_ecr_repository_url` | ECR repository URL for Docker images | GitHub Actions CI/CD |
+| `aws_github_actions_role_arn` | IAM role ARN for GitHub Actions | GitHub Actions authentication |
+| `seed_phrases_secret_arn` | ARN of seed phrases secret in AWS Secrets Manager | Application runtime configuration |
+| `wallet_password_secret_arn` | ARN of wallet password secret in AWS Secrets Manager | Application runtime configuration |
+| `datadog_api_key_secret_arn` | ARN of Datadog API key secret in AWS Secrets Manager | Application runtime configuration |
+| `traces_bucket_name` | S3 bucket name for storing test traces | Local development with AWS |
+
+**Terraform Cloud Secret Variables:**
+The following sensitive variables must be configured in Terraform Cloud workspace (Variables tab → Terraform Variables):
+
+| Variable | Type | Format | Description |
+|----------|------|--------|-------------|
+| `seed_phrases` | `map(string)` | HCL | Map of environment variable names to seed phrases (as defined in routes.yaml) |
+| `wallet_password` | `string` | HCL | Password used for wallet setup and operations |
+| `datadog_api_key` | `string` | HCL | Datadog API key for data collection |
+| `datadog_service` | `string` | HCL | Datadog service name for tagging (default: "dos-synth") |
+| `datadog_site` | `string` | HCL | Datadog site (default: "ap1.datadoghq.com") |
+| `datadog_source` | `string` | HCL | Datadog source name for logs (default: "playwright") |
+
+**Example format for `seed_phrases` variable in Terraform Cloud:**
+
+Set the variable type to "HCL" and use the following format:
+
+```hcl
+{
+  "SEED_PHRASE_METAMASK_ETHEREUM_USDC_WITHDRAWAL" = "word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11 word12"
+  "SEED_PHRASE_DYDX_ETHEREUM_USDC_WITHDRAWAL" = "word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11 word12"
+  # ... include all seed phrase keys from routes.yaml
+}
+```
+
+⚠️ **Important**: 
+- Mark the sensitive variables (`seed_phrases`, `wallet_password`, `datadog_api_key`) as "Sensitive" in Terraform Cloud
+- The `seed_phrases` variable will be stored in AWS Secrets Manager as a JSON object accessible by the ECS tasks. Each wallet type should have its corresponding seed phrase entry
+- The `wallet_password` and `datadog_api_key` variables will be stored in AWS Secrets Manager as strings accessible by the ECS tasks
+- The `datadog_service`, `datadog_site`, and `datadog_source` variables are passed as regular environment variables to the ECS tasks
+
 ## 🐳 Local Docker Testing
 
 To test the Docker container locally:
@@ -142,6 +194,37 @@ Use a **single** image (official Playwright base) that contains browsers + both 
 * Extensions require **headful** Chromium; the Playwright base image uses Xvfb so headful is OK in CI.
 
 ---
+
+## Running locally with traces written to S3
+
+* In ~/.aws/config you should have the following entries:
+
+  ```
+  [sso-session dydxopsdao]
+  sso_start_url = https://dydxopsservices.awsapps.com/start/
+  sso_region = ap-northeast-1
+  sso_registration_scopes = sso:account:access
+
+  [profile deposit-withdraw-monitor]
+  sso_session = dydxopsdao
+  sso_account_id = 987747149454
+  sso_role_name = Administrator
+  ```
+
+* Log in to AWS for CLI:
+
+  ```
+  aws sso login --sso-session dydxopsdao
+  ```
+
+* Run tests with the required env vars, e.g.:
+
+  ```
+  AWS_PROFILE=deposit-withdraw-monitor \
+  AWS_REGION=ap-northeast-1 \
+  AWS_TRACES_BUCKET_NAME=dydxopsdao-deposit-withdraw-monitor-traces \
+  npx playwright test src/tests/ --reporter=line -g metamask-ethereum-usdc-deposit-regular
+  ```
 
 ## AWS (EventBridge → ECS Fargate) — IaC [WIP]
 
