@@ -19,8 +19,8 @@ console.log(`> Loaded environment from ${envFile}`);
 export default defineConfig({
   testDir: "./src/tests",
 
-  // NOTE: Some global configuration steps can be done in a Global Setup file
-  //globalSetup: "./global-setup.ts",
+  // Initialize resources required for all tests
+  globalSetup: "./global-setup.ts",
 
   /* Run tests in files in parallel */
   fullyParallel: true,

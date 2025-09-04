@@ -22,10 +22,6 @@ import { openApp, connectWallet } from "../targets/dydx/flows";
 import { dydxSelectors } from "../targets/dydx/selectors";
 import { TEST_TIMEOUTS } from "../config/timeouts";
 import { uploadTraceToS3 } from "../utils/helpers/tracing";
-import { loadSecretsFromAWS } from "../utils/helpers/secrets.js";
-
-// ---- Load secrets from AWS Secrets Manager, if configured, overwriting corresponding process.env entries ----
-await loadSecretsFromAWS();
 
 // ---- Route discovery (sync so tests can be defined at import time) ----------
 const onlyRouteId = process.env.ROUTE_ID?.trim();
