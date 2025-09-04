@@ -60,5 +60,9 @@ ENV FORCE_COLOR=0
 #ENV DEBUG=pw:api
 
 # Set the entrypoint to run tests in non-interactive mode with xvfb
-CMD ["bash","-lc","exec xvfb-run -a --server-args='-screen 0 1280x720x24 -ac +extension GLX +render -noreset' stdbuf -oL -eL npx playwright test --reporter=line"]
+CMD ["sh","-lc",
+  "Xvfb :99 -screen 0 1280x720x24 -ac +extension GLX +render -noreset & \
+   exec stdbuf -oL -eL npx playwright test --reporter=line"
+]
+
 
