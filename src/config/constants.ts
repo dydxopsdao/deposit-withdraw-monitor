@@ -14,3 +14,11 @@ export const METAMASK_EXT_PATH = path.resolve(
   "extensions/metamask"
 );
 export const METAMASK_EXT_ID = "nkbihfbeogaeaoehlefnkodbefgpgknn";
+
+export const SKIP_API_URL = 'https://api.skip.money';
+export const INDEXER_API_URL = 'https://indexer.dydx.trade';
+
+// USDC has a assetId of 0 on the dYdX Chain
+export const USDC_ASSET_ID = 0;
+// Type URL for the MsgWithdrawFromSubaccount message
+export const TYPE_URL_MSG_WITHDRAW_FROM_SUBACCOUNT = '/dydxprotocol.sending.MsgWithdrawFromSubaccount';

@@ -23,13 +23,18 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.879.0",
     "@aws-sdk/client-secrets-manager": "^3.879.0",
+    "@cosmjs/proto-signing": "^0.36.0",
+    "@dydxprotocol/v4-proto": "^9.0.0",
     "@playwright/test": "^1.54.2",
+    "@skip-go/client": "^1.5.4",
     "@types/js-yaml": "^4.0.9",
     "chrome-extension-fetch": "^1.0.0",
     "dotenv": "^16.5.0",
     "js-yaml": "^4.1.0",
     "jszip": "^3.10.1",
+    "protobufjs": "^7.5.4",
     "unzipper": "^0.10.14",
+    "viem": "^2.37.3",
     "yaml": "^2.8.1"
   },
   "devDependencies": {
