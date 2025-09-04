@@ -17,7 +17,7 @@ routes:
     src_chain: dydx
     dst_chain: ethereum
     cadence_min: 30
-    enabled: true
+    enabled: false
 
   - id: metamask-polygon-usdc-withdrawal
     kind: withdraw
@@ -32,7 +32,7 @@ routes:
     src_chain: dydx
     dst_chain: polygon
     cadence_min: 30
-    enabled: true
+    enabled: false
 
   - id: metamask-arbitrum-usdc-withdrawal
     kind: withdraw
@@ -47,7 +47,7 @@ routes:
     src_chain: dydx
     dst_chain: arbitrum
     cadence_min: 30
-    enabled: true
+    enabled: false
 
   - id: metamask-base-usdc-withdrawal
     kind: withdraw
@@ -62,7 +62,7 @@ routes:
     src_chain: dydx
     dst_chain: base
     cadence_min: 30
-    enabled: true
+    enabled: false
 
   - id: phantom-solana-usdc-withdrawal
     kind: withdraw
@@ -77,7 +77,7 @@ routes:
     src_chain: dydx
     dst_chain: solana
     cadence_min: 30
-    enabled: true
+    enabled: false
 
   # ---------------------------
   # DEPOSITS – $10 REGULAR
@@ -96,7 +96,7 @@ routes:
     src_chain: ethereum
     dst_chain: dydx
     cadence_min: 30
-    enabled: true
+    enabled: false
 
   - id: metamask-arbitrum-usdc-deposit-regular
     kind: deposit
@@ -112,7 +112,7 @@ routes:
     src_chain: arbitrum
     dst_chain: dydx
     cadence_min: 30
-    enabled: true
+    enabled: false
 
   - id: metamask-base-usdc-deposit-regular
     kind: deposit
@@ -128,7 +128,7 @@ routes:
     src_chain: base
     dst_chain: dydx
     cadence_min: 30
-    enabled: true
+    enabled: false
 
   - id: metamask-polygon-usdc-deposit-regular
     kind: deposit
@@ -160,7 +160,7 @@ routes:
     src_chain: solana
     dst_chain: dydx
     cadence_min: 30
-    enabled: true
+    enabled: false
 
   # ---------------------------
   # INSTANT DEPOSITS – $101
@@ -179,7 +179,7 @@ routes:
     src_chain: ethereum
     dst_chain: dydx
     cadence_min: 30
-    enabled: true
+    enabled: false
 
   - id: metamask-arbitrum-usdc-deposit-instant
     kind: deposit
@@ -195,7 +195,7 @@ routes:
     src_chain: arbitrum
     dst_chain: dydx
     cadence_min: 30
-    enabled: true
+    enabled: false
 
   - id: metamask-base-usdc-deposit-instant
     kind: deposit
@@ -211,7 +211,7 @@ routes:
     src_chain: base
     dst_chain: dydx
     cadence_min: 30
-    enabled: true
+    enabled: false
 
   - id: metamask-polygon-usdc-deposit-instant
     kind: deposit
@@ -227,4 +227,4 @@ routes:
     src_chain: polygon
     dst_chain: dydx
     cadence_min: 30
-    enabled: true
+    enabled: false
