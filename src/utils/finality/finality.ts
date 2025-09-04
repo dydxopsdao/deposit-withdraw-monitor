@@ -9,7 +9,7 @@ const DEFAULT_FINALITY_TIMEOUT =
   (TEST_TIMEOUTS as any)?.FINALITY ??
   (TEST_TIMEOUTS as any)?.NETWORK ??
   (TEST_TIMEOUTS as any)?.TEST ??
-  5 * 60_000; // fallback 5m
+  10 * 60_000; // fallback 10m
 
 export async function waitForFinality(
   page: Page,
@@ -35,11 +35,18 @@ export async function waitForFinality(
 
     // Completed?
     if (await completed.isVisible().catch(() => false)) {
-      const explorerUrl = (await explorerLink.getAttribute("href").catch(() => null)) ?? undefined;
-      const txHash =
-        explorerUrl?.match(/\/tx\/(0x[a-fA-F0-9]{64})/)?.[1] ??
-        undefined;
-      return { ok: true, explorerUrl, txHash };
+        // Move explorerUrl and txHash declarations outside try-catch to ensure scope
+        let explorerUrl: string | undefined = undefined;
+        let txHash: string | undefined = undefined;
+        try {
+          explorerUrl = (await explorerLink.getAttribute("href").catch(() => null)) ?? undefined;
+          txHash =
+            explorerUrl?.match(/\/tx\/(0x[a-fA-F0-9]{64})/)?.[1] ??
+            undefined;
+        } catch (error) {
+        }
+      
+        return { ok: true, explorerUrl, txHash };
     }
 
     // Still “in progress”? keep polling

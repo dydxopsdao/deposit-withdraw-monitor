@@ -45,9 +45,14 @@ export const dydxSelectors = {
     return container.locator("button:enabled").first();
   }) as Selector,
 
-  tokenPickerRow: ((p: Page, token: string, src_chain: string) =>
-    p.getByRole('button', { name: `${token} ${src_chain}`})
-  ) as Selector,
+  // All candidate rows that contain BOTH the token and chain text
+  tokenPickerCandidates: ((p: Page, token: string, chain: string) => {
+    return p.getByRole("button")
+      .filter({ hasText: token })   // substring match (no regex)
+      .filter({ hasText: chain });  // substring match (no regex)
+  }) as Selector,
+
+  
 
 
   depositInProgress: (p) =>

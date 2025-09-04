@@ -104,9 +104,8 @@ for (const route of depositRoutes) {
           });
 
           await test.step(`Connect wallet (${route.wallet_type})`, async () => {
-            await connectWallet(page, context, route.wallet_type); 
+            await connectWallet(page, context, route.wallet_type);
           });
-
           await test.step("Deposit", async () => {
             await deposit(page, context, route.amount, route.src_chain, route.token);
           });
@@ -135,7 +134,8 @@ for (const route of depositRoutes) {
             passed = true;
           });
           logger.success("Deposit flow complete", { route_id: route.id, txHash, explorerUrl });
-          
+          //TODO close browser
+          await page.close();
           // Datadog: success metric (no success log needed)
           await dd.routeResult({ passed: true, txHash, explorerUrl });
         } catch (e: any) {

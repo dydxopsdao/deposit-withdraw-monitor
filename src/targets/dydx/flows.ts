@@ -9,6 +9,7 @@ import { TEST_TIMEOUTS } from "../../config/timeouts";
 import { handleMetamaskPopup as handleMetamaskPopup } from "../wallets/metamask/flows";
 import { handlePhantomPopup as handlePhantomPopup } from "../wallets/phantom/flows";
 import { dydxSelectors } from "./selectors";
+import { log } from "console";
 
 //#region openApp
 /**
@@ -330,28 +331,61 @@ export async function deposit(
   token: string      // e.g. "USDC"
 ) {
   logger.step(`Depositing ${amount} ${token} from ${src_chain}`);
-
   // Open the deposit dialog
+  
   await clickAnyDeposit(page);
-  await expect(dydxSelectors.depositDialog(page)).toBeVisible({ timeout: T });
-
+  await expect(dydxSelectors.depositDialog(page)).toBeVisible({ timeout: TEST_TIMEOUTS.DEFAULT });
+  logger.info("Deposit dialog opened");
   // Pick the right token+chain 
   await selectToken(page, token, src_chain);
-
+  logger.info("Token selected");
   // Enter amount
   await enterAmount(page, amount);
+  logger.info("Amount entered");
 }
 
-/** Click the token chip → pick "token on chain" */
-export async function selectToken(page: Page, token: string, src_chain: string) {
-  // open picker via the *pill* (not the X)
+export async function selectToken(page: Page, token: string, chain: string) {
+  //TODO wrap in a try catch retry
+  // Open the picker
   const pill = dydxSelectors.tokenPillButton(page);
   await expect(pill).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
   await pill.click();
+  const picker = dydxSelectors.tokenPickerDialog(page);
+  await expect(picker).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
 
-  const row = dydxSelectors.tokenPickerRow(page, token, src_chain);
-  await expect(row).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
-  await row.click();
+  // Find candidates that contain both pieces of text
+  const candidates = dydxSelectors.tokenPickerCandidates(page, token, chain);
+
+  // Wait up to 5s for at least one match
+  await expect(candidates.first()).toBeVisible({ timeout: 5_000 });
+
+  // For up to 5s, if a second appears, prefer it
+  let target = candidates.first();
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline) {
+    if ((await candidates.count()) >= 2) {
+      target = candidates.nth(1);
+      break;
+    }
+    await page.waitForTimeout(100);
+  }
+
+  // Make sure we can click it
+  await target.evaluate(el => el.scrollIntoView({ block: "center" })).catch(() => {});
+  await expect(target).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
+  await expect(target).toBeEnabled({ timeout: TEST_TIMEOUTS.ELEMENT });
+
+  // Click with a safe fallback if something overlays briefly
+  try {
+    await target.click({ timeout: TEST_TIMEOUTS.ELEMENT });
+  } catch {
+    const box = await target.boundingBox();
+    if (box) {
+      await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    } else {
+      await target.click({ force: true });
+    }
+  }
 }
 
 /** Fill the Amount input and blur to trigger validation */
@@ -364,6 +398,12 @@ async function enterAmount(page: Page, amount: string) {
 }
 
 export async function clickAnyDeposit(page: Page) {
+  try {
+    await expect(dydxSelectors.depositDialog(page)).toBeVisible({ timeout: TEST_TIMEOUTS.DEFAULT });
+    return; // already open
+  } catch {
+    /* not open yet → continue */
+  }
   const btns = dydxSelectors.depositButtons(page);
   const n = await btns.count();
 
@@ -398,7 +438,9 @@ export async function submitDeposit(page: Page, context: BrowserContext, wallet:
 
   // Confirm the transaction
   // TODO handle alert for network costs
-  await handleWalletPopup(context, wallet);
+    //Here just to approve spending cap
+    await handleWalletPopup(context, wallet);
+
 
 }
 //#endregion
