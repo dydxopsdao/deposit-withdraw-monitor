@@ -231,9 +231,6 @@ export async function connectWallet(
   logger.info("Confirming request");
   await handleWalletPopup(context, wallet);
 
-  // 7.1) Confirm the request
-  logger.info("Confirming request");
-  await handleWalletPopup(context, wallet);
 
   // 8) Assert the dApp now shows a connected state
   const acctBtn = dydxSelectors
