@@ -60,6 +60,6 @@ export const dydxSelectors = {
   depositCompleted: (p) =>
     dydxSelectors.depositDialog(p).getByText(/deposit completed/i),
   depositTxLink: (p) =>
-    dydxSelectors.depositDialog(p).locator('a[href*="/tx/0x"]').first(),
+    dydxSelectors.depositDialog(p).locator('a[href*="/tx/"]').first(),
 
 };

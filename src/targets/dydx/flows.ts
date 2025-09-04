@@ -211,10 +211,9 @@ export async function connectWallet(
     logger.info("Wallet appears already connected (account menu visible)");
     return page;
   }
-
   // 2) Open the wallet picker if needed
   await openWalletPicker(page);
-
+  
   // 3) Choose provider and trigger the request from within the dApp
   logger.info("Choose provider");
   await chooseProvider(page, dydxSelectors.chooseProviderBtn(page, wallet), wallet);
@@ -231,6 +230,10 @@ export async function connectWallet(
   logger.info("Confirming request");
   await handleWalletPopup(context, wallet);
 
+  // 7.1 ) Second Confirm for Phantom
+  if (wallet === "phantom") {
+  await handleWalletPopup(context, wallet);
+  }
 
   // 8) Assert the dApp now shows a connected state
   const acctBtn = dydxSelectors
@@ -325,7 +328,8 @@ export async function deposit(
   _context: BrowserContext,
   amount: string,
   src_chain: string, // e.g. "polygon"
-  token: string      // e.g. "USDC"
+  token: string,      // e.g. "USDC"
+  wallet: WalletType
 ) {
   logger.step(`Depositing ${amount} ${token} from ${src_chain}`);
   // Open the deposit dialog
@@ -334,8 +338,11 @@ export async function deposit(
   await expect(dydxSelectors.depositDialog(page)).toBeVisible({ timeout: TEST_TIMEOUTS.DEFAULT });
   logger.info("Deposit dialog opened");
   // Pick the right token+chain 
-  await selectToken(page, token, src_chain);
-  logger.info("Token selected");
+  if (wallet === "metamask") {
+    await selectToken(page, token, src_chain);
+    logger.info("Token selected");
+  }
+
   // Enter amount
   await enterAmount(page, amount);
   logger.info("Amount entered");
@@ -345,6 +352,7 @@ export async function selectToken(page: Page, token: string, chain: string) {
   //TODO wrap in a try catch retry
   // Open the picker
   const pill = dydxSelectors.tokenPillButton(page);
+  console.log("pill", pill);
   await expect(pill).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
   await pill.click();
   const picker = dydxSelectors.tokenPickerDialog(page);

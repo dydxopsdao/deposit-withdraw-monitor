@@ -39,12 +39,19 @@ export async function waitForFinality(
         let explorerUrl: string | undefined = undefined;
         let txHash: string | undefined = undefined;
         try {
-          explorerUrl = (await explorerLink.getAttribute("href").catch(() => null)) ?? undefined;
-          txHash =
-            explorerUrl?.match(/\/tx\/(0x[a-fA-F0-9]{64})/)?.[1] ??
-            undefined;
-        } catch (error) {
-        }
+            const href = await explorerLink.getAttribute('href', { timeout: TEST_TIMEOUTS.DEFAULT });
+            if (href) {
+              explorerUrl = href;
+        
+              // Try EVM first, then Solana (base58-ish)
+              txHash =
+                href.match(/\/tx\/(0x[a-fA-F0-9]{64})/i)?.[1] ??               // EVM
+                href.match(/\/tx\/([1-9A-HJ-NP-Za-km-z]{32,})/)?.[1] ??        // Solana
+                undefined;
+            }
+          } catch {
+            // link is optional; ignore failures
+          }
       
         return { ok: true, explorerUrl, txHash };
     }
