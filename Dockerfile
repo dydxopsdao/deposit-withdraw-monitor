@@ -63,7 +63,4 @@ ENV FORCE_COLOR=0
 
 # Set the entrypoint to run tests in non-interactive mode with xvfb
 CMD ["sh", "-c", \
-  "echo 'Starting Xvfb' && \
-  Xvfb :99 -screen 0 1280x720x24 -ac +extension GLX +render -noreset & \
-  echo 'Running tests' && \
-  exec timeout 30m stdbuf -oL -eL npx playwright test --reporter=line 2>&1"]
+  "xvfb-run --auto-servernum --server-args='-screen 0 1920x1080x24 npx playwright test --workers=1 --reporter=html 2>&1"]
