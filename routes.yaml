@@ -165,7 +165,7 @@ routes:
     src_chain: solana
     dst_chain: dydx
     cadence_min: 30
-    enabled: true
+    enabled: false
 
   # ---------------------------
   # INSTANT DEPOSITS – $101
