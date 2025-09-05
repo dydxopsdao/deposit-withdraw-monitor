@@ -182,9 +182,14 @@ export async function getMetamaskId(ctx: BrowserContext, timeoutMs = 15000): Pro
 }
 
 export async function openMetamaskPage(ctx: BrowserContext, hashPath: string, waitUntil: "load" | "domcontentloaded" = "load"): Promise<Page> {
+  logger.debug(`Opening MetaMask page: ${hashPath}`);
   const id = await getMetamaskId(ctx);
+  logger.debug(`MetaMask ID: ${id}`);
   const url = `chrome-extension://${id}/home.html#${hashPath}`;
+  logger.debug(`MetaMask URL: ${url}`);
   const page = await ctx.newPage();
+  logger.debug(`MetaMask page: ${page.url()}`);
   await page.goto(url, { waitUntil });
+  logger.debug(`MetaMask page loaded: ${page.url()}`);
   return page;
 }
