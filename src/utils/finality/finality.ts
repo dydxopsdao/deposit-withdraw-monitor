@@ -14,12 +14,13 @@ const DEFAULT_FINALITY_TIMEOUT =
 export async function waitForFinality(
   page: Page,
   timeoutMs = DEFAULT_FINALITY_TIMEOUT,
-  pollMs = 1500
+  pollMs = 1500,
+  graceMs = 500
 ): Promise<FinalityResult> {
   const dlg = dydxSelectors.depositDialog(page);
 
   // Make sure the dialog is open
-  await expect(dlg).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT ?? 30_000 });
+  await expect(dlg).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
 
   const end = Date.now() + timeoutMs;
 
@@ -63,7 +64,7 @@ export async function waitForFinality(
     }
 
     // Neither in-progress nor completed: small grace wait then re-check
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(graceMs);
   }
 
   // Timed out or dialog closed without completion

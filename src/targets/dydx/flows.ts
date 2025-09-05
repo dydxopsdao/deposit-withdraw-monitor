@@ -9,7 +9,6 @@ import { TEST_TIMEOUTS } from "../../config/timeouts";
 import { handleMetamaskPopup as handleMetamaskPopup } from "../wallets/metamask/flows";
 import { handlePhantomPopup as handlePhantomPopup } from "../wallets/phantom/flows";
 import { dydxSelectors } from "./selectors";
-import { log } from "console";
 
 //#region openApp
 /**

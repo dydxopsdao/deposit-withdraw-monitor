@@ -5,7 +5,6 @@ import type { WalletType } from "../../utils/route/routes";
 type Selector = (p: Page, ...args: any[]) => Locator;
 
 const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-const re  = (s: string) => new RegExp(`\\b${esc(s)}\\b`, "i");
 const DYDX_ADDRESS_RE = /dydx1[a-z0-9]+(?:\u2026|\.\.\.)[a-z0-9]+/i;
 
 export const dydxSelectors = {
@@ -13,7 +12,7 @@ export const dydxSelectors = {
   connectWalletBtn: ((p) => p.getByRole("button", { name: /connect wallet/i })) as Selector,
   walletPickerDialog: ((p) => p.getByRole("dialog", { name: /connect (your )?wallet/i })) as Selector,
   accountMenuButton: ((p) =>
-    p.getByRole("button", { name: new RegExp(`^(?:MetaMask|Phantom)?\\s*${DYDX_ADDRESS_RE.source}`, "i") })
+    p.getByRole("button", { name: new RegExp(`^(?:MetaMask)?\\s*${DYDX_ADDRESS_RE.source}`, "i") })
   ) as Selector,
   accountMenuButtonLoose: ((p) => p.getByRole("button", { name: DYDX_ADDRESS_RE })) as Selector,
   chooseProviderBtn: ((p, wallet: WalletType) => {
