@@ -56,7 +56,13 @@ export async function setupWallet(context: BrowserContext, seedPhrase: string) {
   logger.step("Setting up MetaMask wallet");
 
   // deterministically open the UI (don’t wait for it to appear)
-  const onboarding = await openMetamaskPage(context, "onboarding/welcome");
+  const onboarding = await openMetamaskPage(context, "onboarding/welcome", {
+    waitUntil: "domcontentloaded",
+    navTimeoutMs: 20_000,
+    retries: 2,
+    retryDelayMs: 800,
+    verifySelector: s.onboarding.start,  // first actionable element
+  });
   logger.debug(`MetaMask onboarding page: ${onboarding.url()}`);
 
   // Welcome and Terms of Service
@@ -181,15 +187,67 @@ export async function getMetamaskId(ctx: BrowserContext, timeoutMs = 15000): Pro
   return id;
 }
 
-export async function openMetamaskPage(ctx: BrowserContext, hashPath: string, waitUntil: "load" | "domcontentloaded" = "load"): Promise<Page> {
+type OpenOpts = {
+  waitUntil?: "load" | "domcontentloaded";
+  navTimeoutMs?: number;
+  retries?: number;          // extra tries after the first attempt
+  retryDelayMs?: number;
+  verifySelector?: string;   // e.g. s.onboarding.start
+};
+
+export async function openMetamaskPage(
+  ctx: BrowserContext,
+  hashPath: string,
+  opts: OpenOpts = {}
+): Promise<Page> {
+  const {
+    waitUntil = "load",
+    navTimeoutMs = 15_000,
+    retries = 2,
+    retryDelayMs = 800,
+    verifySelector,
+  } = opts;
+
   logger.debug(`Opening MetaMask page: ${hashPath}`);
   const id = await getMetamaskId(ctx);
-  logger.debug(`MetaMask ID: ${id}`);
   const url = `chrome-extension://${id}/home.html#${hashPath}`;
-  logger.debug(`MetaMask URL: ${url}`);
-  const page = await ctx.newPage();
-  logger.debug(`MetaMask page: ${page.url()}`);
-  await page.goto(url, { waitUntil });
-  logger.debug(`MetaMask page loaded: ${page.url()}`);
-  return page;
+  logger.debug(`MetaMask ID: ${id} | URL: ${url}`);
+
+  // If a matching tab already exists, reuse it (and navigate if hash differs)
+  for (const p of ctx.pages()) {
+    const u = p.url();
+    if (u.startsWith(`chrome-extension://${id}/home.html`)) {
+      if (!u.includes(`#${hashPath}`)) {
+        logger.debug(`Reusing existing MM tab, navigating to hash: ${hashPath}`);
+        await p.goto(url, { waitUntil, timeout: navTimeoutMs });
+      } else {
+        logger.debug(`Reusing existing MM tab at desired hash`);
+      }
+      if (verifySelector) await p.waitForSelector(verifySelector, { timeout: navTimeoutMs }).catch(()=>{});
+      return p;
+    }
+  }
+
+  let lastErr: any;
+  for (let attempt = 1; attempt <= (retries + 1); attempt++) {
+    const page = await ctx.newPage();
+    try {
+      await page.goto(url, { waitUntil, timeout: navTimeoutMs });
+      logger.debug(`MetaMask page loaded (attempt ${attempt}): ${page.url()}`);
+      if (verifySelector) {
+        await page.waitForSelector(verifySelector, { timeout: navTimeoutMs });
+        logger.debug(`verifySelector present: ${verifySelector}`);
+      }
+      return page;
+    } catch (e: any) {
+      lastErr = e;
+      logger.warning(`openMetamaskPage attempt ${attempt} failed: ${e?.message ?? e}`);
+      try { await page.close(); } catch {}
+      if (attempt <= retries) {
+        await new Promise(r => setTimeout(r, retryDelayMs));
+        logger.debug(`Retrying in ${retryDelayMs}ms…`);
+      }
+    }
+  }
+  throw new Error(`Failed to open MetaMask page after ${retries + 1} attempts: ${lastErr?.message ?? lastErr}`);
 }
