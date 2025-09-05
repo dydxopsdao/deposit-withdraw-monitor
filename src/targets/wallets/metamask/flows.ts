@@ -18,7 +18,7 @@ export async function launchContextWithExtension(
   assertMetamaskSecrets();
 
   const context = await chromium.launchPersistentContext(userDataDir, {
-    headless,
+    headless: false,
     ignoreDefaultArgs: ["--enable-automation"],
     args: [
       `--disable-extensions-except=${METAMASK_EXT_PATH}`,

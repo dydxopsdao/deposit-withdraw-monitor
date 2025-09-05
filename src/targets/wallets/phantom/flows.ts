@@ -16,7 +16,7 @@ export async function launchContextWithExtension(
   assertPhantomSecrets();
 
   const context = await chromium.launchPersistentContext(userDataDir, {
-    headless,
+    headless: false,
     ignoreDefaultArgs: ['--enable-automation'],
     args: [
       '--disable-blink-features=AutomationControlled',
