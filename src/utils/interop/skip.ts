@@ -48,7 +48,7 @@ interface BalanceRequest {
 }
 
 // Define the Skip API balance response structure
-interface BalanceResponse {
+export interface BalanceResponse {
   chains: {
     [chainId: string]: {
       denoms: {
@@ -67,7 +67,7 @@ interface BalanceResponse {
  * @param chainIds - The IDs of the chains to get the balances for
  * @returns The balances for the wallet on the given chains
  */
-export async function getBalances(walletAddress: string, chainIds: string[]): Promise<BalanceResponse | null> {
+export async function getBalances(walletAddress: string, chainIds: string[]): Promise<BalanceResponse> {
   // Build the balance request with chain-specific denoms
   const balanceRequest: BalanceRequest = {
     chains: chainIds.reduce((acc, chainId) => {
@@ -93,13 +93,13 @@ export async function getBalances(walletAddress: string, chainIds: string[]): Pr
 }
 
 /**
- * Gets the skip routes for a given source and destination chain and amount
+ * Gets the skip routes for a given source and destination chain and USDC amount
  * @param sourceChainId - The source chain ID
  * @param destChainId - The destination chain ID
  * @param amount - The amount to route
  * @returns The skip routes
  */
-export async function getRoutesForUsdc(
+export async function getUsdcRoutes(
   sourceChainId: string,
   destChainId: string,
   amount: string

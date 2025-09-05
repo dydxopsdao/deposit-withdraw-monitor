@@ -14,17 +14,17 @@ export interface UsdcBalance {
 
 /**
  * Gets the USDC balance for a given address on a given chain
- * @param address - The address to get the balance for
+ * @param walletAddress - The address to get the balance for
  * @param chainId - The chain ID to get the balance for
  * @returns The USDC balance for the address on the given chain in USDC
  */
-export async function getUsdcBalance(address: string, chainId: string): Promise<UsdcBalance> {
+export async function getUsdcBalance(walletAddress: string, chainId: string): Promise<UsdcBalance> {
   const usdcDenom = CHAIN_CONFIGS[chainId]?.usdcDenom;
   if (!usdcDenom) {
     throw new Error(`No USDC denom found for chain ${chainId}`);
   }
 
-  const balances = await getBalances(address, [chainId]);
+  const balances = await getBalances(walletAddress, [chainId]);
 
   return {
     amount: balances?.chains[chainId]?.denoms[usdcDenom]?.amount as unknown as bigint,
@@ -35,11 +35,11 @@ export async function getUsdcBalance(address: string, chainId: string): Promise<
 
 /**
  * Gets the free collateral of a dYdX account
- * @param address - The address of the dYdX account
+ * @param dYdXAddress - The address of the dYdX account
  * @returns The free collateral of the dYdX account in USDC
  */
-export async function getdYdXFreeCollateral(address: string): Promise<UsdcBalance> {
-  const response = await fetch(`${INDEXER_API_URL}/v4/addresses/${address}`, {
+export async function getFreeCollateral(dYdXAddress: string): Promise<UsdcBalance> {
+  const response = await fetch(`${INDEXER_API_URL}/v4/addresses/${dYdXAddress}`, {
     headers: {
       'Content-Type': 'application/json',
     },

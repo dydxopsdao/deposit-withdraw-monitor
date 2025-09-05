@@ -5,41 +5,50 @@ import { logger } from '../logger/logging-utils';
 
 import { deriveCosmosAddress, getCosmosSigner } from '../helpers/cosmos';
 
-import { getdYdXFreeCollateral } from './balances';
-import { getRoutesForUsdc, UserAddress, executeRoute } from './skip';
+import { getFreeCollateral, UsdcBalance } from './balances';
+import { getUsdcRoutes, UserAddress, executeRoute } from './skip';
 
 /**
- * Withdraws all the dYdX balance from the given route so that it's rebalanced.
+ * Withdraws all the dYdX free collateral from the given route so that it's rebalanced.
  *
  * This function will:
- * - Get the dYdX balance
+ * - Get the free collateral
  * - Get the Skip routes
  * - Generate the user addresses
  * - Execute the withdrawal
  *
- * @param route - The route to withrraw on so that it's rebalanced.
+ * @param dYdXAddress - The address of the dYdX account
+ * @param dYdXSeed - The seed of the dYdX account
+ * @param toAddress - The address to withdraw to
+ * @param toChain - The chain to withdraw to
  */
-export async function withdrawAll(
-  dYDXAddress: string,
+export async function withdrawMax(
+  dYdXAddress: string,
   dYdXSeed: string,
   toAddress: string,
   toChain: string
 ): Promise<void> {
-  logger.info(`Withdrawing all from ${dYDXAddress} on dYdX to ${toAddress} on ${toChain}`);
+  logger.info(`Withdrawing all from ${dYdXAddress} on dYdX to ${toAddress} on ${toChain}`);
 
   const dYdXChainId = CHAIN_IDS['dydx'];
   const toChainId = CHAIN_IDS[toChain];
 
-  const dYdXBalance = await getdYdXFreeCollateral(dYDXAddress);
+  const dYdXBalance: UsdcBalance = await getFreeCollateral(dYdXAddress);
   logger.debug(`dYdX balance: ${dYdXBalance.formattedAmount} USDC`);
 
-  const { slow, fast } = await getRoutesForUsdc(dYdXChainId, toChainId, dYdXBalance.toString());
+  if (dYdXBalance.amount === BigInt(0)) {
+    logger.warn(`No free collateral found for ${dYdXAddress} on dYdX`);
+    return;
+  }
+
+  const { slow, fast } = await getUsdcRoutes(dYdXChainId, toChainId, dYdXBalance.amountStr);
+  const skipRoute = fast ?? slow;
 
   // These are also present in the Skip Route.
   // While we can generate dynamically, for the sake of safety, we'll force the withdrawal to happen via Noble.
   const userAddresses: UserAddress[] = [
     {
-      address: dYDXAddress,
+      address: dYdXAddress,
       chainId: dYdXChainId,
     },
     {
@@ -56,7 +65,7 @@ export async function withdrawAll(
     getCosmosSigner: async (chainId: string) => {
       return await getCosmosSigner(chainId, dYdXSeed);
     },
-    route: fast,
+    route: skipRoute,
     userAddresses,
     appendCosmosMsgs: {
       [dYdXChainId]: [
@@ -64,12 +73,12 @@ export async function withdrawAll(
           msgTypeUrl: TYPE_URL_MSG_WITHDRAW_FROM_SUBACCOUNT,
           msg: JSON.stringify({
             sender: {
-              owner: dYDXAddress,
+              owner: dYdXAddress,
               number: 0,
             },
-            recipient: dYDXAddress,
+            recipient: dYdXAddress,
             assetId: USDC_ASSET_ID,
-            quantums: fast?.amountIn ?? '0',
+            quantums: skipRoute?.amountIn ?? '0',
           }),
         },
       ],
