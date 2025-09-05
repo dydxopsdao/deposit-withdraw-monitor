@@ -8,7 +8,8 @@ import {
   route,
   Route,
 } from '@skip-go/client';
-import { MsgWithdrawFromSubaccount } from '@dydxprotocol/v4-proto/src/codegen/dydxprotocol/sending/transfer';
+
+import { MsgWithdrawFromSubaccount } from '@dydxprotocol/v4-client-js';
 
 import { CHAIN_CONFIGS } from '../../config/chains';
 import { SKIP_API_URL, TYPE_URL_MSG_WITHDRAW_FROM_SUBACCOUNT } from '../../config/constants';

@@ -23,6 +23,12 @@ import { dydxSelectors } from "../targets/dydx/selectors";
 import { TEST_TIMEOUTS } from "../config/timeouts";
 import { waitForFinality } from "../utils/finality/finality";
 import { uploadTraceToS3 } from "../utils/helpers/tracing";
+import { loadSecretsFromAWS } from "../utils/helpers/secrets";
+import interop from "../utils/interop";
+import { CHAIN_IDS } from "../config/chains";
+
+// ---- Load secrets from AWS Secrets Manager, if configured, overwriting corresponding process.env entries ----
+await loadSecretsFromAWS();
 
 // ---- Route discovery (sync so tests can be defined at import time) ----------
 const onlyRouteId = process.env.ROUTE_ID?.trim();
@@ -200,5 +206,31 @@ for (const route of depositRoutes) {
 
 
 async function rebalanceNow(_route: Route, _opts: { reason: string; last_tx?: string; passed: boolean }) {
-  // TODO: implement; return { balancesBefore?: {...}, balancesAfter?: {...} } if you can
+  interop.configureSkipClient();
+
+  const balancesBefore = [
+    // on source chain:
+    {token: "USDC", chain: _route.src_chain, amount: (await interop.getUsdcBalance(_route.wallet_address, CHAIN_IDS[_route.src_chain])).amount},
+    // on dYdX:
+    {token: "USDC", chain: _route.dst_chain, amount: (await interop.getFreeCollateral(_route.dydx_address)).amount},
+  ];
+
+  switch (_route.kind) {
+    case "deposit":
+      await interop.withdrawMax(_route.dydx_address, _route.dydx_seed, _route.wallet_address, _route.src_chain);
+      break;
+    case "withdraw":
+      // TODO: implement interop.depositMax
+      break;
+    default:
+      throw new Error(`Invalid route kind: ${_route.kind}`);
+  }
+
+  const balancesAfter = [
+    // on source chain:
+    {token: "USDC", chain: _route.src_chain, amount: (await interop.getUsdcBalance(_route.wallet_address, CHAIN_IDS[_route.src_chain])).amount},
+    // on dYdX:
+    {token: "USDC", chain: _route.dst_chain, amount: (await interop.getFreeCollateral(_route.dydx_address)).amount},
+  ];
+  return { balancesBefore, balancesAfter };
 }
