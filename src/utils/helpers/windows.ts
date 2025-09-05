@@ -1,47 +1,71 @@
+import { BrowserContext, Page } from "@playwright/test";
 import { logger } from "../logger/logging-utils";
 
-/**
- * Finds a page with a given URL pattern in the context
- * 
- * @param context - The context to search in
- * @param urlPattern - The URL pattern to search for
- * @param maxRetries - The maximum number of retries
- * @param retryDelay - The delay between retries
- * @returns The page if found, otherwise null
- */
+type LoadState = "domcontentloaded" | "load" | "networkidle";
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+function toRegex(pattern: string | RegExp): RegExp {
+  return pattern instanceof RegExp ? pattern : new RegExp(escapeRegExp(pattern));
+}
+function safeUrl(p: Page): string {
+  try { return p.url(); } catch { return "(unavailable)"; }
+}
+
 export async function findPageWithUrl(
-    context: any, 
-    urlPattern: string | RegExp, 
-    maxRetries: number = 10, 
-    retryDelay: number = 1000
-  ) {
-    logger.debug(`Waiting for page with URL pattern: ${urlPattern}`);
-  
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      logger.debug(`Attempt ${attempt}/${maxRetries}`);
-      
-      const pages = await context.pages();
-      const urls = context.pages().map(p => p.url());
-      logger.debug(`context.pages(): ${urls.join(' | ')}`);
-      const existingPopup = await pages.find(page => {
-        const url = page.url();
-        if (urlPattern instanceof RegExp) {
-          return urlPattern.test(url);
-        } else {
-          return url.includes(urlPattern);
+  context: BrowserContext,
+  urlPattern: string | RegExp,
+  maxRetries = 10,
+  retryDelayMs = 1000,
+  waitForState: LoadState = "domcontentloaded",
+): Promise<Page | null> {
+  const rx = toRegex(urlPattern);
+  logger.debug(`🔎 findPageWithUrl → pattern: ${rx}, retries: ${maxRetries}, delay: ${retryDelayMs}ms`);
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    logger.debug(`Attempt ${attempt}/${maxRetries}`);
+
+    // Log current pages
+    const urls = context.pages().map(p => safeUrl(p));
+    logger.debug(`context.pages(): ${urls.join(" | ") || "(none)"}`);
+
+    // 1) check all existing pages
+    for (const p of context.pages()) {
+      const u = safeUrl(p);
+      if (rx.test(u)) {
+        logger.debug(`✅ Match found in existing page: ${u}`);
+        try {
+          await p.waitForLoadState(waitForState);
+          logger.debug(`Page reached load state: ${waitForState}`);
+        } catch (e) {
+          logger.warning(`Load state wait failed: ${(e as Error).message}`);
         }
-      });
-      
-      if (existingPopup) {
-        await existingPopup.waitForLoadState('domcontentloaded');
-        logger.debug("Found existing popup");
-        return existingPopup;
+        return p;
       }
-  
-      logger.debug(`No page found, waiting ${retryDelay}ms before retry...`);
-      await new Promise(resolve => setTimeout(resolve, retryDelay));
     }
-  
-    logger.error("No page found after all retries");
-    return null;
+
+    // 2) wait briefly for a new page event
+    try {
+      logger.debug(`Waiting up to ${retryDelayMs}ms for a new page event…`);
+      const p = await context.waitForEvent("page", { timeout: retryDelayMs });
+      const u = safeUrl(p);
+      logger.debug(`New page detected: ${u}`);
+      if (rx.test(u)) {
+        logger.debug(`✅ Match found in new page: ${u}`);
+        try {
+          await p.waitForLoadState(waitForState);
+          logger.debug(`Page reached load state: ${waitForState}`);
+        } catch (e) {
+          logger.warning(`Load state wait failed: ${(e as Error).message}`);
+        }
+        return p;
+      }
+    } catch {
+      logger.debug(`No new page within ${retryDelayMs}ms`);
+    }
   }
+
+  logger.error(`❌ No page found matching pattern after ${maxRetries} retries`);
+  return null;
+}
