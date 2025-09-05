@@ -57,9 +57,9 @@ export interface RouteSummary {
 
 type ErrorLike = { name?: string; message?: string; stack?: string; code?: string } | undefined;
 
-type BalanceMap =
-  | Record<string, number> // { "USDC": 15.2, "ETH": 0.01 }
-  | Array<{ token: string; chain: string; amount: number }>; // [{ token, chain, amount }]
+export type BalanceMap =
+  | Record<string, string> // { "USDC": 15.2, "ETH": 0.01 }
+  | Array<{ token: string; chain: string; amount: string }>; // [{ token, chain, amount }]
 
 // ----- Public API -----------------------------------------------------------
 
