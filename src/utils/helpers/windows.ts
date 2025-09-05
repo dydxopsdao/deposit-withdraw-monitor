@@ -21,6 +21,8 @@ export async function findPageWithUrl(
       logger.debug(`Attempt ${attempt}/${maxRetries}`);
       
       const pages = await context.pages();
+      const urls = context.pages().map(p => p.url());
+      logger.debug(`context.pages(): ${urls.join(' | ')}`);
       const existingPopup = await pages.find(page => {
         const url = page.url();
         if (urlPattern instanceof RegExp) {

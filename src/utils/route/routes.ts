@@ -5,7 +5,9 @@
 // - Merges top-level `defaults` into each route (route values override defaults)
 // - Normalises a few fields (wallet_type → lower-case; amount → string)
 // - Expands environment variables in the format ${VAR_NAME}
+// - Expands environment variables in the format ${VAR_NAME}
 //
+// Install dependency: npm i js-yaml @types/js-yaml
 // Install dependency: npm i js-yaml @types/js-yaml
 //
 // Usage:
@@ -32,6 +34,7 @@ export interface Route {
   dydx_seed: string;
   route_kind?: DepositRouteKind;
   amount: string;
+  token: string;
   src_chain: string;
   dst_chain: string;
   cadence_min?: number;

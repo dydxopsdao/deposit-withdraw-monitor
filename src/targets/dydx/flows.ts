@@ -210,10 +210,9 @@ export async function connectWallet(
     logger.info("Wallet appears already connected (account menu visible)");
     return page;
   }
-
   // 2) Open the wallet picker if needed
   await openWalletPicker(page);
-
+  
   // 3) Choose provider and trigger the request from within the dApp
   logger.info("Choose provider");
   await chooseProvider(page, dydxSelectors.chooseProviderBtn(page, wallet), wallet);
@@ -230,12 +229,17 @@ export async function connectWallet(
   logger.info("Confirming request");
   await handleWalletPopup(context, wallet);
 
-  // 7.1) Confirm the request
-  logger.info("Confirming request");
+  // 7.1 ) Second Confirm for Phantom
+  if (wallet === "phantom") {
   await handleWalletPopup(context, wallet);
+  }
 
-  // 7) Assert the dApp now shows a connected state
-  await expect(dydxSelectors.accountMenuButton(page, wallet)).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
+  // 8) Assert the dApp now shows a connected state
+  const acctBtn = dydxSelectors
+  .accountMenuButton(page, wallet)
+  .or(dydxSelectors.accountMenuButtonLoose(page));
+
+  await expect(acctBtn).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
   logger.success(`Wallet connected: ${wallet}`);
 
   return page;
@@ -251,7 +255,7 @@ async function chooseProvider(page: Page, provider: Locator, name: string) {
   await provider.isVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
   await provider.click();
 }
-
+//TODO improve this as it doesn'throw or inform if not found properly
 async function handleWalletPopup(context: BrowserContext, wallet: WalletType) {
   if (wallet === "metamask") {
     await handleMetamaskPopup(context);
@@ -307,5 +311,140 @@ async function isPickerOpen(page: Page) {
     (await dydxSelectors.chooseProviderBtn(page, "metamask").isVisible()) ||
     (await dydxSelectors.chooseProviderBtn(page, "phantom").isVisible())
   );
+}
+//#endregion
+
+//#region deposit
+/**
+ * Deposit funds to the dApp.
+ */
+const T = TEST_TIMEOUTS.ELEMENT ?? 30_000;
+const re = (txt: string) => new RegExp(`\\b${txt.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
+
+/** High-level flow */
+export async function deposit(
+  page: Page,
+  _context: BrowserContext,
+  amount: string,
+  src_chain: string, // e.g. "polygon"
+  token: string,      // e.g. "USDC"
+  wallet: WalletType
+) {
+  logger.step(`Depositing ${amount} ${token} from ${src_chain}`);
+  // Open the deposit dialog
+  
+  await clickAnyDeposit(page);
+  await expect(dydxSelectors.depositDialog(page)).toBeVisible({ timeout: TEST_TIMEOUTS.DEFAULT });
+  logger.info("Deposit dialog opened");
+  // Pick the right token+chain 
+  if (wallet === "metamask") {
+    await selectToken(page, token, src_chain);
+    logger.info("Token selected");
+  }
+
+  // Enter amount
+  await enterAmount(page, amount);
+  logger.info("Amount entered");
+}
+
+export async function selectToken(page: Page, token: string, chain: string) {
+  //TODO wrap in a try catch retry
+  // Open the picker
+  const pill = dydxSelectors.tokenPillButton(page);
+  console.log("pill", pill);
+  await expect(pill).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
+  await pill.click();
+  const picker = dydxSelectors.tokenPickerDialog(page);
+  await expect(picker).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
+
+  // Find candidates that contain both pieces of text
+  const candidates = dydxSelectors.tokenPickerCandidates(page, token, chain);
+
+  // Wait up to 5s for at least one match
+  await expect(candidates.first()).toBeVisible({ timeout: 5_000 });
+
+  // For up to 5s, if a second appears, prefer it
+  let target = candidates.first();
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline) {
+    if ((await candidates.count()) >= 2) {
+      target = candidates.nth(1);
+      break;
+    }
+    await page.waitForTimeout(100);
+  }
+
+  // Make sure we can click it
+  await target.evaluate(el => el.scrollIntoView({ block: "center" })).catch(() => {});
+  await expect(target).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
+  await expect(target).toBeEnabled({ timeout: TEST_TIMEOUTS.ELEMENT });
+
+  // Click with a safe fallback if something overlays briefly
+  try {
+    await target.click({ timeout: TEST_TIMEOUTS.ELEMENT });
+  } catch {
+    const box = await target.boundingBox();
+    if (box) {
+      await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    } else {
+      await target.click({ force: true });
+    }
+  }
+}
+
+/** Fill the Amount input and blur to trigger validation */
+async function enterAmount(page: Page, amount: string) {
+  const input = dydxSelectors.amountInput(page);
+  await expect(input).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
+  await input.fill("");
+  await input.fill(amount);
+  await page.keyboard.press("Tab").catch(() => {}); // blur
+}
+
+export async function clickAnyDeposit(page: Page) {
+  try {
+    await expect(dydxSelectors.depositDialog(page)).toBeVisible({ timeout: TEST_TIMEOUTS.DEFAULT });
+    return; // already open
+  } catch {
+    /* not open yet → continue */
+  }
+  const btns = dydxSelectors.depositButtons(page);
+  const n = await btns.count();
+
+  for (let i = 0; i < n; i++) {
+    const btn = btns.nth(i);
+    if (await btn.isVisible() && await btn.isEnabled()) {
+      await btn.scrollIntoViewIfNeeded().catch(() => {});
+      await btn.click();
+      return;
+    }
+  }
+  throw new Error('No clickable "Deposit" button found (all hidden or disabled).');
+}
+
+export async function submitDeposit(page: Page, context: BrowserContext, wallet: WalletType): Promise<void> {
+  const btn = dydxSelectors.depositFundsButton(page);
+
+  // Make sure the dialog is present and the button is on-screen
+  await expect(btn).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
+
+  // Trigger validation (some UIs only enable after blur)
+  await dydxSelectors.amountInput(page).press("Tab").catch(() => {});
+
+  // Wait until it’s actually enabled (handles disabled/aria-disabled)
+  await expect(btn).toBeEnabled({ timeout: T });
+
+  // Click for real
+  await btn.click();
+
+  // Add / Approve Network
+  await handleWalletPopup(context, wallet);
+
+  // Confirm the transaction
+  // TODO handle alert for network costs
+    //Here just to approve spending cap
+    await handleWalletPopup(context, wallet);
+
+
 }
 //#endregion

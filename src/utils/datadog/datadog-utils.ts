@@ -52,6 +52,7 @@ export interface RouteSummary {
   amount: string;
   src_chain: string;
   dst_chain: string;
+  token?: string;
 }
 
 type ErrorLike = { name?: string; message?: string; stack?: string; code?: string } | undefined;
@@ -79,6 +80,7 @@ export function createTelemetryContext(cfg: {
     async routeResult(args: {
       passed: boolean;
       txHash?: string;
+      explorerUrl?: string;
       errorStage?: ErrorStage;
       error?: ErrorLike;
     }) {
@@ -90,6 +92,7 @@ export function createTelemetryContext(cfg: {
           {
             route: routeSummaryForLog(route),
             tx_hash: args.txHash,
+            explorer_url: args.explorerUrl,
             error_stage: args.errorStage ?? "submit_or_finality",
             error: toErrorLike(args.error),
           },
@@ -249,6 +252,7 @@ function routeSummaryForLog(route: RouteSummary) {
     amount: route.amount,
     src_chain: route.src_chain,
     dst_chain: route.dst_chain,
+    token: route.token,
   };
 }
 

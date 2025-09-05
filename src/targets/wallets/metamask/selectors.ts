@@ -9,7 +9,8 @@ export const metamaskSelectors = {
   urls: {
     onboarding: /chrome-extension:\/\/.*\/home\.html#onboarding\/welcome/,
     unlock: /chrome-extension:\/\/.*\/home\.html#unlock/,
-    notification: /^chrome-extension:\/\/[^/]+\/notification\.html(?:\?.*)?(?:#\/?(?:connect|confirm-transaction)(?:[/?].*)?)?$/i,
+    notification:   /chrome-extension:\/\/[^/]+\/notification\.html(?:\?.*)?(?:#.*)?$/i,
+
   },
 
   // dApp-side buttons
@@ -49,5 +50,6 @@ export const metamaskSelectors = {
   unlock: {
     pw:              '[data-testid="unlock-password"]',
     pwSubmit:        '[data-testid="unlock-submit"]',
+    downloadAppContinue:      '[data-testid="download-app-continue"]',
   },
 } as const;

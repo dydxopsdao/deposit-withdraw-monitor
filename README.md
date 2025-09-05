@@ -40,7 +40,8 @@ npx playwright test src/tests/ --list
 npx playwright test src/tests/ --reporter=line
 
 # 4) (Optional) Run specific test (uses routes.yaml)
-npx playwright test src/tests/deposit.spec.ts -g "deposit: dep-ethereum-usdc-regular-metamask-10"
+ROUTE_ID=metamask-ethereum-usdc-deposit-regular \
+  npx playwright test src/tests/deposit.spec.ts --reporter=line
 
 ---
 
