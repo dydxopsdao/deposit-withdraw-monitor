@@ -1,1 +1,1 @@
-export * from "./withdrawals";
+export * from './withdrawals';

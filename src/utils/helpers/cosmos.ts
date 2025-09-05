@@ -9,15 +9,15 @@ import { CHAIN_CONFIGS } from '../../config/chains';
  * @returns The Cosmos signer
  */
 export async function getCosmosSigner(chainId: string, mnemonic: string): Promise<DirectSecp256k1HdWallet> {
-    if (!CHAIN_CONFIGS[chainId]?.bech32Prefix) {
-        throw new Error(`No bech32 prefix found for chain ID: ${chainId} - is it a Cosmos chain?`);
-    }
+  if (!CHAIN_CONFIGS[chainId]?.bech32Prefix) {
+    throw new Error(`No bech32 prefix found for chain ID: ${chainId} - is it a Cosmos chain?`);
+  }
 
-    const wallet = await DirectSecp256k1HdWallet.fromMnemonic(mnemonic, {
-        prefix: CHAIN_CONFIGS[chainId].bech32Prefix,
-    });
+  const wallet = await DirectSecp256k1HdWallet.fromMnemonic(mnemonic, {
+    prefix: CHAIN_CONFIGS[chainId].bech32Prefix,
+  });
 
-    return wallet;
+  return wallet;
 }
 
 /**
@@ -27,8 +27,8 @@ export async function getCosmosSigner(chainId: string, mnemonic: string): Promis
  * @returns The derived address
  */
 export async function deriveCosmosAddress(chainId: string, mnemonic: string): Promise<string> {
-    const wallet = await getCosmosSigner(chainId, mnemonic);
+  const wallet = await getCosmosSigner(chainId, mnemonic);
 
-    const [account] = await wallet.getAccounts();
-    return account.address;
+  const [account] = await wallet.getAccounts();
+  return account.address;
 }
