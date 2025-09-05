@@ -7,6 +7,6 @@ export const TEST_TIMEOUTS = {
     POPUP_TIMEOUT: 15000,
     TEST: 29 * 60_000,
     FINALITY: 28 * 60_000,
-    
+    EXTENSIONS: 25000,
   } as const;
   

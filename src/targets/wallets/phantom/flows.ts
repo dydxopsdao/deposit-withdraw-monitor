@@ -1,5 +1,5 @@
 // src/targets/wallets/phantom/flows.ts
-import { chromium, BrowserContext } from '@playwright/test';
+import { chromium, BrowserContext, Page } from '@playwright/test';
 import { PHANTOM_EXT_PATH } from "../../../config/constants";
 import { WALLET_PASSWORD, assertPhantomSecrets } from "./constants";
 import { findPageWithUrl } from '../../../utils/helpers/windows';
@@ -39,32 +39,32 @@ export async function launchContextWithExtension(
 export async function setupWallet(context: BrowserContext, seedPhrase: string) {
   logger.step("Setting up Phantom wallet");
 
-  // idempotent-ish: if onboarding is already completed, this page might redirect/close quickly
-  const onboarding = await context.newPage();
-  await onboarding.goto(s.urls.onboarding, { waitUntil: 'domcontentloaded' });
-  logger.debug("Phantom onboarding page loaded");
+  // deterministically open onboarding
+  const onboarding = await openPhantomUrl(context, s.urls.onboarding, "domcontentloaded");
+  logger.debug(`Phantom onboarding page: ${onboarding.url()}`);
 
   try {
     await (await onboarding.waitForSelector(s.onboarding.alreadyHaveWallet, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
-    logger.debug("Phantom onboarding: Already have wallet button clicked");
+    logger.debug("Phantom onboarding: Already have wallet clicked");
   } catch {
     // Likely already onboarded
-    await onboarding.close();
+    await onboarding.close().catch(() => {});
+    logger.info("Phantom onboarding skipped (already onboarded)");
     return;
   }
 
   await (await onboarding.waitForSelector(s.onboarding.importRecovery, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
-  logger.debug("Phantom onboarding: Import Recovery Phrase button clicked");
-  const words = seedPhrase.split(' ').filter(Boolean);
+  logger.debug("Phantom onboarding: Import Recovery clicked");
+
+  const words = seedPhrase.split(" ").filter(Boolean);
   for (let i = 0; i < 12; i++) {
-    await onboarding.locator(s.onboarding.seedInput(i)).fill(words[i] ?? '');
+    await onboarding.locator(s.onboarding.seedInput(i)).fill(words[i] ?? "");
   }
   await (await onboarding.waitForSelector(s.onboarding.submit, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
-  logger.debug("Phantom onboarding: Submit button clicked");
+  logger.debug("Phantom onboarding: Submit clicked");
 
-  // Continue
   await (await onboarding.waitForSelector(`${s.onboarding.submit}:has-text("Continue")`, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
-  logger.debug("Phantom onboarding: Continue button clicked");
+  logger.debug("Phantom onboarding: Continue clicked");
 
   await (await onboarding.waitForSelector(s.onboarding.password, { timeout: TEST_TIMEOUTS.ELEMENT })).fill(WALLET_PASSWORD);
   await (await onboarding.waitForSelector(s.onboarding.confirmPassword, { timeout: TEST_TIMEOUTS.ELEMENT })).fill(WALLET_PASSWORD);
@@ -72,56 +72,44 @@ export async function setupWallet(context: BrowserContext, seedPhrase: string) {
   await (await onboarding.waitForSelector(s.onboarding.submit, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
   logger.debug("Phantom onboarding: Password set");
 
-  // Get Started
   await (await onboarding.waitForSelector(`${s.onboarding.submit}:has-text("Get Started")`, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
-  logger.debug("Phantom onboarding: Get Started button clicked");
+  logger.debug("Phantom onboarding: Get Started clicked");
 
-  await onboarding.close();
+  await onboarding.close().catch(() => {});
   logger.info("Phantom wallet setup complete");
 }
 
 export async function unlockPhantomWallet(
-  context: BrowserContext, 
-  maxRetries = 3, 
+  context: BrowserContext,
+  maxRetries = 3,
   retryDelay = 1000
 ) {
   logger.step("Unlocking Phantom wallet");
 
-  // Retry logic for page load
-  let unlock: any = null;
-  
-  // Sometimes the page would load but for whatever reason will then crash and selectors would not be found
-  // This is a workaround to retry the page load
+  let page: any = null;
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      unlock = await context.newPage();
-      await unlock.goto(s.urls.unlock, { waitUntil: 'domcontentloaded' });
-      logger.debug("Phantom unlock page loaded: " + unlock.url());
+      page = await openPhantomUrl(context, s.urls.unlock, "domcontentloaded");
+      logger.debug(`Phantom unlock page: ${page.url()}`);
 
-      // Proceed with unlock flow
-      await (await unlock.waitForSelector(s.unlock.pw, { timeout: TEST_TIMEOUTS.ELEMENT })).fill(WALLET_PASSWORD);
-      await (await unlock.waitForSelector(s.unlock.pwSubmit, { timeout: TEST_TIMEOUTS.ELEMENT })).click(); 
+      await (await page.waitForSelector(s.unlock.pw, { timeout: TEST_TIMEOUTS.ELEMENT })).fill(WALLET_PASSWORD);
+      await (await page.waitForSelector(s.unlock.pwSubmit, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
       logger.debug("Phantom unlock flow completed");
-
-      break; // Success - exit the retry loop
-      
-    } catch (error) {
-      if (unlock) {
-        await unlock.close().catch(() => {}); // Clean up failed page
+      await page.close().catch(() => {});
+      logger.info("Phantom unlocked");
+      return;
+    } catch (err: any) {
+      logger.debug(`Unlock attempt ${attempt}/${maxRetries} failed: ${err?.message ?? err}`);
+      try { await page?.close(); } catch {}
+      if (attempt < maxRetries) {
+        logger.debug(`Retrying in ${retryDelay}ms…`);
+        await new Promise(r => setTimeout(r, retryDelay));
+      } else {
+        logger.error(`Failed to unlock Phantom after ${maxRetries} attempts`);
+        throw err;
       }
-      
-      if (attempt === maxRetries) {
-        logger.error(`Failed to load Phantom unlock page after ${maxRetries} attempts`);
-        throw error; // Re-throw the error after all retries exhausted
-      }
-      
-      logger.debug(`Phantom unlock page load failed (attempt ${attempt}/${maxRetries}), retrying in ${retryDelay}ms...`);
-      await new Promise(resolve => setTimeout(resolve, retryDelay));
     }
   }
-
-  await unlock.close();
-  logger.info("Phantom unlocked");
 }
 
 /**
@@ -156,4 +144,42 @@ export async function handlePhantomPopup(context: BrowserContext) {
     logger.warning(`Phantom popup handling had issues: ${e?.message ?? e}`);
     try { await ph.close(); } catch {}
   }
+}
+
+function extractId(u: string): string | null {
+  const m = u.match(/^chrome-extension:\/\/([a-p]{32})\//);
+  return m ? m[1] : null;
+}
+
+/**
+ * Since you launch with ONLY Phantom loaded (disable-extensions-except + load-extension),
+ * the first chrome-extension service worker is Phantom.
+ */
+export async function getPhantomId(ctx: BrowserContext, timeoutMs = 15000): Promise<string> {
+  const existing = ctx.serviceWorkers().filter(w => w.url().startsWith("chrome-extension://"));
+  if (existing.length) {
+    const id = extractId(existing[0].url());
+    if (id) return id;
+  }
+  const sw = await ctx.waitForEvent("serviceworker", { timeout: timeoutMs });
+  const id = extractId(sw.url());
+  if (!id) throw new Error(`Phantom ID not found from SW url: ${sw.url()}`);
+  return id;
+}
+
+/**
+ * Opens a Phantom internal page. `urlOrTemplate` can be either:
+ *  - A full chrome-extension URL with any ID (we'll replace the ID), or
+ *  - A template with "{id}" placeholder, e.g. "chrome-extension://{id}/onboarding.html"
+ */
+export async function openPhantomUrl(
+  ctx: BrowserContext,
+  urlWithAnyId: string,
+  waitUntil: "load" | "domcontentloaded" = "load"
+): Promise<Page> {
+  const id = await getPhantomId(ctx);
+  const url = urlWithAnyId.replace(/^chrome-extension:\/\/[^/]+/, `chrome-extension://${id}`);
+  const page = await ctx.newPage();
+  await page.goto(url, { waitUntil });
+  return page;
 }

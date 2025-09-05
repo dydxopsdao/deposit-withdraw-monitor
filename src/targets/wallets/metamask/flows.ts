@@ -1,5 +1,5 @@
 // src/targets/wallets/metamask/flows.ts
-import { chromium, BrowserContext } from "@playwright/test";
+import { chromium, BrowserContext, Page } from "@playwright/test";
 import { METAMASK_EXT_PATH } from "../../../config/constants";
 import { WALLET_PASSWORD, assertMetamaskSecrets } from "./constants";
 import { metamaskSelectors as s } from "./selectors";
@@ -13,8 +13,7 @@ import fs from "fs";
  * Launch a persistent context with the MetaMask extension loaded.
  */
 export async function launchContextWithExtension(
-  userDataDir: string,
-  headless = !!process.env.CI
+  userDataDir: string
 ): Promise<BrowserContext> {
   assertMetamaskSecrets();
 
@@ -41,7 +40,7 @@ export async function launchContextWithExtension(
 
   logger.debug(`service workers (pre): ${context.serviceWorkers().map(w => w.url()).join(",")}`);
   try {
-    const sw = await context.waitForEvent("serviceworker", { timeout: 15000 });
+    const sw = await context.waitForEvent("serviceworker", { timeout: TEST_TIMEOUTS.EXTENSIONS });
     logger.debug(`service worker (post): ${sw.url()}`);
   } catch { logger.warning("No service worker appeared (extension not loaded?)"); }
 
@@ -56,8 +55,8 @@ export async function launchContextWithExtension(
 export async function setupWallet(context: BrowserContext, seedPhrase: string) {
   logger.step("Setting up MetaMask wallet");
 
-  // MetaMask uses dynamic extension URLs → use regex from selectors
-  const onboarding = await findPageWithUrl(context, s.urls.onboarding);
+  // deterministically open the UI (don’t wait for it to appear)
+  const onboarding = await openMetamaskPage(context, "onboarding/welcome");
   logger.debug(`MetaMask onboarding page: ${onboarding.url()}`);
 
   // Welcome and Terms of Service
@@ -112,10 +111,15 @@ export async function setupWallet(context: BrowserContext, seedPhrase: string) {
   logger.info("Wallet setup complete");
 }
 
+
 export async function unlockMetamaskWallet(context: BrowserContext) {
   logger.step("Unlocking MetaMask wallet");
   // MetaMask uses dynamic extension URLs → use regex from selectors
-  const unlock = await findPageWithUrl(context, s.urls.unlock); //TODO this is failing sometimes on the URL pattern /chrome-extension:\/\/.*\/home\.html#unlock/ vs chrome-extension://gipjnhcfkablljbiijlkcohbaniiimdi/home.html#onboarding/unlock
+  const unlock = await findPageWithUrl(context, s.urls.unlock); 
+  //TODO this is failing sometimes on the URL pattern /chrome-extension:\/\/.*\/home\.html#unlock/ vs chrome-extension://gipjnhcfkablljbiijlkcohbaniiimdi/home.html#onboarding/unlock
+  if (!unlock) {
+    logger.warning("MetaMask unlock page not found ");
+  } else {
   logger.debug(`MetaMask unlock page: ${unlock.url()}`);
   
   await (await unlock.waitForSelector(s.unlock.pw, { timeout: TEST_TIMEOUTS.ELEMENT })).fill(WALLET_PASSWORD);
@@ -123,7 +127,7 @@ export async function unlockMetamaskWallet(context: BrowserContext) {
 
   await unlock.close();
   logger.info("MetaMask unlocked");
-}
+} }
 
 /**
  * MetaMask connection popup flows vary slightly by version/permissions.
@@ -157,4 +161,30 @@ export async function handleMetamaskPopup(context: BrowserContext) {
     logger.warning(`MetaMask popup handling had issues: ${e?.message ?? e}`);
     try { await mm.close(); } catch {}
   }
+}
+
+function extractId(u: string): string | null {
+  const m = u.match(/^chrome-extension:\/\/([a-p]{32})\//);
+  return m ? m[1] : null;
+}
+
+export async function getMetamaskId(ctx: BrowserContext, timeoutMs = 15000): Promise<string> {
+  // Use existing SW if present; otherwise wait for the next one
+  const existing = ctx.serviceWorkers();
+  if (existing.length) {
+    const id = extractId(existing[0].url());
+    if (id) return id;
+  }
+  const sw = await ctx.waitForEvent("serviceworker", { timeout: timeoutMs });
+  const id = extractId(sw.url());
+  if (!id) throw new Error(`Could not extract extension ID from ${sw.url()}`);
+  return id;
+}
+
+export async function openMetamaskPage(ctx: BrowserContext, hashPath: string, waitUntil: "load" | "domcontentloaded" = "load"): Promise<Page> {
+  const id = await getMetamaskId(ctx);
+  const url = `chrome-extension://${id}/home.html#${hashPath}`;
+  const page = await ctx.newPage();
+  await page.goto(url, { waitUntil });
+  return page;
 }
