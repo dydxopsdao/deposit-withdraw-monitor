@@ -7,6 +7,7 @@ import { findPageWithUrl } from "../../../utils/helpers/windows";
 import { clickAnyButton } from "../../../utils/helpers/ui-helper";
 import { logger } from "../../../utils/logger/logging-utils";
 import { TEST_TIMEOUTS } from "../../../config/timeouts";
+import fs from "fs";
 
 /**
  * Launch a persistent context with the MetaMask extension loaded.
@@ -35,6 +36,16 @@ export async function launchContextWithExtension(
   await context.addInitScript(() => {
     Object.defineProperty(navigator, "webdriver", { get: () => false });
   });
+  
+  logger.debug(`METAMASK_EXT_PATH=${METAMASK_EXT_PATH}, exists=${fs.existsSync(METAMASK_EXT_PATH)}`);
+
+  logger.debug(`service workers (pre): ${context.serviceWorkers().map(w => w.url()).join(",")}`);
+  try {
+    const sw = await context.waitForEvent("serviceworker", { timeout: 15000 });
+    logger.debug(`service worker (post): ${sw.url()}`);
+  } catch { logger.warning("No service worker appeared (extension not loaded?)"); }
+
+  logger.debug(`open pages: ${JSON.stringify(context.pages().map(p => p.url()))}`);
 
   return context;
 }
