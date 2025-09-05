@@ -179,7 +179,6 @@ docker run --rm deposit-withdraw-monitor:local
 **Key features of the Docker setup:**
 - Pre-installed Playwright with Chrome dependencies
 - Chrome extensions automatically downloaded during build
-- Runs in headless mode optimized for CI environments
 - Clean, isolated environment for each test run
 - Uses `--reporter=line` for clean log output
 

@@ -48,6 +48,8 @@ RUN mkdir -p extensions user-data test-results
 
 # Download required extensions
 RUN npm run download-extensions
+RUN ls -la /app/extensions && ls -la /app/extensions/metamask || true
+
 
 # Set environment variables for non-interactive mode
 ENV CI=true
