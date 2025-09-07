@@ -8,6 +8,7 @@ export async function loadSecretsFromAWS(): Promise<void> {
   await loadSeedPhrases();
   await loadWalletPassword();
   await loadDatadogApiKey();
+  await loadAlchemyApiKey();
 }
 
 /**
@@ -52,6 +53,26 @@ async function loadWalletPassword(): Promise<void> {
   process.env.WALLET_PASSWORD = secretString;
 
   logger.info(`🔐 Loaded wallet password from AWS Secrets Manager`);
+}
+
+/**
+ * Loads Alchemy API key. Only runs when ALCHEMY_API_KEY_SECRET_ARN is present
+ */
+async function loadAlchemyApiKey(): Promise<void> {
+  const secretArn = process.env.ALCHEMY_API_KEY_SECRET_ARN;
+
+  // Skip if no AWS secrets configured
+  if (!secretArn) {
+    logger.info("No AWS Secrets Manager Alchemy API key secret configured, skipping Alchemy API key load");
+    return;
+  }
+
+  const secretString = await getSecretFromAWS(secretArn);
+
+  // Set the Alchemy API key directly in process.env
+  process.env.ALCHEMY_API_KEY = secretString;
+
+  logger.info(`�� Loaded Alchemy API key from AWS Secrets Manager`);
 }
 
 /**
