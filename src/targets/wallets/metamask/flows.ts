@@ -282,6 +282,46 @@ export async function openMetamaskPage(
         const a = await ctx.newPage();
         logger.debug(`openMetamaskPage: New page created, URL: ${a.url()}`);
         
+        // Dump extensive execution context before navigation
+        logger.debug(`openMetamaskPage: === EXECUTION CONTEXT DUMP ===`);
+        logger.debug(`openMetamaskPage: Target URL: ${url}`);
+        logger.debug(`openMetamaskPage: Page object type: ${typeof a}`);
+        logger.debug(`openMetamaskPage: Page isClosed: ${a.isClosed()}`);
+        logger.debug(`openMetamaskPage: Page URL before nav: ${a.url()}`);
+        logger.debug(`openMetamaskPage: BrowserContext isConnected: ${!ctx.browser()?.isConnected || ctx.browser()?.isConnected()}`);
+        logger.debug(`openMetamaskPage: BrowserContext pages count: ${ctx.pages().length}`);
+        logger.debug(`openMetamaskPage: BrowserContext serviceWorkers count: ${ctx.serviceWorkers().length}`);
+        logger.debug(`openMetamaskPage: Navigation options: waitUntil=${waitUntil}, timeout=30000`);
+        logger.debug(`openMetamaskPage: Attempt ${i}/${retries + 1}, URL candidate ${candidates.indexOf(url) + 1}/${candidates.length}`);
+        
+        try {
+          logger.debug(`openMetamaskPage: Page viewport: ${JSON.stringify(a.viewportSize())}`);
+        } catch (e) {
+          logger.debug(`openMetamaskPage: Failed to get viewport: ${e}`);
+        }
+        
+        try {
+          logger.debug(`openMetamaskPage: Browser version: ${ctx.browser()?.version()}`);
+        } catch (e) {
+          logger.debug(`openMetamaskPage: Failed to get browser version: ${e}`);
+        }
+        
+        try {
+          const allPages = ctx.pages();
+          logger.debug(`openMetamaskPage: All context pages: ${JSON.stringify(allPages.map(p => ({ url: p.url(), isClosed: p.isClosed() })))}`);
+        } catch (e) {
+          logger.debug(`openMetamaskPage: Failed to enumerate pages: ${e}`);
+        }
+        
+        try {
+          const sws = ctx.serviceWorkers();
+          logger.debug(`openMetamaskPage: Service workers: ${JSON.stringify(sws.map(sw => sw.url()))}`);
+        } catch (e) {
+          logger.debug(`openMetamaskPage: Failed to enumerate service workers: ${e}`);
+        }
+        
+        logger.debug(`openMetamaskPage: === END CONTEXT DUMP ===`);
+        
         logger.debug(`openMetamaskPage: Navigating to: ${url}`);
         await a.goto(url, { waitUntil, timeout: 30_000 }); // don't wait forever
         logger.debug(`openMetamaskPage: Direct navigation completed to: ${a.url()}`);
