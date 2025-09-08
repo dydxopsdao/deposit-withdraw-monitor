@@ -38,13 +38,14 @@ export async function launchContextWithExtension(
     Object.defineProperty(navigator, "webdriver", { get: () => false });
   });
 
+  // Start tracing
   logger.info("Starting tracing");
-   // 🔴 Start tracing immediately (before any pages open)
    await context.tracing.start({
     screenshots: true,
     snapshots: true,
     sources: true,
   });
+
   logger.debug(`METAMASK_EXT_PATH=${METAMASK_EXT_PATH}, exists=${fs.existsSync(METAMASK_EXT_PATH)}`);
 
   logger.debug(`service workers (pre): ${context.serviceWorkers().map(w => w.url()).join(",")}`);
