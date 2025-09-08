@@ -23,11 +23,12 @@ export async function launchContextWithExtension(
     args: [
       `--disable-extensions-except=${METAMASK_EXT_PATH}`,
       `--load-extension=${METAMASK_EXT_PATH}`,
-      "--disable-blink-features=AutomationControlled",
-      "--disable-infobars",
-      "--disable-dev-shm-usage",
       "--no-sandbox",
       "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
+      "--disable-infobars",
+      "--disable-blink-features=AutomationControlled",
     ],
   });
 
@@ -35,7 +36,14 @@ export async function launchContextWithExtension(
   await context.addInitScript(() => {
     Object.defineProperty(navigator, "webdriver", { get: () => false });
   });
-  
+
+  logger.info("Starting tracing");
+   // 🔴 Start tracing immediately (before any pages open)
+   await context.tracing.start({
+    screenshots: true,
+    snapshots: true,
+    sources: true,
+  });
   logger.debug(`METAMASK_EXT_PATH=${METAMASK_EXT_PATH}, exists=${fs.existsSync(METAMASK_EXT_PATH)}`);
 
   logger.debug(`service workers (pre): ${context.serviceWorkers().map(w => w.url()).join(",")}`);
