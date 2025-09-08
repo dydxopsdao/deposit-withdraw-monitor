@@ -44,14 +44,12 @@ export async function launchContextWithExtension(
   logger.debug(`METAMASK_EXT_PATH=${METAMASK_EXT_PATH}, exists=${fs.existsSync(METAMASK_EXT_PATH)}`);
 
   try {
-    logger.debug("Waiting for MetaMask service worker...");
     await context.waitForEvent("serviceworker", { timeout: 15_000 });
     logger.debug("Service worker found. Adding extra delay for initialization...");
     // This delay is often the key to stability in CI.
     await new Promise(resolve => setTimeout(resolve, 5000)); // 5 seconds
-    logger.debug("Initialization delay complete. Proceeding with test.");
   } catch (e) {
-      logger.error("MetaMask service worker did not appear in time. The extension likely failed to load.", e);
+      logger.error("MetaMask service worker failed to initialize", e);
       // Fail fast if the extension itself is broken.
       throw new Error("MetaMask service worker failed to initialize.");
   }
@@ -70,52 +68,42 @@ export async function setupWallet(context: BrowserContext, seedPhrase: string) {
     timeout: 60_000,
     verifySelector: s.onboarding.start,  // first actionable element
   });
-  logger.debug(`MetaMask onboarding page: ${onboarding.url()}`);
   // Welcome and Terms of Service
   await onboarding.locator(s.onboarding.start).click();
   await onboarding.locator(s.onboarding.termsScroll).click();
   await onboarding.locator(s.onboarding.termsCheckbox).check();
   await onboarding.locator(s.onboarding.termsAgree).click();
-  logger.debug("MetaMask onboarding: Terms of Service accepted");
 
   // Import with Secret Recovery Phrase
   await onboarding.locator(s.onboarding.importWallet).click();
   await (await onboarding.waitForSelector(s.onboarding.importWithSrp, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
-  logger.debug("MetaMask onboarding: SRP input field found");
 
   const srp = await onboarding.waitForSelector(s.onboarding.srpInput, { timeout: TEST_TIMEOUTS.ELEMENT });
   await srp.type(seedPhrase);
-  logger.debug("MetaMask onboarding: SRP input field filled");
 
   await (await onboarding.waitForSelector(s.onboarding.confirmSrp, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
-  logger.debug("MetaMask onboarding: SRP confirmation button clicked");
 
   // Set Password
   await onboarding.locator(s.onboarding.pw).fill(WALLET_PASSWORD);
   await onboarding.locator(s.onboarding.pwConfirm).fill(WALLET_PASSWORD);
   await onboarding.locator(s.onboarding.pwTerms).click();
   await onboarding.locator(s.onboarding.pwSubmit).click();
-  logger.debug("MetaMask onboarding: Password set");
 
   // Telemetry → No thanks (optional)
   const noThanks = await onboarding.waitForSelector(s.onboarding.noThanks, { timeout: TEST_TIMEOUTS.ELEMENT }).catch(() => null);
   if (noThanks) {
-    logger.debug("MetaMask onboarding: Telemetry → No thanks (optional)");
     await noThanks.click();
   }
   // Click Done
   await (await onboarding.waitForSelector(s.onboarding.done, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
-  logger.debug("MetaMask onboarding: Done button clicked");
 
   const downloadAppContinue = await onboarding.waitForSelector(s.onboarding.downloadAppContinue, { timeout: TEST_TIMEOUTS.ELEMENT }).catch(() => null);
   if (downloadAppContinue) {
-    logger.debug("MetaMask onboarding: Telemetry → download app continue");
     await downloadAppContinue.click();
   }
   // Pin extension suggestion → Done (optional)
   const pin = await onboarding.waitForSelector(s.onboarding.pinDone, { timeout: TEST_TIMEOUTS.ELEMENT }).catch(() => null);
   if (pin) {
-    logger.debug("MetaMask onboarding: Pin extension suggestion → Done (optional)");
     await pin.click();
   }
 
@@ -130,9 +118,8 @@ export async function unlockMetamaskWallet(context: BrowserContext) {
   const unlock = await findPageWithUrl(context, s.urls.unlock); 
   //TODO this is failing sometimes on the URL pattern /chrome-extension:\/\/.*\/home\.html#unlock/ vs chrome-extension://gipjnhcfkablljbiijlkcohbaniiimdi/home.html#onboarding/unlock
   if (!unlock) {
-    logger.warning("MetaMask unlock page not found ");
+    logger.warning("MetaMask unlock page not found");
   } else {
-  logger.debug(`MetaMask unlock page: ${unlock.url()}`);
   
   await (await unlock.waitForSelector(s.unlock.pw, { timeout: TEST_TIMEOUTS.ELEMENT })).fill(WALLET_PASSWORD);
   await (await unlock.waitForSelector(s.unlock.pwSubmit, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
@@ -158,7 +145,6 @@ export async function handleMetamaskPopup(context: BrowserContext) {
 
   try {
     // Some builds show a "MetaMask Notification" title, others keep it blank.
-    logger.debug(`MetaMask popup URL: ${mm.url()}`);
     // Defensive: click the common flow buttons if present
     await clickAnyButton(mm, [/^Next$/, /^Connect$/, /^Approve$/, /^Confirm$/], "MetaMask connect flow", {
       overallTimeoutMs: 10000,
@@ -216,57 +202,29 @@ export async function openMetamaskPage(
     verifySelector,
   } = options;
 
-  logger.debug(`[openMetamaskPage] Starting. hashPath='${hashPath}', timeout=${timeout}, verifySelector='${verifySelector}'`);
+  logger.debug(`Opening MetaMask page: ${hashPath}`);
 
   // --- 1. Get Extension ID and Construct URL ---
-  logger.debug("[openMetamaskPage] Getting MetaMask extension ID...");
   const extensionId = await getMetamaskId(ctx);
-  logger.debug(`[openMetamaskPage] MetaMask extension ID found: ${extensionId}`);
   
   const entryFile = "home.html"; // The standard entry point for the full-page UI
   const url = `chrome-extension://${extensionId}/${entryFile}#${hashPath}`;
-  logger.debug(`[openMetamaskPage] Constructed target URL: ${url}`);
 
   // --- 2. Create New Page and Prepare for Navigation ---
   let page: Page | null = null;
   try {
-    logger.debug("[openMetamaskPage] Creating a new page...");
     page = await ctx.newPage();
-    logger.debug(`[openMetamaskPage] New page created. Initial URL: ${page.url()}, isClosed: ${page.isClosed()}`);
 
-    // --- 3. EXECUTION CONTEXT DUMP (Before Navigation) ---
-    logger.debug("[openMetamaskPage] === PRE-NAVIGATION CONTEXT DUMP START ===");
-    try {
-        const browser = ctx.browser();
-        logger.debug(`[CONTEXT DUMP] Browser Version: ${browser?.version()}`);
-        logger.debug(`[CONTEXT DUMP] Browser Connected: ${browser?.isConnected()}`);
-        logger.debug(`[CONTEXT DUMP] Context Pages: ${ctx.pages().length} open page(s)`);
-        logger.debug(`[CONTEXT DUMP] Context Service Workers: ${ctx.serviceWorkers().length} running worker(s)`);
-
-        const allPages = ctx.pages().map(p => ({ url: p.url(), isClosed: p.isClosed() }));
-        logger.debug(`[CONTEXT DUMP] All Page URLs: ${JSON.stringify(allPages)}`);
-
-        const allSWs = ctx.serviceWorkers().map(sw => sw.url());
-        logger.debug(`[CONTEXT DUMP] All Service Worker URLs: ${JSON.stringify(allSWs)}`);
-
-        logger.debug(`[CONTEXT DUMP] Target Page Viewport: ${JSON.stringify(page.viewportSize())}`);
-    } catch (dumpError: any) {
-        logger.warning(`[CONTEXT DUMP] Could not complete context dump: ${dumpError.message}`);
-    }
-    logger.debug("[openMetamaskPage] === PRE-NAVIGATION CONTEXT DUMP END ===");
+    
 
     // --- 4. Execute Navigation ---
-    logger.debug(`[openMetamaskPage] Attempting to navigate to: ${url}`);
     await page.goto(url, { waitUntil, timeout });
-    logger.debug(`[openMetamaskPage] Navigation successful. Current URL: ${page.url()}`);
 
     // --- 5. Verify Page is Ready ---
     if (verifySelector) {
-      logger.debug(`[openMetamaskPage] Waiting for verify selector to be visible: '${verifySelector}'`);
       const locator = page.locator(verifySelector);
       // Using a specific, shorter timeout for the selector itself
       await locator.waitFor({ state: "visible", timeout: 45_000 });
-      logger.debug("[openMetamaskPage] Verify selector is visible. Page is ready.");
     }
 
     logger.info(`[SUCCESS] Successfully opened MetaMask page at ${hashPath}`);
@@ -274,11 +232,9 @@ export async function openMetamaskPage(
 
   } catch (error: any) {
     // --- 6. Detailed Error Handling ---
-    logger.error(`[FATAL] Failed to open MetaMask page during navigation or verification step.`);
-    logger.error(`[FATAL] Attempted URL: ${url}`);
-    logger.error(`[FATAL] Error Message: ${error.message}`);
+    logger.error(`Failed to open MetaMask page at ${hashPath}: ${error.message}`);
     
-    // Automatic tracing in playwright.config.ts will capture a full trace of this failure.
+    // Tracing will capture a full trace of this failure.
     // This is the most valuable artifact for debugging.
     
     if (page && !page.isClosed()) {

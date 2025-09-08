@@ -15,7 +15,6 @@ import {
 } from '../targets/wallets/phantom/flows';
 import { logger } from '../utils/logger/logging-utils';
 import path from 'path';
-import { uploadTraceToS3 } from '../utils/helpers/tracing';
 
 export const walletContextTest = test.extend<{
   route: Route;
@@ -29,12 +28,11 @@ export const walletContextTest = test.extend<{
       throw new Error('Route option must be set before running test');
     }
 
+    let context: any;
+
     logger.info(`Launching ${route.wallet_type} context with wallet alias ${route.wallet_alias}`);
 
-    let context: any;
-    const timestamp = new Date().toISOString();
     const userDataDir = `${USER_DATA_DIR}/${route.wallet_alias}`;
-
     //Sanitize the userDataDir
     const resolved = path.resolve(userDataDir);
     const base = path.resolve(USER_DATA_DIR);
@@ -47,15 +45,11 @@ export const walletContextTest = test.extend<{
     switch (route.wallet_type) {
       case 'metamask':
         context = await launchMetamaskContext(userDataDir);
-        logger.debug("launchMetamaskContext exited", { context});
         if(userDataDirExists) {
-          logger.debug("calling unlockMetamaskWallet");
           await unlockMetamaskWallet(context);
         } else {
-          logger.debug("calling setupMetamaskWallet");
           await setupMetamaskWallet(context, route.wallet_seed);
         }
-        logger.debug("unlockMetamaskWallet/setupMetamaskWallet exited");
         break;
       case 'phantom':
         context = await launchPhantomContext(userDataDir);
@@ -70,18 +64,6 @@ export const walletContextTest = test.extend<{
     }
 
     await use(context);
-
-    // Stop tracing and process the trace file
-    try {
-      logger.info("Stopping tracing", { route_id: route.id });
-      const traceDir = `${userDataDir}/trace`;
-      fs.mkdirSync(traceDir, { recursive: true });
-      const tracePath = path.join(traceDir, `trace-${route.id}-${timestamp}/trace.zip`);
-      await context.tracing.stop({ path: tracePath });
-      await uploadTraceToS3(tracePath, route.id, timestamp);
-    } catch (e: any) {
-      logger.error("Trace file processing failed", e?.message, { route_id: route.id });
-    }    
   },
 
   page: async ({ context }, use) => {
