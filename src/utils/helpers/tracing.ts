@@ -38,7 +38,7 @@ export async function uploadTraceToS3(tracePath: string, routeId: string, timest
   // Upload each trace file to S3 under a common directory
   let i = 0;
   for (const file of files) {
-    if (i % 20 === 0) {
+    if (i % 50 === 0) {
       logger.info(`Progress: ${Math.round(i / files.length * 100)}%...`);
     }
     i++;
