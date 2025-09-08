@@ -61,13 +61,17 @@ export async function setupWallet(context: BrowserContext, seedPhrase: string) {
   logger.step("Setting up MetaMask wallet");
 
   // deterministically open the UI (don’t wait for it to appear)
-  const onboarding = await openMetamaskPage(context, "onboarding/welcome", {
+ /*  const onboarding = await openMetamaskPage(context, "onboarding/welcome", {
     waitUntil: "domcontentloaded",
     navTimeoutMs: 60_000,
     retries: 2,
     retryDelayMs: 800,
     verifySelector: s.onboarding.start,  // first actionable element
-  });
+  }); */
+
+  const onboarding = await context.waitForEvent("page", (page) =>
+    page.url().startsWith("chrome-extension://")
+  );
   logger.debug(`MetaMask onboarding page: ${onboarding.url()}`);
   // Welcome and Terms of Service
   await onboarding.locator(s.onboarding.start).click();
