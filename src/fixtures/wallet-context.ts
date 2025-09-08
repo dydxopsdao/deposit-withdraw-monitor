@@ -47,11 +47,15 @@ export const walletContextTest = test.extend<{
     switch (route.wallet_type) {
       case 'metamask':
         context = await launchMetamaskContext(userDataDir);
+        logger.debug("launchMetamaskContext exited", { context});
         if(userDataDirExists) {
+          logger.debug("calling unlockMetamaskWallet");
           await unlockMetamaskWallet(context);
         } else {
+          logger.debug("calling setupMetamaskWallet");
           await setupMetamaskWallet(context, route.wallet_seed);
         }
+        logger.debug("unlockMetamaskWallet/setupMetamaskWallet exited");
         break;
       case 'phantom':
         context = await launchPhantomContext(userDataDir);
