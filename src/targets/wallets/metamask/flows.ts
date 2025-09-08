@@ -8,6 +8,7 @@ import { clickAnyButton } from "../../../utils/helpers/ui-helper";
 import { logger } from "../../../utils/logger/logging-utils";
 import { TEST_TIMEOUTS } from "../../../config/timeouts";
 import fs from "fs";
+import path from "path";
 
 /**
  * Launch a persistent context with the MetaMask extension loaded.
@@ -50,7 +51,7 @@ export async function launchContextWithExtension(
   try {
     const sw = await context.waitForEvent("serviceworker", { timeout: TEST_TIMEOUTS.EXTENSIONS });
     logger.debug(`service worker (post): ${sw.url()}`);
-  } catch { logger.warning("No service worker appeared (extension not loaded?)"); }
+  } catch { }
 
   logger.debug(`open pages: ${JSON.stringify(context.pages().map(p => p.url()))}`);
 
@@ -72,7 +73,6 @@ export async function setupWallet(context: BrowserContext, seedPhrase: string) {
     verifySelector: s.onboarding.start,  // first actionable element
   });
   logger.debug(`MetaMask onboarding page: ${onboarding.url()}`);
-
   // Welcome and Terms of Service
   await onboarding.locator(s.onboarding.start).click();
   await onboarding.locator(s.onboarding.termsScroll).click();
@@ -206,56 +206,77 @@ type OpenOpts = {
 export async function openMetamaskPage(
   ctx: BrowserContext,
   hashPath: string,
-  opts: OpenOpts = {}
-): Promise<Page> {
-  const {
-    waitUntil = "load",
-    navTimeoutMs = 15_000,
+  {
+    waitUntil = "domcontentloaded",
+    navTimeoutMs = 90_000,
+    verifySelector,
     retries = 2,
     retryDelayMs = 800,
-    verifySelector,
-  } = opts;
+  }: {
+    waitUntil?: "load" | "domcontentloaded";
+    navTimeoutMs?: number;
+    verifySelector?: string;
+    retries?: number;
+    retryDelayMs?: number;
+  } = {}
+): Promise<Page> {
+  const id   = await getMetamaskId(ctx); // your existing SW-based resolver
+  const base = `chrome-extension://${id}`;
+  const entry = pickEntryFile();
 
-  logger.debug(`Opening MetaMask page: ${hashPath}`);
-  const id = await getMetamaskId(ctx);
-  const url = `chrome-extension://${id}/home.html#${hashPath}`;
-  logger.debug(`MetaMask ID: ${id} | URL: ${url}`);
+  const candidates = [
+    `${base}/${entry}#${hashPath}`,
+    `${base}/${entry}`,            // let MM route internally if hash not accepted
+  ];
 
-  // If a matching tab already exists, reuse it (and navigate if hash differs)
+  const sleep = (ms:number)=>new Promise(r=>setTimeout(r,ms));
+
+  // Reuse any existing MM tab first
   for (const p of ctx.pages()) {
-    const u = p.url();
-    if (u.startsWith(`chrome-extension://${id}/home.html`)) {
-      if (!u.includes(`#${hashPath}`)) {
-        logger.debug(`Reusing existing MM tab, navigating to hash: ${hashPath}`);
-        await p.goto(url, { waitUntil, timeout: navTimeoutMs });
-      } else {
-        logger.debug(`Reusing existing MM tab at desired hash`);
-      }
-      if (verifySelector) await p.waitForSelector(verifySelector, { timeout: navTimeoutMs }).catch(()=>{});
-      return p;
+    if (p.url().startsWith(`${base}/`)) {
+      try {
+        await p.goto(candidates[0], { waitUntil, timeout: 30_000 }).catch(()=>{});
+        if (verifySelector) await p.waitForSelector(verifySelector, { timeout: navTimeoutMs });
+        return p;
+      } catch {}
     }
   }
 
-  let lastErr: any;
-  for (let attempt = 1; attempt <= (retries + 1); attempt++) {
-    const page = await ctx.newPage();
-    try {
-      await page.goto(url, { waitUntil, timeout: navTimeoutMs });
-      logger.debug(`MetaMask page loaded (attempt ${attempt}): ${page.url()}`);
-      if (verifySelector) {
-        await page.waitForSelector(verifySelector, { timeout: navTimeoutMs });
-        logger.debug(`verifySelector present: ${verifySelector}`);
-      }
-      return page;
-    } catch (e: any) {
-      lastErr = e;
-      logger.warning(`openMetamaskPage attempt ${attempt} failed: ${e?.message ?? e}`);
-      try { await page.close(); } catch {}
-      if (attempt <= retries) {
-        await new Promise(r => setTimeout(r, retryDelayMs));
-        logger.debug(`Retrying in ${retryDelayMs}ms…`);
-      }
+  let lastErr:any;
+  for (const url of candidates) {
+    for (let i = 1; i <= (retries + 1); i++) {
+      // A) direct goto
+      try {
+        const a = await ctx.newPage();
+        await a.goto(url, { waitUntil, timeout: 30_000 }); // don’t wait forever
+        if (verifySelector) await a.waitForSelector(verifySelector, { timeout: navTimeoutMs });
+        return a;
+      } catch (e:any) { lastErr = e; }
+
+      // B) window.open fallback (often fixes CI/Xvfb)
+      try {
+        const opener = await ctx.newPage();
+        await opener.goto("data:text/html,<html></html>", { waitUntil: "load", timeout: 5_000 });
+        const newPage = ctx.waitForEvent("page", { timeout: navTimeoutMs });
+        await opener.evaluate(u => window.open(u, "_blank"), url);
+        const b = await newPage;
+        await b.waitForLoadState(waitUntil, { timeout: 30_000 }).catch(()=>{});
+        if (verifySelector) await b.waitForSelector(verifySelector, { timeout: navTimeoutMs });
+        await opener.close().catch(()=>{});
+        return b;
+      } catch (e:any) { lastErr = e; }
+
+      if (i <= retries) await sleep(retryDelayMs);
     }
   }
-  throw new Error(`Failed to open MetaMask page after ${retries + 1} attempts: ${lastErr?.message ?? lastErr}`);
+
+  throw new Error(`Failed to open MetaMask UI (last error: ${lastErr?.message ?? lastErr})`);
+}
+
+function pickEntryFile(): string {
+  const candidates = ["home.html", "index.html", "popup.html", "notification.html"];
+  for (const f of candidates) {
+    if (fs.existsSync(path.join(METAMASK_EXT_PATH, f))) return f;
+  }
+  throw new Error(`MetaMask entry not found in ${METAMASK_EXT_PATH} (tried home.html, index.html, popup.html, notification.html)`);
 }
