@@ -43,14 +43,18 @@ export async function launchContextWithExtension(
 
   logger.debug(`METAMASK_EXT_PATH=${METAMASK_EXT_PATH}, exists=${fs.existsSync(METAMASK_EXT_PATH)}`);
 
-  logger.debug(`service workers (pre): ${context.serviceWorkers().map(w => w.url()).join(",")}`);
   try {
-    const sw = await context.waitForEvent("serviceworker", { timeout: TEST_TIMEOUTS.EXTENSIONS });
-    logger.debug(`service worker (post): ${sw.url()}`);
-  } catch { }
-
-  logger.debug(`open pages: ${JSON.stringify(context.pages().map(p => p.url()))}`);
-
+    logger.debug("Waiting for MetaMask service worker...");
+    await context.waitForEvent("serviceworker", { timeout: 15_000 });
+    logger.debug("Service worker found. Adding extra delay for initialization...");
+    // This delay is often the key to stability in CI.
+    await new Promise(resolve => setTimeout(resolve, 5000)); // 5 seconds
+    logger.debug("Initialization delay complete. Proceeding with test.");
+  } catch (e) {
+      logger.error("MetaMask service worker did not appear in time. The extension likely failed to load.", e);
+      // Fail fast if the extension itself is broken.
+      throw new Error("MetaMask service worker failed to initialize.");
+  }
   return context;
 }
 
@@ -61,17 +65,11 @@ export async function setupWallet(context: BrowserContext, seedPhrase: string) {
   logger.step("Setting up MetaMask wallet");
 
   // deterministically open the UI (don’t wait for it to appear)
- /*  const onboarding = await openMetamaskPage(context, "onboarding/welcome", {
+  const onboarding = await openMetamaskPage(context, "onboarding/welcome", {
     waitUntil: "domcontentloaded",
-    navTimeoutMs: 60_000,
-    retries: 2,
-    retryDelayMs: 800,
+    timeout: 60_000,
     verifySelector: s.onboarding.start,  // first actionable element
-  }); */
-
-  const onboarding = await context.waitForEvent("page", (page) =>
-    page.url().startsWith("chrome-extension://")
-  );
+  });
   logger.debug(`MetaMask onboarding page: ${onboarding.url()}`);
   // Welcome and Terms of Service
   await onboarding.locator(s.onboarding.start).click();
@@ -206,192 +204,93 @@ type OpenOpts = {
 export async function openMetamaskPage(
   ctx: BrowserContext,
   hashPath: string,
-  {
-    waitUntil = "domcontentloaded",
-    navTimeoutMs = 90_000,
-    verifySelector,
-    retries = 2,
-    retryDelayMs = 800,
-  }: {
-    waitUntil?: "load" | "domcontentloaded";
-    navTimeoutMs?: number;
+  options: {
+    timeout?: number;
     verifySelector?: string;
-    retries?: number;
-    retryDelayMs?: number;
-  } = {}
+    waitUntil?: "load" | "domcontentloaded";
+  }
 ): Promise<Page> {
-   // Start tracing
-   logger.info("Starting tracing");
-   await ctx.tracing.start({
-    screenshots: true,
-    snapshots: true,
-    sources: true,
-  });
-  logger.debug(`openMetamaskPage: Starting with hashPath=${hashPath}, waitUntil=${waitUntil}, navTimeoutMs=${navTimeoutMs}, retries=${retries}, verifySelector=${verifySelector}`);
-  
-  logger.debug("openMetamaskPage: Getting MetaMask extension ID");
-  const id   = await getMetamaskId(ctx);
-  logger.debug(`openMetamaskPage: MetaMask extension ID: ${id}`);
-  
-  const base = `chrome-extension://${id}`;
-  logger.debug(`openMetamaskPage: Base URL: ${base}`);
-  
-  logger.debug("openMetamaskPage: Picking entry file");
-  const entry = pickEntryFile();
-  logger.debug(`openMetamaskPage: Entry file: ${entry}`);
+  const {
+    waitUntil = "domcontentloaded",
+    timeout = 90_000,
+    verifySelector,
+  } = options;
 
-  const candidates = [
-    `${base}/${entry}#${hashPath}`,
-    `${base}/${entry}`,            // let MM route internally if hash not accepted
-  ];
-  logger.debug(`openMetamaskPage: Candidate URLs: ${JSON.stringify(candidates)}`);
+  logger.debug(`[openMetamaskPage] Starting. hashPath='${hashPath}', timeout=${timeout}, verifySelector='${verifySelector}'`);
 
-  const sleep = (ms:number)=>new Promise(r=>setTimeout(r,ms));
+  // --- 1. Get Extension ID and Construct URL ---
+  logger.debug("[openMetamaskPage] Getting MetaMask extension ID...");
+  const extensionId = await getMetamaskId(ctx);
+  logger.debug(`[openMetamaskPage] MetaMask extension ID found: ${extensionId}`);
+  
+  const entryFile = "home.html"; // The standard entry point for the full-page UI
+  const url = `chrome-extension://${extensionId}/${entryFile}#${hashPath}`;
+  logger.debug(`[openMetamaskPage] Constructed target URL: ${url}`);
 
-  // Reuse any existing MM tab first
-  logger.debug(`openMetamaskPage: Checking ${ctx.pages().length} existing pages for reusable MM tabs`);
-  for (const p of ctx.pages()) {
-    logger.debug(`openMetamaskPage: Checking page URL: ${p.url()}`);
-    if (p.url().startsWith(`${base}/`)) {
-      logger.debug(`openMetamaskPage: Found existing MM tab, attempting to reuse: ${p.url()}`);
-      try {
-        logger.debug(`openMetamaskPage: Navigating existing tab to: ${candidates[0]}`);
-        await p.goto(candidates[0], { waitUntil, timeout: 30_000 }).catch(()=>{});
-        logger.debug(`openMetamaskPage: Navigation completed for existing tab`);
-        
-        if (verifySelector) {
-          logger.debug(`openMetamaskPage: Waiting for verify selector: ${verifySelector}`);
-          await p.waitForSelector(verifySelector, { timeout: navTimeoutMs });
-          logger.debug(`openMetamaskPage: Verify selector found on existing tab`);
-        }
-        
-        logger.debug(`openMetamaskPage: Successfully reused existing tab: ${p.url()}`);
-        return p;
-      } catch (e: any) {
-        logger.debug(`openMetamaskPage: Failed to reuse existing tab: ${e?.message ?? e}`);
-      }
+  // --- 2. Create New Page and Prepare for Navigation ---
+  let page: Page | null = null;
+  try {
+    logger.debug("[openMetamaskPage] Creating a new page...");
+    page = await ctx.newPage();
+    logger.debug(`[openMetamaskPage] New page created. Initial URL: ${page.url()}, isClosed: ${page.isClosed()}`);
+
+    // --- 3. EXECUTION CONTEXT DUMP (Before Navigation) ---
+    logger.debug("[openMetamaskPage] === PRE-NAVIGATION CONTEXT DUMP START ===");
+    try {
+        const browser = ctx.browser();
+        logger.debug(`[CONTEXT DUMP] Browser Version: ${browser?.version()}`);
+        logger.debug(`[CONTEXT DUMP] Browser Connected: ${browser?.isConnected()}`);
+        logger.debug(`[CONTEXT DUMP] Context Pages: ${ctx.pages().length} open page(s)`);
+        logger.debug(`[CONTEXT DUMP] Context Service Workers: ${ctx.serviceWorkers().length} running worker(s)`);
+
+        const allPages = ctx.pages().map(p => ({ url: p.url(), isClosed: p.isClosed() }));
+        logger.debug(`[CONTEXT DUMP] All Page URLs: ${JSON.stringify(allPages)}`);
+
+        const allSWs = ctx.serviceWorkers().map(sw => sw.url());
+        logger.debug(`[CONTEXT DUMP] All Service Worker URLs: ${JSON.stringify(allSWs)}`);
+
+        logger.debug(`[CONTEXT DUMP] Target Page Viewport: ${JSON.stringify(page.viewportSize())}`);
+    } catch (dumpError: any) {
+        logger.warning(`[CONTEXT DUMP] Could not complete context dump: ${dumpError.message}`);
     }
-  }
+    logger.debug("[openMetamaskPage] === PRE-NAVIGATION CONTEXT DUMP END ===");
 
-  logger.debug("openMetamaskPage: No reusable tabs found, creating new page");
-  let lastErr:any;
-  for (const url of candidates) {
-    logger.debug(`openMetamaskPage: Trying URL candidate: ${url}`);
+    // --- 4. Execute Navigation ---
+    logger.debug(`[openMetamaskPage] Attempting to navigate to: ${url}`);
+    await page.goto(url, { waitUntil, timeout });
+    logger.debug(`[openMetamaskPage] Navigation successful. Current URL: ${page.url()}`);
+
+    // --- 5. Verify Page is Ready ---
+    if (verifySelector) {
+      logger.debug(`[openMetamaskPage] Waiting for verify selector to be visible: '${verifySelector}'`);
+      const locator = page.locator(verifySelector);
+      // Using a specific, shorter timeout for the selector itself
+      await locator.waitFor({ state: "visible", timeout: 45_000 });
+      logger.debug("[openMetamaskPage] Verify selector is visible. Page is ready.");
+    }
+
+    logger.info(`[SUCCESS] Successfully opened MetaMask page at ${hashPath}`);
+    return page;
+
+  } catch (error: any) {
+    // --- 6. Detailed Error Handling ---
+    logger.error(`[FATAL] Failed to open MetaMask page during navigation or verification step.`);
+    logger.error(`[FATAL] Attempted URL: ${url}`);
+    logger.error(`[FATAL] Error Message: ${error.message}`);
     
-    for (let i = 1; i <= (retries + 1); i++) {
-      logger.debug(`openMetamaskPage: Attempt ${i}/${retries + 1} for URL: ${url}`);
-      
-      // A) direct goto
-      logger.debug(`openMetamaskPage: Trying direct goto method`);
-      try {
-        logger.debug(`openMetamaskPage: Creating new page for direct goto`);
-        const a = await ctx.newPage();
-        logger.debug(`openMetamaskPage: New page created, URL: ${a.url()}`);
-        
-        // Dump extensive execution context before navigation
-        logger.debug(`openMetamaskPage: === EXECUTION CONTEXT DUMP ===`);
-        logger.debug(`openMetamaskPage: Target URL: ${url}`);
-        logger.debug(`openMetamaskPage: Page object type: ${typeof a}`);
-        logger.debug(`openMetamaskPage: Page isClosed: ${a.isClosed()}`);
-        logger.debug(`openMetamaskPage: Page URL before nav: ${a.url()}`);
-        logger.debug(`openMetamaskPage: BrowserContext isConnected: ${!ctx.browser()?.isConnected || ctx.browser()?.isConnected()}`);
-        logger.debug(`openMetamaskPage: BrowserContext pages count: ${ctx.pages().length}`);
-        logger.debug(`openMetamaskPage: BrowserContext serviceWorkers count: ${ctx.serviceWorkers().length}`);
-        logger.debug(`openMetamaskPage: Navigation options: waitUntil=${waitUntil}, timeout=30000`);
-        logger.debug(`openMetamaskPage: Attempt ${i}/${retries + 1}, URL candidate ${candidates.indexOf(url) + 1}/${candidates.length}`);
-        
-        try {
-          logger.debug(`openMetamaskPage: Page viewport: ${JSON.stringify(a.viewportSize())}`);
-        } catch (e) {
-          logger.debug(`openMetamaskPage: Failed to get viewport: ${e}`);
-        }
-        
-        try {
-          logger.debug(`openMetamaskPage: Browser version: ${ctx.browser()?.version()}`);
-        } catch (e) {
-          logger.debug(`openMetamaskPage: Failed to get browser version: ${e}`);
-        }
-        
-        try {
-          const allPages = ctx.pages();
-          logger.debug(`openMetamaskPage: All context pages: ${JSON.stringify(allPages.map(p => ({ url: p.url(), isClosed: p.isClosed() })))}`);
-        } catch (e) {
-          logger.debug(`openMetamaskPage: Failed to enumerate pages: ${e}`);
-        }
-        
-        try {
-          const sws = ctx.serviceWorkers();
-          logger.debug(`openMetamaskPage: Service workers: ${JSON.stringify(sws.map(sw => sw.url()))}`);
-        } catch (e) {
-          logger.debug(`openMetamaskPage: Failed to enumerate service workers: ${e}`);
-        }
-        
-        logger.debug(`openMetamaskPage: === END CONTEXT DUMP ===`);
-        
-        logger.debug(`openMetamaskPage: Navigating to: ${url}`);
-        await a.goto(url, { waitUntil, timeout: 30_000 }); // don't wait forever
-        logger.debug(`openMetamaskPage: Direct navigation completed to: ${a.url()}`);
-        
-        if (verifySelector) {
-          logger.debug(`openMetamaskPage: Waiting for verify selector: ${verifySelector}`);
-          await a.waitForSelector(verifySelector, { timeout: navTimeoutMs });
-          logger.debug(`openMetamaskPage: Verify selector found via direct goto`);
-        }
-        
-        logger.debug(`openMetamaskPage: Direct goto successful, returning page: ${a.url()}`);
-        return a;
-      } catch (e:any) { 
-        lastErr = e; 
-        logger.debug(`openMetamaskPage: Direct goto failed: ${e?.message ?? e}`);
-      }
-
-      // B) window.open fallback (often fixes CI/Xvfb)
-      logger.debug(`openMetamaskPage: Trying window.open fallback method`);
-      try {
-        logger.debug(`openMetamaskPage: Creating opener page for window.open`);
-        const opener = await ctx.newPage();
-        logger.debug(`openMetamaskPage: Opener page created, navigating to data URL`);
-        
-        await opener.goto("data:text/html,<html></html>", { waitUntil: "load", timeout: 5_000 });
-        logger.debug(`openMetamaskPage: Opener page ready, setting up page event listener`);
-        
-        const newPage = ctx.waitForEvent("page", { timeout: navTimeoutMs });
-        logger.debug(`openMetamaskPage: Executing window.open for: ${url}`);
-        await opener.evaluate(u => window.open(u, "_blank"), url);
-        
-        logger.debug(`openMetamaskPage: Waiting for new page from window.open`);
-        const b = await newPage;
-        logger.debug(`openMetamaskPage: New page received from window.open: ${b.url()}`);
-        
-        logger.debug(`openMetamaskPage: Waiting for load state: ${waitUntil}`);
-        await b.waitForLoadState(waitUntil, { timeout: 30_000 }).catch(()=>{});
-        logger.debug(`openMetamaskPage: Load state achieved for window.open page`);
-        
-        if (verifySelector) {
-          logger.debug(`openMetamaskPage: Waiting for verify selector: ${verifySelector}`);
-          await b.waitForSelector(verifySelector, { timeout: navTimeoutMs });
-          logger.debug(`openMetamaskPage: Verify selector found via window.open`);
-        }
-        
-        logger.debug(`openMetamaskPage: Closing opener page`);
-        await opener.close().catch(()=>{});
-        logger.debug(`openMetamaskPage: Window.open successful, returning page: ${b.url()}`);
-        return b;
-      } catch (e:any) { 
-        lastErr = e; 
-        logger.debug(`openMetamaskPage: Window.open fallback failed: ${e?.message ?? e}`);
-      }
-
-      if (i <= retries) {
-        logger.debug(`openMetamaskPage: Sleeping ${retryDelayMs}ms before retry ${i + 1}`);
-        await sleep(retryDelayMs);
-      }
+    // Automatic tracing in playwright.config.ts will capture a full trace of this failure.
+    // This is the most valuable artifact for debugging.
+    
+    if (page && !page.isClosed()) {
+        logger.debug("[openMetamaskPage] Attempting to close failed page...");
+        await page.close().catch(e => logger.warning(`Failed to close page on error: ${e.message}`));
     }
-    logger.debug(`openMetamaskPage: All attempts failed for URL: ${url}, trying next candidate`);
+    
+    // Rethrow the error to ensure the test fails clearly.
+    throw new Error(
+      `Failed to navigate to MetaMask page ('${hashPath}'). Last error: ${error.message}`
+    );
   }
-
-  logger.debug(`openMetamaskPage: All URL candidates and retries exhausted, throwing error`);
-  throw new Error(`Failed to open MetaMask UI (last error: ${lastErr?.message ?? lastErr})`);
 }
 
 function pickEntryFile(): string {
