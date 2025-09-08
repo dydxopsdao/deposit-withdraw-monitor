@@ -56,7 +56,9 @@ export default defineConfig({
               "--no-sandbox",
               "--disable-setuid-sandbox",
               "--disable-dev-shm-usage",
-              "--disable-gpu"
+              "--disable-gpu",
+              "--disable-infobars",
+              "--disable-blink-features=AutomationControlled",
             ] : [])
           ],
         },

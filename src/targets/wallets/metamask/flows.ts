@@ -18,19 +18,21 @@ export async function launchContextWithExtension(
 ): Promise<BrowserContext> {
   assertMetamaskSecrets();
 
+  const ciArgs = [
+    `--disable-extensions-except=${METAMASK_EXT_PATH}`,
+    `--load-extension=${METAMASK_EXT_PATH}`,
+    "--no-sandbox",
+    "--disable-setuid-sandbox",
+    "--disable-dev-shm-usage",
+    "--disable-gpu",
+    "--start-maximized",
+  ];
+
   const context = await chromium.launchPersistentContext(userDataDir, {
     headless: false,
+    viewport: { width: 1280, height: 720 },
     ignoreDefaultArgs: ["--enable-automation"],
-    args: [
-      `--disable-extensions-except=${METAMASK_EXT_PATH}`,
-      `--load-extension=${METAMASK_EXT_PATH}`,
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-dev-shm-usage",
-      "--disable-gpu",
-      "--disable-infobars",
-      "--disable-blink-features=AutomationControlled",
-    ],
+    args: ciArgs,
   });
 
   // Reduce automation fingerprint
@@ -38,13 +40,6 @@ export async function launchContextWithExtension(
     Object.defineProperty(navigator, "webdriver", { get: () => false });
   });
 
-  // Start tracing
-  logger.info("Starting tracing");
-   await context.tracing.start({
-    screenshots: true,
-    snapshots: true,
-    sources: true,
-  });
 
   logger.debug(`METAMASK_EXT_PATH=${METAMASK_EXT_PATH}, exists=${fs.existsSync(METAMASK_EXT_PATH)}`);
 
@@ -221,10 +216,17 @@ export async function openMetamaskPage(
     retryDelayMs?: number;
   } = {}
 ): Promise<Page> {
+   // Start tracing
+   logger.info("Starting tracing");
+   await ctx.tracing.start({
+    screenshots: true,
+    snapshots: true,
+    sources: true,
+  });
   logger.debug(`openMetamaskPage: Starting with hashPath=${hashPath}, waitUntil=${waitUntil}, navTimeoutMs=${navTimeoutMs}, retries=${retries}, verifySelector=${verifySelector}`);
   
   logger.debug("openMetamaskPage: Getting MetaMask extension ID");
-  const id   = await getMetamaskId(ctx); // your existing SW-based resolver
+  const id   = await getMetamaskId(ctx);
   logger.debug(`openMetamaskPage: MetaMask extension ID: ${id}`);
   
   const base = `chrome-extension://${id}`;
