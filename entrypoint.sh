@@ -24,6 +24,7 @@ REPORT_ID=$ROUTE_ID-$(date +"%Y-%m-%d_%H-%M-%S")
 S3_PATH=$AWS_REPORTS_BUCKET_NAME/$REPORT_ID/
 echo "Uploading report to S3: $S3_PATH"
 aws s3 cp playwright-report/ s3://$S3_PATH --recursive
+echo "Report uploaded"
 
 # Exit with the same code as the tests
 exit $TEST_EXIT_CODE
