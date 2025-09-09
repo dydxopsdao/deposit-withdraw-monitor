@@ -59,3 +59,65 @@ resource "aws_iam_role_policy" "s3_traces_permissions" {
     ]
   })
 }
+
+# --- S3 bucket for storing reports ---
+
+resource "aws_s3_bucket" "reports" {
+  bucket = "dydxopsdao-deposit-withdraw-monitor-reports"
+}
+
+# Rule to delete reports after 30 days
+resource "aws_s3_bucket_lifecycle_configuration" "reports" {
+  bucket = aws_s3_bucket.reports.id
+
+  rule {
+    id     = "delete_old_reports"
+    status = "Enabled"
+
+    # Apply to all objects
+    filter {}
+
+    expiration {
+      days = 30
+    }
+  }
+}
+
+# Block public access to the bucket
+resource "aws_s3_bucket_public_access_block" "reports" {
+  bucket = aws_s3_bucket.reports.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# Add S3 permissions to task role for writing reports
+resource "aws_iam_role_policy" "s3_reports_permissions" {
+  name = "deposit-withdraw-monitor-s3-reports-permissions"
+  role = aws_iam_role.task_role.id
+  
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject",
+          "s3:PutObjectAcl",
+          "s3:GetObject",
+          "s3:DeleteObject"
+        ]
+        Resource = "${aws_s3_bucket.reports.arn}/*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:ListBucket"
+        ]
+        Resource = aws_s3_bucket.reports.arn
+      }
+    ]
+  })
+}
