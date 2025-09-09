@@ -22,7 +22,6 @@ import { openApp, connectWallet, deposit, submitDeposit } from "../targets/dydx/
 import { dydxSelectors } from "../targets/dydx/selectors";
 import { TEST_TIMEOUTS } from "../config/timeouts";
 import { waitForFinality } from "../utils/finality/finality";
-import { uploadTraceToS3 } from "../utils/helpers/tracing";
 
 // ---- Route discovery (sync so tests can be defined at import time) ----------
 const onlyRouteId = process.env.ROUTE_ID?.trim();
