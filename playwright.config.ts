@@ -38,7 +38,7 @@ export default defineConfig({
     // baseURL: 'http://localhost:3000',
 
     /* We handle tracing manually in the tests */
-    trace: "off"
+    trace: "on"
   },
 
   /* Configure projects for major browsers */

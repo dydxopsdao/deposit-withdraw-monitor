@@ -56,14 +56,6 @@ for (const route of depositRoutes) {
     });
 
     test(title, async ({ page, context }, testInfo) => {
-      // Start tracing
-      logger.info("Starting tracing");
-      await context.tracing.start({
-        screenshots: true,
-        snapshots: true,
-        sources: true,
-      });
-
       // Datadog context (keeps tags consistent, sends metrics/logs)
       const dd = createTelemetryContext({
         route: {
@@ -179,16 +171,6 @@ for (const route of depositRoutes) {
             // swallow — do not rethrow
           }
         });
-
-        // Stop tracing and process the trace file
-        try {
-          logger.info("Stopping tracing", { route_id: route.id });
-          const tracePath = path.join(testInfo.outputDir, `trace-${route.id}-${timestamp}/trace.zip`);
-          await context.tracing.stop({ path: tracePath });
-          await uploadTraceToS3(tracePath, route.id, timestamp);
-        } catch (e: any) {
-          logger.error("Trace file processing failed", e?.message, { route_id: route.id });
-        }
       }
     });
   });
