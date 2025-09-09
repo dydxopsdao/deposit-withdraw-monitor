@@ -161,6 +161,15 @@ export async function handleMetamaskPopup(context: BrowserContext) {
   }
 }
 
+export async function ensureMetamaskUnlocked(context: BrowserContext) {
+  logger.info("Ensuring MetaMask is unlocked");
+  try {
+    await unlockMetamaskWallet(context);
+  } catch (error) {
+    
+  }
+}
+
 function extractId(u: string): string | null {
   const m = u.match(/^chrome-extension:\/\/([a-p]{32})\//);
   return m ? m[1] : null;
