@@ -22,27 +22,41 @@ export const dydxSelectors = {
     throw new Error(`Unsupported wallet: ${wallet}`);
   }) as Selector,
   sendRequestBtn: ((p) => p.getByRole("button", { name: /^send request$/i })) as Selector,
+  closeDialogButton: ((p) => p.getByRole('button').filter({ hasText: /^$/ })) as Selector,
+ 
 
   /* deposit */
-  depositDialog: ((p) => p.getByRole("dialog", { name: /^deposit$/i })) as Selector,
-  tokenPickerDialog: ((p) => p.getByText('Your tokens')) as Selector,
-  amountInput: ((p) => dydxSelectors.depositDialog(p).getByPlaceholder("0.00")) as Selector,
+  fundsDialog: ((p) =>
+    p.getByRole('dialog', { name: /^(deposit|withdraw)$/i }).first()) as Selector,
+  tokenPickerDialogDeposit: ((p) => p.getByText('Your tokens')) as Selector,
   depositButtons: ((p) => p.getByRole("button", { name: /^deposit$/i })) as Selector,
   depositClickableButton: ((p) => p.locator('button:has-text("Deposit"):not(:disabled)').first()) as Selector,
   depositFundsButton: ((p) =>
-    dydxSelectors.depositDialog(p).getByRole("button", { name: /^deposit funds$/i })
+    dydxSelectors.fundsDialog(p).getByRole("button", { name: /^deposit funds$/i })
   ) as Selector,
 
+  amountInput: ((p) => dydxSelectors.fundsDialog(p).getByPlaceholder("0.00")) as Selector,
   /**
    * Token pill next to the Amount input.
    * Strategy: take the Amount input → its *nearest* container → first enabled button.
    * This avoids the header "X" and skips disabled token rows elsewhere.
    */
-  tokenPillButton: ((p: Page) => {
+  tokenPillDeposit: ((p: Page) => {
     const input = (dydxSelectors.amountInput as Selector)(p);
     const container = input.locator("xpath=ancestor::div[1]");
     return container.locator("button:enabled").first();
   }) as Selector,
+  // Pill button next to "Address" (works for both Deposit & Withdraw dialogs)
+  tokenPillWithdraw: ((p) =>
+    p.getByRole('dialog', { name: /^(deposit|withdraw)$/i })
+      .locator('div:has-text("Address")')
+      .locator('button')
+      .filter({
+        hasText: /^(ethereum|polygon|arbitrum|base|optimism|avalanche|solana|neutron|noble)$/i,
+      })
+      .first()
+  ) as Selector,
+
 
   // All candidate rows that contain BOTH the token and chain text
   tokenPickerCandidates: ((p: Page, token: string, chain: string) => {
@@ -54,11 +68,28 @@ export const dydxSelectors = {
   
 
 
-  depositInProgress: (p) =>
-    dydxSelectors.depositDialog(p).getByText(/deposit in progress/i),
-  depositCompleted: (p) =>
-    dydxSelectors.depositDialog(p).getByText(/deposit completed/i),
-  depositTxLink: (p) =>
-    dydxSelectors.depositDialog(p).locator('a[href*="/tx/"]').first(),
+  transferInProgress: (p) =>
+    dydxSelectors.fundsDialog(p).getByText(/ in progress/i),
+  transferCompleted: (p) =>
+    dydxSelectors.fundsDialog(p).getByText(/ completed/i),
+  transferTxLink: (p) =>
+    dydxSelectors.fundsDialog(p).locator('a[href*="/tx/"]').first(),
+
+  /* withdraw */
+  withdrawButton: ((p) => p.getByRole('button', { name: 'Withdraw' })) as Selector,
+  chainPickerDialog: ((p) =>
+    p.getByRole('dialog', { name: /select (a )?chain/i })
+  ) as Selector,
+  
+  // A specific chain row in that dialog, e.g. "Ethereum", "Polygon", …
+  chainPickerRow: ((p, chain: string) =>
+    dydxSelectors
+      .chainPickerDialog(p)
+      .getByRole("button", { name: new RegExp(`\\b${esc(chain)}\\b`, "i") })
+      ) as Selector,
+
+  withdrawFundsButton: ((p) =>
+    dydxSelectors.fundsDialog(p).getByRole('button', { name: 'Withdraw' })
+  ) as Selector,
 
 };

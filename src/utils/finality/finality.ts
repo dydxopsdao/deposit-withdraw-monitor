@@ -17,7 +17,7 @@ export async function waitForFinality(
   pollMs = 1500,
   graceMs = 500
 ): Promise<FinalityResult> {
-  const dlg = dydxSelectors.depositDialog(page);
+  const dlg = dydxSelectors.fundsDialog(page);
 
   // Make sure the dialog is open
   await expect(dlg).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
@@ -25,9 +25,9 @@ export async function waitForFinality(
   const end = Date.now() + timeoutMs;
 
   // Locators inside the dialog
-  const inProgress   = dydxSelectors.depositInProgress(page);
-  const completed    = dydxSelectors.depositCompleted(page);
-  const explorerLink = dydxSelectors.depositTxLink(page); // e.g. polygonscan/etherscan link
+  const inProgress   = dydxSelectors.transferInProgress(page);
+  const completed    = dydxSelectors.transferCompleted(page);
+  const explorerLink = dydxSelectors.transferTxLink(page); // e.g. polygonscan/etherscan link
 
   // Poll until completed or timeout
   while (Date.now() < end) {
