@@ -25,3 +25,8 @@ output "datadog_api_key_secret_arn" {
   value = aws_secretsmanager_secret.secrets["datadog_api_key"].arn
   description = "ARN of the AWS Secrets Manager secret containing Datadog API key"
 }
+
+output "report_service_url" {
+  value = "http://${aws_lb.report_service.dns_name}"
+  description = "URL to access the report service (username: viewer, password: see report_service_password variable)"
+}
