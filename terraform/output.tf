@@ -11,6 +11,11 @@ output "traces_bucket_name" {
   description = "Name of the S3 bucket for storing traces"
 }
 
+output "reports_bucket_name" {
+  value = aws_s3_bucket.reports.bucket
+  description = "Name of the S3 bucket for storing reports"
+}
+
 output "seed_phrases_secret_arn" {
   value = aws_secretsmanager_secret.secrets["seed_phrases"].arn
   description = "ARN of the AWS Secrets Manager secret containing wallet seed phrases"

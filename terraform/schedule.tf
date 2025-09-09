@@ -51,6 +51,10 @@ resource "aws_ecs_task_definition" "this" {
           value = aws_s3_bucket.traces.bucket
         },
         {
+          name  = "AWS_REPORTS_BUCKET_NAME"
+          value = aws_s3_bucket.reports.bucket
+        },
+        {
           name  = "DD_SERVICE"
           value = var.datadog_service
         },
