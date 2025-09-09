@@ -1,5 +1,4 @@
 #!/bin/bash
-set -e
 
 # Start Xvfb in the background
 echo "Starting Xvfb..."
