@@ -20,8 +20,7 @@ TEST_EXIT_CODE=$?
 echo "Tests completed with exit code: $TEST_EXIT_CODE"
 
 # Upload the report to S3
-REPORT_ID=$ROUTE_ID-$(date +"%Y-%m-%d_%H-%M-%S")
-S3_PATH=$AWS_REPORTS_BUCKET_NAME/$REPORT_ID/
+S3_PATH=$AWS_REPORTS_BUCKET_NAME/$ROUTE_ID/$(date +"%Y-%m-%d_%H-%M-%S")/
 echo "Uploading report to S3: $S3_PATH"
 aws s3 cp playwright-report/ s3://$S3_PATH --recursive
 echo "Report uploaded"
