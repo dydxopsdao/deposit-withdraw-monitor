@@ -22,7 +22,6 @@ import { openApp, connectWallet, deposit, submitDeposit } from "../targets/dydx/
 import { dydxSelectors } from "../targets/dydx/selectors";
 import { TEST_TIMEOUTS } from "../config/timeouts";
 import { waitForFinality } from "../utils/finality/finality";
-import { uploadTraceToS3 } from "../utils/helpers/tracing";
 
 // ---- Route discovery (sync so tests can be defined at import time) ----------
 const onlyRouteId = process.env.ROUTE_ID?.trim();
@@ -56,14 +55,6 @@ for (const route of depositRoutes) {
     });
 
     test(title, async ({ page, context }, testInfo) => {
-      // Start tracing
-      logger.info("Starting tracing");
-      await context.tracing.start({
-        screenshots: true,
-        snapshots: true,
-        sources: true,
-      });
-
       // Datadog context (keeps tags consistent, sends metrics/logs)
       const dd = createTelemetryContext({
         route: {
@@ -179,16 +170,6 @@ for (const route of depositRoutes) {
             // swallow — do not rethrow
           }
         });
-
-        // Stop tracing and process the trace file
-        try {
-          logger.info("Stopping tracing", { route_id: route.id });
-          const tracePath = path.join(testInfo.outputDir, `trace-${route.id}-${timestamp}/trace.zip`);
-          await context.tracing.stop({ path: tracePath });
-          await uploadTraceToS3(tracePath, route.id, timestamp);
-        } catch (e: any) {
-          logger.error("Trace file processing failed", e?.message, { route_id: route.id });
-        }
       }
     });
   });
