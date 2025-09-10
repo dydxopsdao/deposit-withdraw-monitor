@@ -31,7 +31,7 @@ output "datadog_api_key_secret_arn" {
   description = "ARN of the AWS Secrets Manager secret containing Datadog API key"
 }
 
-output "report_service_url" {
-  value = "http://${aws_lb.report_service.dns_name}"
-  description = "URL to access the report service (username: viewer, password: see report_service_password variable)"
+output "reports_cloudfront_url" {
+  value = "https://${aws_cloudfront_distribution.reports.domain_name}"
+  description = "URL to access the reports via CloudFront (username: viewer, password: see report_service_password variable)"
 }
