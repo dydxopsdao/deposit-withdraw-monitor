@@ -8,7 +8,6 @@ import { clickAnyButton } from "../../../utils/helpers/ui-helper";
 import { logger } from "../../../utils/logger/logging-utils";
 import { TEST_TIMEOUTS } from "../../../config/timeouts";
 import fs from "fs";
-import path from "path";
 
 /**
  * Launch a persistent context with the MetaMask extension loaded.
@@ -159,20 +158,15 @@ export async function conditionallyUnlockMetamask(context: BrowserContext) {
   }
 
   // If we have a page, proceed with unlocking
-  if (unlockPage && !unlockPage.isClosed()) {
+  if (unlockPage) {
     try {
       await unlockPage.bringToFront();
-      logger.info("Entering wallet password...");
-      await unlockPage.fill(s.unlock.pw, WALLET_PASSWORD, { timeout: TEST_TIMEOUTS.ELEMENT });
+      logger.info("Attempting to unlock MetaMask with wallet password...");
+      await unlockPage.fill(s.unlock.pw, WALLET_PASSWORD, { timeout: TEST_TIMEOUTS.DEFAULT });
       await unlockPage.click(s.unlock.pwSubmit);
       logger.info("MetaMask unlocked successfully");
     } catch (error) {
-      // Handle cases where the page might close faster than Playwright can detect
-      if (unlockPage.isClosed()) {
-        logger.info("MetaMask unlocked successfully (page closed before confirmation).");
-      } else {
-        logger.error(`An error occurred while trying to unlock MetaMask: ${error.message}`);
-      }
+        logger.info(`Wallet unlock not required or failed: ${error.message}`);
     }
   }
 }
@@ -207,109 +201,4 @@ export async function handleMetamaskPopup(context: BrowserContext) {
     logger.warning(`MetaMask popup handling had issues: ${e?.message ?? e}`);
     try { await mm.close(); } catch {}
   }
-}
-
-export async function ensureMetamaskUnlocked(context: BrowserContext) {
-  logger.info("Ensuring MetaMask is unlocked");
-  try {
-    await unlockMetamaskWallet(context);
-  } catch (error) {
-
-  }
-}
-
-function extractId(u: string): string | null {
-  const m = u.match(/^chrome-extension:\/\/([a-p]{32})\//);
-  return m ? m[1] : null;
-}
-
-export async function getMetamaskId(ctx: BrowserContext, timeoutMs = 15000): Promise<string> {
-  // Use existing SW if present; otherwise wait for the next one
-  const existing = ctx.serviceWorkers();
-  if (existing.length) {
-    const id = extractId(existing[0].url());
-    if (id) return id;
-  }
-  const sw = await ctx.waitForEvent("serviceworker", { timeout: timeoutMs });
-  const id = extractId(sw.url());
-  if (!id) throw new Error(`Could not extract extension ID from ${sw.url()}`);
-  return id;
-}
-
-type OpenOpts = {
-  waitUntil?: "load" | "domcontentloaded";
-  navTimeoutMs?: number;
-  retries?: number;          // extra tries after the first attempt
-  retryDelayMs?: number;
-  verifySelector?: string;   // e.g. s.onboarding.start
-};
-
-export async function openMetamaskPage(
-  ctx: BrowserContext,
-  hashPath: string,
-  options: {
-    timeout?: number;
-    verifySelector?: string;
-    waitUntil?: "load" | "domcontentloaded";
-  }
-): Promise<Page> {
-  const {
-    waitUntil = "domcontentloaded",
-    timeout = 90_000,
-    verifySelector,
-  } = options;
-
-  logger.debug(`Opening MetaMask page: ${hashPath}`);
-
-  // --- 1. Get Extension ID and Construct URL ---
-  const extensionId = await getMetamaskId(ctx);
-  
-  const entryFile = "home.html"; // The standard entry point for the full-page UI
-  const url = `chrome-extension://${extensionId}/${entryFile}#${hashPath}`;
-
-  // --- 2. Create New Page and Prepare for Navigation ---
-  let page: Page | null = null;
-  try {
-    page = await ctx.newPage();
-
-    
-
-    // --- 4. Execute Navigation ---
-    await page.goto(url, { waitUntil, timeout });
-
-    // --- 5. Verify Page is Ready ---
-    if (verifySelector) {
-      const locator = page.locator(verifySelector);
-      // Using a specific, shorter timeout for the selector itself
-      await locator.waitFor({ state: "visible", timeout: 45_000 });
-    }
-
-    logger.info(`[SUCCESS] Successfully opened MetaMask page at ${hashPath}`);
-    return page;
-
-  } catch (error: any) {
-    // --- 6. Detailed Error Handling ---
-    logger.error(`Failed to open MetaMask page at ${hashPath}: ${error.message}`);
-    
-    // Tracing will capture a full trace of this failure.
-    // This is the most valuable artifact for debugging.
-    
-    if (page && !page.isClosed()) {
-        logger.debug("[openMetamaskPage] Attempting to close failed page...");
-        await page.close().catch(e => logger.warning(`Failed to close page on error: ${e.message}`));
-    }
-    
-    // Rethrow the error to ensure the test fails clearly.
-    throw new Error(
-      `Failed to navigate to MetaMask page ('${hashPath}'). Last error: ${error.message}`
-    );
-  }
-}
-
-function pickEntryFile(): string {
-  const candidates = ["home.html", "index.html", "popup.html", "notification.html"];
-  for (const f of candidates) {
-    if (fs.existsSync(path.join(METAMASK_EXT_PATH, f))) return f;
-  }
-  throw new Error(`MetaMask entry not found in ${METAMASK_EXT_PATH} (tried home.html, index.html, popup.html, notification.html)`);
 }
