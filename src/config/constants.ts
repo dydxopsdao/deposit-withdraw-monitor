@@ -14,5 +14,7 @@ export const INDEXER_API_URL = 'https://indexer.dydx.trade';
 
 // USDC has a assetId of 0 on the dYdX Chain
 export const USDC_ASSET_ID = 0;
+// USDC has 6 decimals
+export const USDC_DECIMALS = 6;
 // Type URL for the MsgWithdrawFromSubaccount message
 export const TYPE_URL_MSG_WITHDRAW_FROM_SUBACCOUNT = '/dydxprotocol.sending.MsgWithdrawFromSubaccount';

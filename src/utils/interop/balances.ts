@@ -1,7 +1,7 @@
 import { formatUnits, parseUnits } from 'viem';
 
 import { CHAIN_CONFIGS } from '../../config/chains';
-import { INDEXER_API_URL } from '../../config/constants';
+import { INDEXER_API_URL, USDC_DECIMALS } from '../../config/constants';
 
 import { getBalances } from './skip';
 
@@ -46,11 +46,13 @@ export async function getFreeCollateral(dYdXAddress: string): Promise<UsdcBalanc
   });
 
   const data = await response.json();
-  const freeCollateral = parseUnits(data.subaccounts[0].freeCollateral, 6) as bigint;
+  const freeCollateral = data?.subaccounts?.[0]?.freeCollateral 
+    ? parseUnits(data.subaccounts[0].freeCollateral, USDC_DECIMALS) as bigint
+    : BigInt(0);
 
   return {
     amount: freeCollateral,
     amountStr: freeCollateral.toString(),
-    formattedAmount: formatUnits(freeCollateral, 6),
+    formattedAmount: formatUnits(freeCollateral, USDC_DECIMALS),
   } as UsdcBalance;
 }
