@@ -90,8 +90,33 @@ export function getRoutesSync(): Route[] {
     if (typeof m.enabled === "undefined") m.enabled = true;
     if (typeof m.paused === "undefined") m.paused = false;
 
-    // TODO: Validate required fields by kind (deposit vs withdraw) and
-    // surface a friendly error early if something is missing.
+    // Validate required fields by kind (deposit vs withdraw) and surface a friendly error early.
+    const requiredCommon: Array<keyof Route> = [
+      "wallet_type",
+      "wallet_alias",
+      "wallet_address",
+      "wallet_seed",
+      "dydx_address",
+      "dydx_seed",
+      "amount",
+      "src_chain",
+      "dst_chain",
+    ];
+    const requiredByKind: Record<RouteKind, Array<keyof Route>> = {
+      deposit: ["token", "route_kind"],
+      withdraw: [],
+    };
+
+    const missing = [...requiredCommon, ...requiredByKind[m.kind]].filter((k) => {
+      const v = (m as any)[k];
+      return v === undefined || v === null || String(v).trim() === "";
+    });
+    if (missing.length > 0) {
+      const list = missing.join(", ");
+      throw new Error(
+        `Invalid route '${m.id}' (${m.kind}): missing required field(s): ${list}`
+      );
+    }
     return m;
   });
 
