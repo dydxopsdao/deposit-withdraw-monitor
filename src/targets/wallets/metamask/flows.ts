@@ -161,20 +161,15 @@ export async function conditionallyUnlockMetamask(context: BrowserContext) {
   }
 
   // If we have a page, proceed with unlocking
-  if (unlockPage && !unlockPage.isClosed()) {
+  if (unlockPage) {
     try {
       await unlockPage.bringToFront();
-      logger.info("Entering wallet password...");
-      await unlockPage.fill(s.unlock.pw, WALLET_PASSWORD, { timeout: TEST_TIMEOUTS.ELEMENT });
+      logger.info("Attempting to unlock MetaMask with wallet password...");
+      await unlockPage.fill(s.unlock.pw, WALLET_PASSWORD, { timeout: TEST_TIMEOUTS.DEFAULT });
       await unlockPage.click(s.unlock.pwSubmit);
       logger.info("MetaMask unlocked successfully");
     } catch (error) {
-      // Handle cases where the page might close faster than Playwright can detect
-      if (unlockPage.isClosed()) {
-        logger.info("MetaMask unlocked successfully (page closed before confirmation).");
-      } else {
-        logger.error(`An error occurred while trying to unlock MetaMask: ${error.message}`);
-      }
+        logger.info(`Wallet unlock not required or failed: ${error.message}`);
     }
   }
 }
