@@ -21,6 +21,7 @@ import { openApp, connectWallet, deposit, submitDeposit } from "../targets/dydx/
 import { dydxSelectors } from "../targets/dydx/selectors";
 import { TEST_TIMEOUTS } from "../config/timeouts";
 import { waitForFinality } from "../utils/finality/finality";
+import { rebalanceNow } from "../utils/helpers/rebalance";
 
 // ---- Route discovery (sync so tests can be defined at import time) ----------
 const onlyRouteId = process.env.ROUTE_ID?.trim();
@@ -160,8 +161,3 @@ for (const route of depositRoutes) {
     });
   });
 }
-
-/* =========================
-   Helper placeholders (TODO)
-   Keep this spec readable — implement these in targets flows.ts
-   ========================= */
