@@ -73,7 +73,7 @@ exports.handler = async (event) => {
         </head>
         <body>
           <h1>Reports Directory</h1>
-          <p>Current path: /$${prefix}</p>
+          $${prefix ? `<p>Current path: /$${prefix}</p>` : ''}
           <ul>
       `;
       
