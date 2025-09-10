@@ -79,7 +79,7 @@ exports.handler = async (event) => {
       if (prefix !== '') {
         const parentPath = prefix.split('/').slice(0, -2).join('/');
         const parentUrl = parentPath === '' ? '/' : `/$${parentPath}/`;
-        html += `<li><a href="${parentUrl}" class="directory">📁 ../</a></li>`;
+        html += `<li><a href="$${parentUrl}" class="directory">📁 ../</a></li>`;
       }
       
       // Add subdirectories
