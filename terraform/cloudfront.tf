@@ -16,23 +16,16 @@ resource "aws_lambda_function" "cloudfront_basic_auth" {
   }
 }
 
-# Create the Lambda function code with template substitution
-data "template_file" "lambda_auth_js" {
-  template = file("${path.module}/lambda-auth.js")
-  
-  vars = {
-    TF_VAR_AUTH_PASSWORD  = var.report_service_password
-    TF_VAR_BUCKET_NAME    = aws_s3_bucket.reports.bucket
-    TF_VAR_BUCKET_REGION  = data.aws_region.current.id
-  }
-}
-
 data "archive_file" "lambda_basic_auth_zip" {
   type        = "zip"
   output_path = "cloudfront_basic_auth.zip"
 
   source {
-    content  = data.template_file.lambda_auth_js.rendered
+    content = templatefile("${path.module}/lambda-auth.js", {
+      TF_VAR_AUTH_PASSWORD = var.report_service_password
+      TF_VAR_BUCKET_NAME   = aws_s3_bucket.reports.bucket
+      TF_VAR_BUCKET_REGION = data.aws_region.current.id
+    })
     filename = "index.js"
   }
 }
