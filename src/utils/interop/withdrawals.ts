@@ -3,10 +3,10 @@ import { USDC_ASSET_ID, TYPE_URL_MSG_WITHDRAW_FROM_SUBACCOUNT } from '../../conf
 
 import { logger } from '../logger/logging-utils';
 
-import { deriveCosmosAddress, getCosmosSigner } from '../helpers/cosmos';
+import { getCosmosSigner } from '../helpers/cosmos';
 
 import { getFreeCollateral, UsdcBalance } from './balances';
-import { getUsdcRoutes, UserAddress, executeRoute } from './skip';
+import { getUsdcRoutes, executeRoute, generateUserAddresses } from './skip';
 
 /**
  * Withdraws all the dYdX free collateral from the given route so that it's rebalanced.
@@ -26,7 +26,7 @@ export async function withdrawMaxUsdc(
   dYdXAddress: string,
   dYdXSeed: string,
   dstChain: string,
-  dstAddress: string,
+  dstAddress: string
 ): Promise<void> {
   logger.info(`Withdrawing all from ${dYdXAddress} on dYdX to ${dstAddress} on ${dstChain}`);
 
@@ -44,22 +44,11 @@ export async function withdrawMaxUsdc(
   const { slow, fast } = await getUsdcRoutes(dYdXChainId, dstChainId, dYdXBalance.amountStr);
   const skipRoute = fast ?? slow;
 
-  // These are also present in the Skip Route.
-  // While we can generate dynamically, for the sake of safety, we'll force the withdrawal to happen via Noble.
-  const userAddresses: UserAddress[] = [
-    {
-      chainId: dYdXChainId,
-      address: dYdXAddress,
-    },
-    {
-      chainId: CHAIN_IDS.noble,
-      address: await deriveCosmosAddress(CHAIN_IDS.noble, dYdXSeed),
-    },
-    {
-      chainId: dstChainId,
-      address: dstAddress,
-    },
-  ];
+  const userAddresses = await generateUserAddresses(
+    skipRoute.requiredChainAddresses,
+    dstAddress,
+    dYdXSeed
+  );
 
   await executeRoute({
     getCosmosSigner: async (chainId: string) => {

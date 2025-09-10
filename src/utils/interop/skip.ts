@@ -9,13 +9,14 @@ import {
   Route,
 } from '@skip-go/client';
 
-import { MsgWithdrawFromSubaccount } from '@dydxprotocol/v4-client-js';
+//import { MsgWithdrawFromSubaccount } from '@dydxprotocol/v4-client-js';
+import { MsgWithdrawFromSubaccount } from '@dydxprotocol/v4-proto/src/codegen/dydxprotocol/sending/transfer.js';
 
-import { CHAIN_CONFIGS } from '../../config/chains';
+import { CHAIN_CONFIGS, CHAIN_IDS } from '../../config/chains';
 import { SKIP_API_URL, TYPE_URL_MSG_WITHDRAW_FROM_SUBACCOUNT } from '../../config/constants';
+import { deriveCosmosAddress } from '../helpers/cosmos';
 
-export type { UserAddress };
-export { executeRoute };
+export { executeRoute, generateUserAddresses };
 
 /**
  * Configures the Skip client so that it knows hot to withdraw from dYdX.
@@ -121,4 +122,43 @@ export async function getUsdcRoutes(
   const [slow, fast] = await Promise.all([route(routeOptions), route({ ...routeOptions, goFast: true })]);
 
   return { slow: slow as Route, fast: fast as Route };
+}
+
+/**
+ * Generates the user addresses for a given set of chain IDs, wallet address, and dYdX seed for the Cosmos chains
+ * @param chainIds - The chain IDs to generate the user addresses for
+ * @param walletAddress - The wallet address to generate the user addresses for
+ * @param dYdXSeed - The dYdX seed to generate the user addresses for the Cosmos chains
+ * @returns The user addresses
+ */
+async function generateUserAddresses(
+  chainIds: string[],
+  walletAddress: string,
+  dYdXSeed: string
+): Promise<UserAddress[]> {
+  const userAddresses: UserAddress[] = [];
+
+  for (const chainId of chainIds) {
+    switch (chainId) {
+      // For Cosmos chains: derive the address from the dYdX seed
+      case CHAIN_IDS.dydx:
+      case CHAIN_IDS.noble:
+      case CHAIN_IDS.osmosis:
+      case CHAIN_IDS.neutron:
+        userAddresses.push({
+          chainId: chainId,
+          address: await deriveCosmosAddress(chainId, dYdXSeed),
+        });
+        break;
+      default:
+        // For EVM and SVM chains: use the wallet address
+        userAddresses.push({
+          chainId: chainId,
+          address: walletAddress,
+        });
+        break;
+    }
+  }
+
+  return userAddresses;
 }
