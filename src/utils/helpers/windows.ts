@@ -1,5 +1,8 @@
 import { BrowserContext, Page } from "@playwright/test";
 import { logger } from "../logger/logging-utils";
+import { TEST_TIMEOUTS } from "../../config/timeouts";
+
+const t = TEST_TIMEOUTS;
 
 type LoadState = "domcontentloaded" | "load" | "networkidle";
 
@@ -17,7 +20,7 @@ export async function findPageWithUrl(
   context: BrowserContext,
   urlPattern: string | RegExp,
   maxRetries = 10,
-  retryDelayMs = 1000,
+  retryDelayMs = t.DELAY,
   waitForState: LoadState = "domcontentloaded",
 ): Promise<Page | null> {
   const rx = toRegex(urlPattern);
