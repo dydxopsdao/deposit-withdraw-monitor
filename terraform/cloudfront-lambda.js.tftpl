@@ -97,7 +97,7 @@ exports.handler = async (event) => {
             html += `<li><a href="/$${item.Prefix}index.html" class="file">$${folderName}</a></li>`;
           } else {
             // For other directories, show as directory
-            html += `<li><a href="/$${item.Prefix}" class="directory">[DIR] $${folderName}/</a></li>`;
+            html += `<li><a href="/$${item.Prefix}" class="directory">$${folderName}/</a></li>`;
           }
         });
       }
