@@ -8,6 +8,8 @@ import { logger } from '../../../utils/logger/logging-utils';
 import { phantomSelectors as s } from './selectors';
 import { TEST_TIMEOUTS } from "../../../config/timeouts";
 
+const t = TEST_TIMEOUTS;
+
 
 export async function launchContextWithExtension(
   userDataDir: string,
@@ -44,7 +46,7 @@ export async function setupWallet(context: BrowserContext, seedPhrase: string) {
   logger.debug(`Phantom onboarding page: ${onboarding.url()}`);
 
   try {
-    await (await onboarding.waitForSelector(s.onboarding.alreadyHaveWallet, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
+    await (await onboarding.waitForSelector(s.onboarding.alreadyHaveWallet, { timeout: t.ELEMENT })).click();
     logger.debug("Phantom onboarding: Already have wallet clicked");
   } catch {
     // Likely already onboarded
@@ -53,26 +55,26 @@ export async function setupWallet(context: BrowserContext, seedPhrase: string) {
     return;
   }
 
-  await (await onboarding.waitForSelector(s.onboarding.importRecovery, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
+  await (await onboarding.waitForSelector(s.onboarding.importRecovery, { timeout: t.ELEMENT })).click();
   logger.debug("Phantom onboarding: Import Recovery clicked");
 
   const words = seedPhrase.split(" ").filter(Boolean);
   for (let i = 0; i < 12; i++) {
     await onboarding.locator(s.onboarding.seedInput(i)).fill(words[i] ?? "");
   }
-  await (await onboarding.waitForSelector(s.onboarding.submit, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
+  await (await onboarding.waitForSelector(s.onboarding.submit, { timeout: t.ELEMENT })).click();
   logger.debug("Phantom onboarding: Submit clicked");
 
-  await (await onboarding.waitForSelector(`${s.onboarding.submit}:has-text("Continue")`, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
+  await (await onboarding.waitForSelector(`${s.onboarding.submit}:has-text("Continue")`, { timeout: t.ELEMENT })).click();
   logger.debug("Phantom onboarding: Continue clicked");
 
-  await (await onboarding.waitForSelector(s.onboarding.password, { timeout: TEST_TIMEOUTS.ELEMENT })).fill(WALLET_PASSWORD);
-  await (await onboarding.waitForSelector(s.onboarding.confirmPassword, { timeout: TEST_TIMEOUTS.ELEMENT })).fill(WALLET_PASSWORD);
-  await (await onboarding.waitForSelector(s.onboarding.tosCheckbox, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
-  await (await onboarding.waitForSelector(s.onboarding.submit, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
+  await (await onboarding.waitForSelector(s.onboarding.password, { timeout: t.ELEMENT })).fill(WALLET_PASSWORD);
+  await (await onboarding.waitForSelector(s.onboarding.confirmPassword, { timeout: t.ELEMENT })).fill(WALLET_PASSWORD);
+  await (await onboarding.waitForSelector(s.onboarding.tosCheckbox, { timeout: t.ELEMENT })).click();
+  await (await onboarding.waitForSelector(s.onboarding.submit, { timeout: t.ELEMENT })).click();
   logger.debug("Phantom onboarding: Password set");
 
-  await (await onboarding.waitForSelector(`${s.onboarding.submit}:has-text("Get Started")`, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
+  await (await onboarding.waitForSelector(`${s.onboarding.submit}:has-text("Get Started")`, { timeout: t.ELEMENT })).click();
   logger.debug("Phantom onboarding: Get Started clicked");
 
   await onboarding.close().catch(() => {});
@@ -82,7 +84,7 @@ export async function setupWallet(context: BrowserContext, seedPhrase: string) {
 export async function unlockPhantomWallet(
   context: BrowserContext,
   maxRetries = 3,
-  retryDelay = 1000
+  retryDelay = t.DEFAULT / 3
 ) {
   logger.step("Unlocking Phantom wallet");
 
@@ -92,8 +94,8 @@ export async function unlockPhantomWallet(
       page = await openPhantomUrl(context, s.urls.unlock, "domcontentloaded");
       logger.debug(`Phantom unlock page: ${page.url()}`);
 
-      await (await page.waitForSelector(s.unlock.pw, { timeout: TEST_TIMEOUTS.ELEMENT })).fill(WALLET_PASSWORD);
-      await (await page.waitForSelector(s.unlock.pwSubmit, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
+      await (await page.waitForSelector(s.unlock.pw, { timeout: t.ELEMENT })).fill(WALLET_PASSWORD);
+      await (await page.waitForSelector(s.unlock.pwSubmit, { timeout: t.ELEMENT })).click();
       logger.debug("Phantom unlock flow completed");
       await page.close().catch(() => {});
       logger.info("Phantom unlocked");
@@ -155,7 +157,7 @@ function extractId(u: string): string | null {
  * Since you launch with ONLY Phantom loaded (disable-extensions-except + load-extension),
  * the first chrome-extension service worker is Phantom.
  */
-export async function getPhantomId(ctx: BrowserContext, timeoutMs = 15000): Promise<string> {
+export async function getPhantomId(ctx: BrowserContext, timeoutMs = t.EXTENSIONS): Promise<string> {
   const existing = ctx.serviceWorkers().filter(w => w.url().startsWith("chrome-extension://"));
   if (existing.length) {
     const id = extractId(existing[0].url());
