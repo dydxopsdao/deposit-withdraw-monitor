@@ -27,22 +27,28 @@ A synthetic E2E test harness for dYdX deposits/withdrawals using **MetaMask** an
 
 ## Quick start
 
-> Node 18+, Playwright installed via `npm ci`. The repo expects **Chrome extensions** to be present under `extensions/`.
+> Node 18+, Playwright installed via `npm ci`. Download **MetaMask** and **Phantom** to `extensions/` with `npm run download-extensions` before running tests.
 
 ```bash
 # 1) Install deps
 npm ci
 
-# 2) Dry‑run: list deposit tests derived from routes.yaml
+# 2) Download wallet extensions to extensions/
+npm run download-extensions       # MetaMask + Phantom
+#   or individually:
+#   npm run download-metamask     # MetaMask only
+#   npm run download-phantom      # Phantom only
+
+# 3) Dry-run: list deposit tests derived from routes.yaml
 npx playwright test src/tests/ --list
 
-# 3) Run all tests (uses routes.yaml)
+# 4) Run all tests (uses routes.yaml)
 npx playwright test src/tests/ --reporter=line
 
-# 4) (Optional) Run specific test (uses routes.yaml)
+# 5) (Optional) Run specific test (uses routes.yaml)
 ROUTE_ID=metamask-ethereum-usdc-deposit-regular \
   npx playwright test src/tests/deposit.spec.ts --reporter=line
-
+```
 ---
 
 ## Configuration [WIP]
