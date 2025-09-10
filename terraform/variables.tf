@@ -57,3 +57,9 @@ variable "github_repo" {
   type        = string
   default     = "deposit-withdraw-monitor"
 }
+
+variable "report_service_password" {
+  description = "Password for basic authentication on the report service"
+  type        = string
+  sensitive   = true
+}

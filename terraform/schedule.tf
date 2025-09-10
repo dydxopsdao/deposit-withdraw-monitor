@@ -27,8 +27,8 @@ resource "aws_ecs_task_definition" "this" {
   family                   = each.value.id
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
-  cpu                      = "256"
-  memory                   = "512"
+  cpu                      = "2048"
+  memory                   = "4096"
   execution_role_arn       = aws_iam_role.task_execution.arn
   task_role_arn            = aws_iam_role.task_role.arn
 
@@ -49,6 +49,10 @@ resource "aws_ecs_task_definition" "this" {
         {
           name  = "AWS_TRACES_BUCKET_NAME"
           value = aws_s3_bucket.traces.bucket
+        },
+        {
+          name  = "AWS_REPORTS_BUCKET_NAME"
+          value = aws_s3_bucket.reports.bucket
         },
         {
           name  = "DD_SERVICE"

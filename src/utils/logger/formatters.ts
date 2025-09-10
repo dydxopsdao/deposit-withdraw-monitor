@@ -59,6 +59,7 @@ export const formatters = {
   },
 
   pretty(entry: LogEntry): string {
+    // TODO: Offer a compact single-line formatter for CI log parsers.
     const base = `[${entry.timestamp}] [${entry.level.toUpperCase()}] ${entry.message}`;
     const ser = entry.error ? serializeError(entry.error) : undefined;
     const err = ser
@@ -73,6 +74,7 @@ export const formatters = {
   },
 
   json(entry: LogEntry): string {
+    // TODO: Add redaction hinting on metadata keys by convention (e.g. *_secret)
     return safeStringify({ ...entry, error: serializeError(entry.error) });
   },
 };

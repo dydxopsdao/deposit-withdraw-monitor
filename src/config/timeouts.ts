@@ -3,10 +3,12 @@ export const TEST_TIMEOUTS = {
     ELEMENT: 20000,
     NAVIGATION: 120000,
     ACTION: 15000,
+    DELAY: 1000,
     PAGE_LOAD: 45000,
     POPUP_TIMEOUT: 15000,
     TEST: 29 * 60_000,
     FINALITY: 28 * 60_000,
     EXTENSIONS: 25000,
+    POLL: 150,
   } as const;
   

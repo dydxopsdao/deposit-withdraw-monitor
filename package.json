@@ -6,7 +6,8 @@
   "scripts": {
     "download-phantom": "node src/scripts/download-extension.js phantom bfnaelmomeimhlpmgjnjophhpkkoljpa",
     "download-metamask": "node src/scripts/download-extension.js metamask nkbihfbeogaeaoehlefnkodbefgpgknn",
-    "download-extensions": "npm run download-phantom && npm run download-metamask"
+    "download-extensions": "npm run download-phantom && npm run download-metamask",
+    "validate:routes": "tsx src/scripts/validate-routes.ts"
   },
   "repository": {
     "type": "git",
@@ -21,7 +22,6 @@
   },
   "homepage": "https://github.com/dydxopsdao/deposit-withdraw-monitor#readme",
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.879.0",
     "@aws-sdk/client-secrets-manager": "^3.879.0",
     "@cosmjs/proto-signing": "^0.36.0",
     "@dydxprotocol/v4-client-js": "^2.7.0",
@@ -43,6 +43,7 @@
     "yaml": "^2.8.1"
   },
   "devDependencies": {
-    "@types/node": "^24.0.3"
+    "@types/node": "^24.0.3",
+    "tsx": "^4.19.1"
   }
 }

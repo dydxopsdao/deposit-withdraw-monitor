@@ -1,5 +1,8 @@
 import { BrowserContext, Page } from "@playwright/test";
 import { logger } from "../logger/logging-utils";
+import { TEST_TIMEOUTS } from "../../config/timeouts";
+
+const t = TEST_TIMEOUTS;
 
 type LoadState = "domcontentloaded" | "load" | "networkidle";
 
@@ -17,7 +20,7 @@ export async function findPageWithUrl(
   context: BrowserContext,
   urlPattern: string | RegExp,
   maxRetries = 10,
-  retryDelayMs = 1000,
+  retryDelayMs = t.DELAY,
   waitForState: LoadState = "domcontentloaded",
 ): Promise<Page | null> {
   const rx = toRegex(urlPattern);
@@ -66,6 +69,8 @@ export async function findPageWithUrl(
     }
   }
 
+  // TODO: Optionally throw when not found (e.g. required=true) to avoid silent nulls.
+  // TODO: Consider listening for 'popup' events and scanning their URLs as well.
   logger.error(`❌ No page found matching pattern after ${maxRetries} retries`);
   return null;
 }

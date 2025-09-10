@@ -25,7 +25,14 @@ RUN apt-get update && apt-get install -y \
     unzip \
     xvfb \
     xauth \
+    curl \
     && rm -rf /var/lib/apt/lists/*
+
+# Install AWS CLI
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" \
+    && unzip awscliv2.zip \
+    && ./aws/install \
+    && rm -rf awscliv2.zip aws
 
 # Set working directory
 WORKDIR /app
@@ -60,6 +67,9 @@ ENV DISPLAY=:99
 # EXPOSE 3000
 ENV FORCE_COLOR=0
 #ENV DEBUG=pw:api
+COPY entrypoint.sh /app/entrypoint.sh
+
+ENTRYPOINT ["/app/entrypoint.sh"]
 
 # Set the entrypoint to run tests in non-interactive mode with xvfb
-CMD ["bash","-lc","echo 'Starting Xvfb' && Xvfb :99 -screen 0 1280x720x24 -ac +extension GLX +render -noreset & echo 'Running tests' && timeout 30m stdbuf -oL -eL npx playwright test --workers=1 --reporter=line 2>&1"]
+CMD ["npx", "playwright", "test"]

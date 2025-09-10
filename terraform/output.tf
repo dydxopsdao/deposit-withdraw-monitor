@@ -11,6 +11,11 @@ output "traces_bucket_name" {
   description = "Name of the S3 bucket for storing traces"
 }
 
+output "reports_bucket_name" {
+  value = aws_s3_bucket.reports.bucket
+  description = "Name of the S3 bucket for storing reports"
+}
+
 output "seed_phrases_secret_arn" {
   value = aws_secretsmanager_secret.secrets["seed_phrases"].arn
   description = "ARN of the AWS Secrets Manager secret containing wallet seed phrases"
@@ -24,4 +29,9 @@ output "wallet_password_secret_arn" {
 output "datadog_api_key_secret_arn" {
   value = aws_secretsmanager_secret.secrets["datadog_api_key"].arn
   description = "ARN of the AWS Secrets Manager secret containing Datadog API key"
+}
+
+output "reports_cloudfront_url" {
+  value = "https://${aws_cloudfront_distribution.reports.domain_name}"
+  description = "URL to access the reports via CloudFront (username: viewer, password: see report_service_password variable)"
 }

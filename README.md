@@ -14,6 +14,8 @@ A synthetic E2E test harness for dYdX deposits/withdrawals using **MetaMask** an
   - [Quick start](#quick-start)
     - [Run a single test by route id (YAML mode)](#run-a-single-test-by-route-id-yaml-mode)
     - [Run by wallet (YAML mode)](#run-by-wallet-yaml-mode)
+  - [Configuration [WIP]](#configuration-wip)
+    - [Environment Configuration](#environment-configuration)
   - [📦 Deployment](#-deployment)
   - [🐳 Local Docker Testing](#-local-docker-testing)
   - [Docker \[WIP\]](#docker-wip)
@@ -27,27 +29,45 @@ A synthetic E2E test harness for dYdX deposits/withdrawals using **MetaMask** an
 
 ## Quick start
 
-> Node 18+, Playwright installed via `npm ci`. The repo expects **Chrome extensions** to be present under `extensions/`.
+> Node 18+, Playwright installed via `npm ci`. Download **MetaMask** and **Phantom** to `extensions/` with `npm run download-extensions` before running tests.
 
 ```bash
 # 1) Install deps
 npm ci
 
-# 2) Dry‑run: list deposit tests derived from routes.yaml
+# 2) Download wallet extensions to extensions/
+npm run download-extensions       # MetaMask + Phantom
+#   or individually:
+#   npm run download-metamask     # MetaMask only
+#   npm run download-phantom      # Phantom only
+
+# 3) Dry-run: list deposit tests derived from routes.yaml
 npx playwright test src/tests/ --list
 
-# 3) Run all tests (uses routes.yaml)
+# 4) Run all tests (uses routes.yaml)
 npx playwright test src/tests/ --reporter=line
 
-# 4) (Optional) Run specific test (uses routes.yaml)
+# 5) (Optional) Run specific test (uses routes.yaml)
 ROUTE_ID=metamask-ethereum-usdc-deposit-regular \
   npx playwright test src/tests/deposit.spec.ts --reporter=line
-
+```
 ---
 
 ## Configuration [WIP]
 
 Shared constants live in `src/config/constants.ts` (paths, extension IDs, DAPP URL).
+
+### Environment Configuration
+
+The project reads environment variables via `dotenv`.
+
+- `.env.local` – used for local runs. Copy the example file from 1Password and place it in the repository root. This file is git‑ignored.
+- `.env` – loaded in CI. The CI pipeline provides this file with the same keys as `.env.local`.
+
+Essential variables include:
+
+- `WALLET_PASSWORD` and wallet seed phrases – store these secrets in `.env.local` for local use and in your CI secret manager.
+- `DD_API_KEY`, `DD_SERVICE`, `DD_SITE`, `DD_SOURCE` – Datadog configuration. Keep these in 1Password for local runs and inject them via CI secrets.
 
 | Variable                                 | Where                 | Purpose                                                        |
 | ---------------------------------------- | --------------------- | -------------------------------------------------------------- |

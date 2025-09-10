@@ -17,35 +17,32 @@ export async function launchContextWithExtension(
 ): Promise<BrowserContext> {
   assertMetamaskSecrets();
 
-  const context = await chromium.launchPersistentContext(userDataDir, {
-    headless: false,
-    ignoreDefaultArgs: ["--enable-automation"],
-    args: [
+    const ciArgs = [
       `--disable-extensions-except=${METAMASK_EXT_PATH}`,
       `--load-extension=${METAMASK_EXT_PATH}`,
-      "--disable-blink-features=AutomationControlled",
-      "--disable-infobars",
-      "--disable-dev-shm-usage",
       "--no-sandbox",
       "--disable-setuid-sandbox",
-    ],
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
+      "--start-maximized",
+    ];
+    // TODO: Allow overriding default launch arguments to support local debugging and different CI setups.
+    // TODO: Share a common set of Chromium args with Phantom to avoid drift (DRY).
+
+  const context = await chromium.launchPersistentContext(userDataDir, {
+    headless: false,
+    viewport: { width: 1280, height: 720 },
+    ignoreDefaultArgs: ["--enable-automation"],
+    args: ciArgs,
   });
 
   // Reduce automation fingerprint
   await context.addInitScript(() => {
     Object.defineProperty(navigator, "webdriver", { get: () => false });
   });
-  
+
+
   logger.debug(`METAMASK_EXT_PATH=${METAMASK_EXT_PATH}, exists=${fs.existsSync(METAMASK_EXT_PATH)}`);
-
-  logger.debug(`service workers (pre): ${context.serviceWorkers().map(w => w.url()).join(",")}`);
-  try {
-    const sw = await context.waitForEvent("serviceworker", { timeout: TEST_TIMEOUTS.EXTENSIONS });
-    logger.debug(`service worker (post): ${sw.url()}`);
-  } catch { logger.warning("No service worker appeared (extension not loaded?)"); }
-
-  logger.debug(`open pages: ${JSON.stringify(context.pages().map(p => p.url()))}`);
-
   return context;
 }
 
@@ -54,15 +51,12 @@ export async function launchContextWithExtension(
  */
 export async function setupWallet(context: BrowserContext, seedPhrase: string) {
   logger.step("Setting up MetaMask wallet");
-
-  // deterministically open the UI (don’t wait for it to appear)
-  const onboarding = await openMetamaskPage(context, "onboarding/welcome", {
-    waitUntil: "domcontentloaded",
-    navTimeoutMs: 60_000,
-    retries: 2,
-    retryDelayMs: 800,
-    verifySelector: s.onboarding.start,  // first actionable element
-  });
+  // TODO: Add explicit error handling for selector changes between MetaMask versions.
+  // TODO: Feature-detect onboarding flow version and branch accordingly to reduce flakiness across versions.
+  const onboarding = await findPageWithUrl(context, s.urls.onboarding);
+  if (!onboarding) {
+    throw new Error("MetaMask onboarding page not found");
+  }
   logger.debug(`MetaMask onboarding page: ${onboarding.url()}`);
 
   // Welcome and Terms of Service
@@ -70,46 +64,37 @@ export async function setupWallet(context: BrowserContext, seedPhrase: string) {
   await onboarding.locator(s.onboarding.termsScroll).click();
   await onboarding.locator(s.onboarding.termsCheckbox).check();
   await onboarding.locator(s.onboarding.termsAgree).click();
-  logger.debug("MetaMask onboarding: Terms of Service accepted");
 
   // Import with Secret Recovery Phrase
   await onboarding.locator(s.onboarding.importWallet).click();
   await (await onboarding.waitForSelector(s.onboarding.importWithSrp, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
-  logger.debug("MetaMask onboarding: SRP input field found");
 
   const srp = await onboarding.waitForSelector(s.onboarding.srpInput, { timeout: TEST_TIMEOUTS.ELEMENT });
   await srp.type(seedPhrase);
-  logger.debug("MetaMask onboarding: SRP input field filled");
 
   await (await onboarding.waitForSelector(s.onboarding.confirmSrp, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
-  logger.debug("MetaMask onboarding: SRP confirmation button clicked");
 
   // Set Password
   await onboarding.locator(s.onboarding.pw).fill(WALLET_PASSWORD);
   await onboarding.locator(s.onboarding.pwConfirm).fill(WALLET_PASSWORD);
   await onboarding.locator(s.onboarding.pwTerms).click();
   await onboarding.locator(s.onboarding.pwSubmit).click();
-  logger.debug("MetaMask onboarding: Password set");
 
   // Telemetry → No thanks (optional)
   const noThanks = await onboarding.waitForSelector(s.onboarding.noThanks, { timeout: TEST_TIMEOUTS.ELEMENT }).catch(() => null);
   if (noThanks) {
-    logger.debug("MetaMask onboarding: Telemetry → No thanks (optional)");
     await noThanks.click();
   }
   // Click Done
   await (await onboarding.waitForSelector(s.onboarding.done, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
-  logger.debug("MetaMask onboarding: Done button clicked");
 
   const downloadAppContinue = await onboarding.waitForSelector(s.onboarding.downloadAppContinue, { timeout: TEST_TIMEOUTS.ELEMENT }).catch(() => null);
   if (downloadAppContinue) {
-    logger.debug("MetaMask onboarding: Telemetry → download app continue");
     await downloadAppContinue.click();
   }
   // Pin extension suggestion → Done (optional)
   const pin = await onboarding.waitForSelector(s.onboarding.pinDone, { timeout: TEST_TIMEOUTS.ELEMENT }).catch(() => null);
   if (pin) {
-    logger.debug("MetaMask onboarding: Pin extension suggestion → Done (optional)");
     await pin.click();
   }
 
@@ -120,13 +105,13 @@ export async function setupWallet(context: BrowserContext, seedPhrase: string) {
 
 export async function unlockMetamaskWallet(context: BrowserContext) {
   logger.step("Unlocking MetaMask wallet");
+  // TODO: Retry if the unlock page isn't found immediately to reduce flakiness.
   // MetaMask uses dynamic extension URLs → use regex from selectors
-  const unlock = await findPageWithUrl(context, s.urls.unlock); 
+  const unlock = await findPageWithUrl(context, s.urls.unlock);
   //TODO this is failing sometimes on the URL pattern /chrome-extension:\/\/.*\/home\.html#unlock/ vs chrome-extension://gipjnhcfkablljbiijlkcohbaniiimdi/home.html#onboarding/unlock
   if (!unlock) {
-    logger.warning("MetaMask unlock page not found ");
+    logger.warning("MetaMask unlock page not found");
   } else {
-  logger.debug(`MetaMask unlock page: ${unlock.url()}`);
   
   await (await unlock.waitForSelector(s.unlock.pw, { timeout: TEST_TIMEOUTS.ELEMENT })).fill(WALLET_PASSWORD);
   await (await unlock.waitForSelector(s.unlock.pwSubmit, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
@@ -136,15 +121,71 @@ export async function unlockMetamaskWallet(context: BrowserContext) {
 } }
 
 /**
+ * Scans the browser context for an existing MetaMask page that needs unlocking.
+ * @param context The Playwright BrowserContext.
+ * @returns A promise that resolves to the found Page, or undefined if not found.
+ */
+async function findExistingUnlockPage(context: BrowserContext): Promise<Page | undefined> {
+  for (const page of context.pages()) {
+    if (s.urls.unlock.test(page.url()) || s.urls.notification.test(page.url())) {
+      return page;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Conditionally unlocks the MetaMask wallet. It first checks if the unlock page
+ * is already open, and if not, waits for it to appear.
+ * @param context The Playwright BrowserContext.
+ */
+export async function conditionallyUnlockMetamask(context: BrowserContext) {
+  logger.step("Checking for MetaMask unlock page");
+
+  let unlockPage = await findExistingUnlockPage(context);
+
+  if (unlockPage) {
+    logger.info(`Found existing MetaMask page: ${unlockPage.url()}`);
+  } else {
+    logger.info("No existing MetaMask page found, waiting for it to appear...");
+    try {
+      // Wait for either the unlock or notification page to be created
+      unlockPage = await context.waitForEvent('page', {
+        predicate: page => s.urls.unlock.test(page.url()) || s.urls.notification.test(page.url()),
+        timeout: TEST_TIMEOUTS.POPUP_TIMEOUT,
+      });
+      logger.info(`MetaMask page appeared: ${unlockPage.url()}`);
+    } catch (error) {
+      logger.warning("MetaMask unlock page did not appear within the timeout. Continuing...");
+      return; // Exit if no page is found or appears
+    }
+  }
+
+  // If we have a page, proceed with unlocking
+  if (unlockPage) {
+    try {
+      await unlockPage.bringToFront();
+      logger.info("Attempting to unlock MetaMask with wallet password...");
+      await unlockPage.fill(s.unlock.pw, WALLET_PASSWORD, { timeout: TEST_TIMEOUTS.DEFAULT });
+      await unlockPage.click(s.unlock.pwSubmit);
+      logger.info("MetaMask unlocked successfully");
+    } catch (error) {
+        logger.info(`Wallet unlock not required or failed: ${error.message}`);
+    }
+  }
+}
+
+/**
  * MetaMask connection popup flows vary slightly by version/permissions.
  * We try a short sequence of common buttons: Next → Connect → Approve.
  * (If a Sign prompt appears later during auth, handle it in your auth flow.)
  */
 export async function handleMetamaskPopup(context: BrowserContext) {
   logger.info("Waiting for MetaMask popup…");
+  // TODO: Break out specific popup steps for clearer logging and easier reuse.
+  // TODO: Add a maximum total wait with a helpful error when popups never appear.
 
   const mm = await findPageWithUrl(context, s.urls.notification);
-
   if (!mm) {
     logger.warning("MetaMask popup did not appear; assuming connected or silent approval");
     return;
@@ -152,14 +193,13 @@ export async function handleMetamaskPopup(context: BrowserContext) {
 
   try {
     // Some builds show a "MetaMask Notification" title, others keep it blank.
-    logger.debug(`MetaMask popup URL: ${mm.url()}`);
     // Defensive: click the common flow buttons if present
-    await clickAnyButton(mm, [/^Next$/, /^Connect$/, /^Approve$/, /^Confirm$/], "MetaMask connect flow", {
+   const clicks = await clickAnyButton(mm, [/^Next$/, /^Connect$/, /^Approve$/, /^Confirm$/], "MetaMask connect flow", {
       overallTimeoutMs: 10000,
       pollMs: 150,
       maxClicks: 10,
     });
-
+    logger.info(`MetaMask popup handled: ${clicks} clicks`);
     // Close if MetaMask leaves the window open
     await mm.close().catch(() => {});
     logger.info("MetaMask popup handled");
@@ -167,87 +207,3 @@ export async function handleMetamaskPopup(context: BrowserContext) {
     logger.warning(`MetaMask popup handling had issues: ${e?.message ?? e}`);
     try { await mm.close(); } catch {}
   }
-}
-
-function extractId(u: string): string | null {
-  const m = u.match(/^chrome-extension:\/\/([a-p]{32})\//);
-  return m ? m[1] : null;
-}
-
-export async function getMetamaskId(ctx: BrowserContext, timeoutMs = 15000): Promise<string> {
-  // Use existing SW if present; otherwise wait for the next one
-  const existing = ctx.serviceWorkers();
-  if (existing.length) {
-    const id = extractId(existing[0].url());
-    if (id) return id;
-  }
-  const sw = await ctx.waitForEvent("serviceworker", { timeout: timeoutMs });
-  const id = extractId(sw.url());
-  if (!id) throw new Error(`Could not extract extension ID from ${sw.url()}`);
-  return id;
-}
-
-type OpenOpts = {
-  waitUntil?: "load" | "domcontentloaded";
-  navTimeoutMs?: number;
-  retries?: number;          // extra tries after the first attempt
-  retryDelayMs?: number;
-  verifySelector?: string;   // e.g. s.onboarding.start
-};
-
-export async function openMetamaskPage(
-  ctx: BrowserContext,
-  hashPath: string,
-  opts: OpenOpts = {}
-): Promise<Page> {
-  const {
-    waitUntil = "load",
-    navTimeoutMs = 15_000,
-    retries = 2,
-    retryDelayMs = 800,
-    verifySelector,
-  } = opts;
-
-  logger.debug(`Opening MetaMask page: ${hashPath}`);
-  const id = await getMetamaskId(ctx);
-  const url = `chrome-extension://${id}/home.html#${hashPath}`;
-  logger.debug(`MetaMask ID: ${id} | URL: ${url}`);
-
-  // If a matching tab already exists, reuse it (and navigate if hash differs)
-  for (const p of ctx.pages()) {
-    const u = p.url();
-    if (u.startsWith(`chrome-extension://${id}/home.html`)) {
-      if (!u.includes(`#${hashPath}`)) {
-        logger.debug(`Reusing existing MM tab, navigating to hash: ${hashPath}`);
-        await p.goto(url, { waitUntil, timeout: navTimeoutMs });
-      } else {
-        logger.debug(`Reusing existing MM tab at desired hash`);
-      }
-      if (verifySelector) await p.waitForSelector(verifySelector, { timeout: navTimeoutMs }).catch(()=>{});
-      return p;
-    }
-  }
-
-  let lastErr: any;
-  for (let attempt = 1; attempt <= (retries + 1); attempt++) {
-    const page = await ctx.newPage();
-    try {
-      await page.goto(url, { waitUntil, timeout: navTimeoutMs });
-      logger.debug(`MetaMask page loaded (attempt ${attempt}): ${page.url()}`);
-      if (verifySelector) {
-        await page.waitForSelector(verifySelector, { timeout: navTimeoutMs });
-        logger.debug(`verifySelector present: ${verifySelector}`);
-      }
-      return page;
-    } catch (e: any) {
-      lastErr = e;
-      logger.warning(`openMetamaskPage attempt ${attempt} failed: ${e?.message ?? e}`);
-      try { await page.close(); } catch {}
-      if (attempt <= retries) {
-        await new Promise(r => setTimeout(r, retryDelayMs));
-        logger.debug(`Retrying in ${retryDelayMs}ms…`);
-      }
-    }
-  }
-  throw new Error(`Failed to open MetaMask page after ${retries + 1} attempts: ${lastErr?.message ?? lastErr}`);
-}
