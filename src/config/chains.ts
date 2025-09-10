@@ -25,7 +25,7 @@ export const CHAIN_CONFIGS = {
     nativeDenom: 'polygon-native',
     usdcDenom: '0x3c499c542cef5e3811e1192ce70d8cc03d5c3359',
   },
-  solana: {
+  'solana': {
     yamlKey: 'solana',
     rpcEndpoint: `https://solana-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}`,
     nativeDenom: 'solana-native',
@@ -39,11 +39,27 @@ export const CHAIN_CONFIGS = {
     bech32Prefix: 'dydx',
   },
   'noble-1': {
-    yamlKey: 'noble',
+    yamlKey: 'noble', // Not used for now
     rpcEndpoint: 'https://noble-yx-rpc.polkachu.com/',
     nativeDenom: 'uusdc',
     usdcDenom: 'uusdc',
     bech32Prefix: 'noble',
+  },
+  'osmosis-1': {
+    yamlKey: 'osmosis', // Not used for now
+    rpcEndpoint: 'https://rpc.osmosis.zone',
+    nativeDenom: 'uosmo',
+    usdcDenom: 'ibc/498A0751C798A0D9A389AA3691123DADA57DAA4FE165D5C75894505B876BA6E4', // Noble USDC
+    // Note: Axelar USDC is ibc/D189335C6E4A68B513C10AB227BF1C1D38C746766278BA3EEB4FB14124F1D858
+    bech32Prefix: 'osmo',
+  },
+  'neutron-1': {
+    yamlKey: 'neutron', // Not used for now
+    rpcEndpoint: 'https://neutron-rpc.publicnode.com',
+    nativeDenom: 'untrn',
+    usdcDenom: 'ibc/B559A80D62249C8AA07A380E2A2BEA6E5CA9A6F079C912C3A9E9B494105E4F81', // Noble USDC
+    // Note: Axelar USDC is ibc/F082B65C88E4B6D5EF1DB243CDA1D331D002759E938A0F5CD3FFDC5D53B3E349
+    bech32Prefix: 'neutron',
   },
 };
 
@@ -56,4 +72,6 @@ export const CHAIN_IDS = {
   solana: 'solana',
   dydx: 'dydx-mainnet-1',
   noble: 'noble-1',
+  osmosis: 'osmosis-1',
+  neutron: 'neutron-1',
 };
