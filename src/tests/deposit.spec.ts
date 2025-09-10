@@ -119,7 +119,6 @@ for (const route of depositRoutes) {
             await connectWallet(page, context, route.wallet_type);
           });
           await test.step("Deposit", async () => {
-            await page.pause();
             await deposit(page, context, route.amount, route.src_chain, route.token, route.wallet_type);
           });
 
