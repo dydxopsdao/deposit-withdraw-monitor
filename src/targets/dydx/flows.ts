@@ -113,6 +113,7 @@ export async function openApp(
   let lastError: unknown;
 
   // Retry loop: we intentionally catch errors, log context, back off, and retry
+  // TODO: Extract this retry/backoff block into a shared helper to keep navigation logic DRY.
   // a bounded number of times before surfacing the final error.
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const attemptNo = attempt + 1;
@@ -204,6 +205,7 @@ export async function connectWallet(
   wallet: WalletType
 ): Promise<Page> {
   logger.step(`Connecting wallet: ${wallet}`);
+  // TODO: Emit metrics or structured logs for each connection attempt to aid debugging in CI.
   //TODO add hahndling of the warning / disconnect
   // 1) If already connected, short-circuit (account/user menu present)
   if (await dydxSelectors.accountMenuButton(page, wallet).isVisible()) {
@@ -255,11 +257,13 @@ export async function connectWallet(
 // Click the provider tile/button in the wallet picker.
 async function chooseProvider(page: Page, provider: Locator, name: string) {
   logger.info(`Selecting wallet provider: ${name}`);
+  // TODO: Add retry or clearer error messaging if the provider element is not found.
   await provider.isVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
   await provider.click();
 }
 //TODO improve this as it doesn'throw or inform if not found properly
 async function handleWalletPopup(context: BrowserContext, wallet: WalletType) {
+  // TODO: Surface an explicit error when wallet popups fail to appear to avoid silent skips.
   if (wallet === "metamask") {
     await handleMetamaskPopup(context);
     logger.info("MetaMask wallet popup handled");
@@ -271,6 +275,7 @@ async function handleWalletPopup(context: BrowserContext, wallet: WalletType) {
 
 // Click a locator if it’s visible; log what happened.
 async function clickIfVisible(locator: Locator, label: string, timeout: number ): Promise<boolean> {
+  // TODO: Replace manual wait/visibility check with expect to capture screenshots on failure.
   await locator.first().waitFor({ state: "visible", timeout }).catch(() => {});
   if (await locator.first().isVisible()) {
     logger.info(`Clicking: ${label}`);
@@ -292,6 +297,7 @@ async function sendRequest(page: Page, locator: Locator) {
 export async function openWalletPicker(page: Page, retries = 2) {
   // If already open, we're done
   if (await isPickerOpen(page)) return;
+  // TODO: Consider adding logging for each retry attempt for better traceability.
 
   for (let attempt = 0; attempt <= retries; attempt++) {
     // 1) wait for button, then click
@@ -334,6 +340,7 @@ export async function deposit(
   wallet: WalletType
 ) {
   logger.step(`Depositing ${amount} ${token} from ${src_chain}`);
+  // TODO: Validate inputs (amount/token/chain) before interacting with the UI to fail fast.
   // Open the deposit dialog
   
   await clickAnyDeposit(page);
@@ -354,6 +361,7 @@ export async function selectToken(page: Page, token: string, chain: string) {
   //TODO wrap in a try catch retry
   // Open the picker
   const pill = dydxSelectors.tokenPillButton(page);
+  // TODO: Replace console.log with structured logger if debugging is needed.
   console.log("pill", pill);
   await expect(pill).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
   await pill.click();
@@ -413,6 +421,7 @@ export async function clickAnyDeposit(page: Page) {
   }
   const btns = dydxSelectors.depositButtons(page);
   const n = await btns.count();
+  // TODO: Add logging for which deposit button was clicked to aid debugging.
 
   for (let i = 0; i < n; i++) {
     const btn = btns.nth(i);
@@ -427,6 +436,7 @@ export async function clickAnyDeposit(page: Page) {
 
 export async function submitDeposit(page: Page, context: BrowserContext, wallet: WalletType): Promise<void> {
   const btn = dydxSelectors.depositFundsButton(page);
+  // TODO: Consolidate transaction submission logic to reduce duplication with withdraw flow.
 
   // Make sure the dialog is present and the button is on-screen
   await expect(btn).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
@@ -447,6 +457,7 @@ export async function submitDeposit(page: Page, context: BrowserContext, wallet:
   // TODO handle alert for network costs
     //Here just to approve spending cap
     await handleWalletPopup(context, wallet);
+    // TODO: Implement retry logic if the wallet popup is dismissed unexpectedly.
 
 
 }
