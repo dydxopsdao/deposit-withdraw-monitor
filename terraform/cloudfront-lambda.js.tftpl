@@ -81,14 +81,24 @@ exports.handler = async (event) => {
       if (prefix !== '') {
         const parentPath = prefix.split('/').slice(0, -2).join('/');
         const parentUrl = parentPath === '' ? '/' : `/$${parentPath}/`;
-        html += `<li><a href="$${parentUrl}" class="directory">📁 ../</a></li>`;
+        html += `<li><a href="$${parentUrl}" class="directory">[DIR] ../</a></li>`;
       }
       
       // Add subdirectories
       if (data.CommonPrefixes) {
         data.CommonPrefixes.forEach(item => {
           const folderName = item.Prefix.replace(prefix, '').replace('/', '');
-          html += `<li><a href="/$${item.Prefix}" class="directory">📁 $${folderName}/</a></li>`;
+          
+          // Check if this looks like a timestamp directory (contains date/time pattern)
+          const isTimestampDir = /^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}$/.test(folderName);
+          
+          if (isTimestampDir) {
+            // For timestamp directories, link directly to index.html
+            html += `<li><a href="/$${item.Prefix}index.html" class="file">[REPORT] $${folderName}</a></li>`;
+          } else {
+            // For other directories, show as directory
+            html += `<li><a href="/$${item.Prefix}" class="directory">[DIR] $${folderName}/</a></li>`;
+          }
         });
       }
       
@@ -98,7 +108,7 @@ exports.handler = async (event) => {
           if (item.Key.endsWith('index.html')) {
             const relativePath = item.Key.replace(prefix, '');
             const fileName = relativePath.split('/').pop();
-            html += `<li><a href="/$${item.Key}" class="file">📄 $${fileName}</a></li>`;
+            html += `<li><a href="/$${item.Key}" class="file">[FILE] $${fileName}</a></li>`;
           }
         });
       }

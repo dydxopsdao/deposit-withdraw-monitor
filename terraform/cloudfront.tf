@@ -88,29 +88,19 @@ resource "aws_iam_role_policy" "lambda_basic_auth_s3_read" {
       {
         Effect = "Allow"
         Action = [
-          "s3:GetObject",
-          "s3:GetObjectVersion",
-          "s3:GetObjectAttributes",
-          "s3:ListBucket",
-          "s3:ListBucketVersions",
-          "s3:ListObjectsV2",
-          "s3:GetBucketLocation",
-          "s3:GetBucketVersioning",
-          "s3:HeadObject",
-          "s3:HeadBucket"
+          "s3:ListBucket"
         ]
-        Resource = [
-          aws_s3_bucket.reports.arn,
-          "${aws_s3_bucket.reports.arn}/*"
+        Resource = aws_s3_bucket.reports.arn
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject"
         ]
+        Resource = "${aws_s3_bucket.reports.arn}/*"
       }
     ]
   })
-}
-
-# S3 bucket for CloudFront logs
-resource "aws_s3_bucket" "cloudfront_logs" {
-  bucket = "dydxopsdao-deposit-withdraw-monitor-cloudfront-logs"
 }
 
 # Origin Access Control for CloudFront to access S3
