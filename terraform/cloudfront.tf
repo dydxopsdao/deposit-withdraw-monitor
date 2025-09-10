@@ -23,9 +23,13 @@ data "archive_file" "lambda_basic_auth_zip" {
 
   source {
     content  = <<-EOT
+      const AWS = require('aws-sdk');
+      const s3 = new AWS.S3({region: 'ap-northeast-1'});
+      
       exports.handler = async (event, context) => {
         const request = event.Records[0].cf.request;
         const headers = request.headers;
+        const uri = request.uri;
         
         const authUser = 'viewer';
         const authPass = '${var.report_service_password}';
@@ -45,6 +49,97 @@ data "archive_file" "lambda_basic_auth_zip" {
           return response;
         }
         
+        // Handle directory listing requests
+        if (uri === '/' || uri.endsWith('/')) {
+          try {
+            const bucketName = '${aws_s3_bucket.reports.bucket}';
+            const prefix = uri === '/' ? '' : uri.slice(1); // Remove leading slash
+            
+            const params = {
+              Bucket: bucketName,
+              Prefix: prefix,
+              Delimiter: '/'
+            };
+            
+            const data = await s3.listObjectsV2(params).promise();
+            
+            let html = `
+              <!DOCTYPE html>
+              <html>
+              <head>
+                <title>Reports Index</title>
+                <style>
+                  body { font-family: Arial, sans-serif; margin: 40px; }
+                  h1 { color: #333; }
+                  .directory { color: #0066cc; text-decoration: none; display: block; padding: 5px 0; }
+                  .directory:hover { text-decoration: underline; }
+                  .file { color: #666; }
+                  ul { list-style-type: none; padding-left: 0; }
+                  li { margin: 5px 0; }
+                </style>
+              </head>
+              <body>
+                <h1>Reports Directory</h1>
+                <p>Current path: /${prefix}</p>
+                <ul>
+            `;
+            
+            // Add parent directory link if not at root
+            if (prefix !== '') {
+              const parentPath = prefix.split('/').slice(0, -2).join('/');
+              const parentUrl = parentPath === '' ? '/' : `/${parentPath}/`;
+              html += `<li><a href="${parentUrl}" class="directory">📁 ../</a></li>`;
+            }
+            
+            // Add subdirectories
+            if (data.CommonPrefixes) {
+              data.CommonPrefixes.forEach(item => {
+                const folderName = item.Prefix.replace(prefix, '').replace('/', '');
+                html += `<li><a href="/${item.Prefix}" class="directory">📁 ${folderName}/</a></li>`;
+              });
+            }
+            
+            // Add files (look for index.html in subdirectories)
+            if (data.Contents) {
+              data.Contents.forEach(item => {
+                if (item.Key.endsWith('index.html')) {
+                  const relativePath = item.Key.replace(prefix, '');
+                  const fileName = relativePath.split('/').pop();
+                  html += `<li><a href="/${item.Key}" class="file">📄 ${fileName}</a></li>`;
+                }
+              });
+            }
+            
+            html += `
+                </ul>
+              </body>
+              </html>
+            `;
+            
+            const response = {
+              status: '200',
+              statusDescription: 'OK',
+              headers: {
+                'content-type': [{key: 'Content-Type', value: 'text/html'}],
+                'cache-control': [{key: 'Cache-Control', value: 'max-age=300'}]
+              },
+              body: html
+            };
+            
+            return response;
+            
+          } catch (error) {
+            console.log('S3 Error:', error);
+            const response = {
+              status: '500',
+              statusDescription: 'Internal Server Error',
+              body: `Error listing directory: ${error.message}`
+            };
+            return response;
+          }
+        }
+        
+        // For file requests, pass through to S3
         return request;
       };
     EOT
@@ -76,6 +171,29 @@ resource "aws_iam_role" "lambda_basic_auth" {
 resource "aws_iam_role_policy_attachment" "lambda_basic_auth_execution" {
   role       = aws_iam_role.lambda_basic_auth.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+# Add S3 read permissions to Lambda@Edge role for directory listing
+resource "aws_iam_role_policy" "lambda_basic_auth_s3_read" {
+  name = "deposit-withdraw-monitor-lambda-auth-s3-read"
+  role = aws_iam_role.lambda_basic_auth.id
+  
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:ListBucket"
+        ]
+        Resource = [
+          aws_s3_bucket.reports.arn,
+          "${aws_s3_bucket.reports.arn}/*"
+        ]
+      }
+    ]
+  })
 }
 
 # Origin Access Control for CloudFront to access S3
