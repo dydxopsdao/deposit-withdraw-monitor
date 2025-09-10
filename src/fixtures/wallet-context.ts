@@ -1,5 +1,5 @@
 // src/fixtures/wallet-context.ts
-import { test } from '@playwright/test';
+import { test, BrowserContext, Page } from '@playwright/test';
 import fs from 'fs';
 import { USER_DATA_DIR } from '../config/constants';
 import { type Route } from '../utils/route/routes';
@@ -18,8 +18,8 @@ import path from 'path';
 
 export const walletContextTest = test.extend<{
   route: Route;
-  context: any;
-  page: any;
+  context: BrowserContext;
+  page: Page;
 }>({
   route: [null as any, { option: true }],
 
@@ -28,7 +28,7 @@ export const walletContextTest = test.extend<{
       throw new Error('Route option must be set before running test');
     }
 
-    let context: any;
+    let context: BrowserContext;
 
     logger.info(`Launching ${route.wallet_type} context with wallet alias ${route.wallet_alias}`);
 
