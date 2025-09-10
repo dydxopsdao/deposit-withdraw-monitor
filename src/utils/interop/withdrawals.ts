@@ -1,9 +1,9 @@
-import { CHAIN_IDS } from '../../config/chains';
+import { CHAIN_CONFIGS, CHAIN_IDS } from '../../config/chains';
 import { USDC_ASSET_ID, TYPE_URL_MSG_WITHDRAW_FROM_SUBACCOUNT } from '../../config/constants';
 
 import { logger } from '../logger/logging-utils';
 
-import { getCosmosSigner } from '../signers';
+import { getCosmosSigner, getEvmSigner, getSvmSigner } from '../signers';
 
 import { getFreeCollateral, UsdcBalance } from './balances';
 import { getUsdcRoutes, executeRoute, generateUserAddresses } from './skip';
@@ -18,15 +18,17 @@ import { getUsdcRoutes, executeRoute, generateUserAddresses } from './skip';
  * - Execute the withdrawal
  *
  * @param dYdXAddress - The address of the dYdX account
- * @param dYdXSeed - The seed of the dYdX account
+ * @param dYdXSeed - The seed of the account on dYdX
  * @param dstChain - The chain to withdraw to
  * @param dstAddress - The address to withdraw to
+ * @param dstSeed - The seed of the account on the destination chain
  */
 export async function withdrawMaxUsdc(
   dYdXAddress: string,
   dYdXSeed: string,
   dstChain: string,
-  dstAddress: string
+  dstAddress: string,
+  dstSeed: string
 ): Promise<void> {
   logger.info(`Withdrawing all from ${dYdXAddress} on dYdX to ${dstAddress} on ${dstChain}`);
 
@@ -43,16 +45,23 @@ export async function withdrawMaxUsdc(
 
   const { slow, fast } = await getUsdcRoutes(dYdXChainId, dstChainId, dYdXBalance.amountStr);
   const skipRoute = fast ?? slow;
-
-  const userAddresses = await generateUserAddresses(
-    skipRoute.requiredChainAddresses,
-    dstAddress,
-    dYdXSeed
+  logger.info(
+    `Found skip route: ${skipRoute.requiredChainAddresses.map(c => `${CHAIN_CONFIGS[c].yamlKey}`).join(' -> ')}`
   );
+
+  const userAddresses = await generateUserAddresses(skipRoute.requiredChainAddresses, dstAddress, dYdXSeed);
 
   await executeRoute({
     getCosmosSigner: async (chainId: string) => {
       return await getCosmosSigner(chainId, dYdXSeed);
+    },
+    // In theory, a route can go through an EVM chain
+    getEvmSigner: async (chainId: string) => {
+      return await getEvmSigner(chainId, dstSeed);
+    },
+    // In theory, a route can go through Solana
+    getSvmSigner: async () => {
+      return await getSvmSigner(dstSeed);
     },
     route: skipRoute,
     userAddresses,

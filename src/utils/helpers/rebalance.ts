@@ -30,7 +30,13 @@ export async function rebalanceNow(
         },
       ];
 
-      await interop.withdrawMaxUsdc(_route.dydx_address, _route.dydx_seed, _route.src_chain, _route.wallet_address);
+      await interop.withdrawMaxUsdc(
+        _route.dydx_address,
+        _route.dydx_seed,
+        _route.src_chain,
+        _route.wallet_address,
+        _route.wallet_seed
+      );
 
       balancesAfter = [
         // on source chain:

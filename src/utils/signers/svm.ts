@@ -1,23 +1,73 @@
-import { Keypair } from '@solana/web3.js';
-import { derivePath } from 'ed25519-hd-key';
+import { Keypair, Transaction, VersionedTransaction } from '@solana/web3.js';
+import { Adapter } from '@solana/wallet-adapter-base';
 import * as bip39 from 'bip39';
+import { derivePath } from 'ed25519-hd-key';
+
+import { CHAIN_CONFIGS } from '../../config/chains';
 
 /**
- * Gets an offline SVM signer for a given mnemonic
- * @param mnemonic - The BIP39 mnemonic
- * @param derivationPath - Optional derivation path (default: m/44'/501'/0'/0')
- * @returns Solana Keypair
+ * Gets a Solana signer for Skip API's executeRoute
+ * @param mnemonic - The BIP39 mnemonic phrase
+ * @returns A Solana Adapter compatible with Skip API
  */
-export async function getSvmSigner(mnemonic: string, derivationPath = 'm/44\'/501\'/0\'/0\''): Promise<Keypair> {
-  const seed = await bip39.mnemonicToSeed(mnemonic);
-  const derived = derivePath(derivationPath, seed.toString('hex'));
-  return Keypair.fromSeed(derived.key);
+export function getSvmSigner(mnemonic: string): Adapter {
+  if (!bip39.validateMnemonic(mnemonic)) {
+    throw new Error('Invalid mnemonic phrase');
+  }
+
+  const keypair = keypairFromMnemonic(mnemonic, CHAIN_CONFIGS.solana.derivationPath);
+
+  const adapter = {
+    publicKey: keypair.publicKey,
+    signTransaction: async <T extends Transaction | VersionedTransaction>(tx: T): Promise<T> => {
+      if ('partialSign' in tx) {
+        // Transaction type
+        tx.partialSign(keypair);
+      } else {
+        // VersionedTransaction type
+        tx.sign([keypair]);
+      }
+      return tx;
+    },
+    signAllTransactions: async <T extends Transaction | VersionedTransaction>(txs: T[]): Promise<T[]> => {
+      return txs.map(tx => {
+        if ('partialSign' in tx) {
+          tx.partialSign(keypair);
+        } else {
+          tx.sign([keypair]);
+        }
+        return tx;
+      });
+    },
+  } as Adapter;
+
+  return adapter;
 }
 
 /**
- * Derives a Solana address from a mnemonic
+ * Derives a Solana address from a mnemonic (for debugging/consistency)
+ * @param mnemonic - The BIP39 mnemonic phrase
+ * @returns The derived address in base58 format
  */
-export async function deriveSvmAddress(mnemonic: string, derivationPath?: string): Promise<string> {
-  const keypair = await getSvmSigner(mnemonic, derivationPath);
+export function deriveSvmAddress(mnemonic: string): string {
+  if (!bip39.validateMnemonic(mnemonic)) {
+    throw new Error('Invalid mnemonic phrase');
+  }
+
+  const keypair = keypairFromMnemonic(mnemonic, CHAIN_CONFIGS.solana.derivationPath);
   return keypair.publicKey.toBase58();
+}
+
+// --------- HELPER FUNCTIONS ---------
+
+/**
+ * Derives a Solana keypair from a mnemonic
+ * @param mnemonic - The BIP39 mnemonic phrase
+ * @param derivationPath - The derivation path - default for Solana: m/44'/501'/0'/0'
+ * @returns The derived keypair
+ */
+function keypairFromMnemonic(mnemonic: string, derivationPath: string): Keypair {
+  const seed = bip39.mnemonicToSeedSync(mnemonic);
+  const derived = derivePath(derivationPath, seed.toString('hex'));
+  return Keypair.fromSeed(derived.key);
 }

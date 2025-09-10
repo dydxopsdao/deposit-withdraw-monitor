@@ -140,18 +140,18 @@ async function generateUserAddresses(
 
   for (const chainId of chainIds) {
     switch (chainId) {
-      // For Cosmos chains: derive the address from the dYdX seed
       case CHAIN_IDS.dydx:
       case CHAIN_IDS.noble:
       case CHAIN_IDS.osmosis:
       case CHAIN_IDS.neutron:
+        // For Cosmos chains: derive the address from the dYdX seed
         userAddresses.push({
           chainId: chainId,
           address: await deriveCosmosAddress(chainId, dYdXSeed),
         });
         break;
       default:
-        // For EVM and SVM chains: use the wallet address
+        // For EVM chains and Solana: use the wallet address
         userAddresses.push({
           chainId: chainId,
           address: walletAddress,
