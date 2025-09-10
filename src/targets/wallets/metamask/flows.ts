@@ -42,17 +42,6 @@ export async function launchContextWithExtension(
 
 
   logger.debug(`METAMASK_EXT_PATH=${METAMASK_EXT_PATH}, exists=${fs.existsSync(METAMASK_EXT_PATH)}`);
-
-  try {
-    await context.waitForEvent("serviceworker", { timeout: 15_000 });
-    logger.debug("Service worker found. Adding extra delay for initialization...");
-    // This delay is often the key to stability in CI.
-    await new Promise(resolve => setTimeout(resolve, 5000)); // 5 seconds
-  } catch (e) {
-      logger.error("MetaMask service worker failed to initialize", e);
-      // Fail fast if the extension itself is broken.
-      throw new Error("MetaMask service worker failed to initialize.");
-  }
   return context;
 }
 
@@ -63,11 +52,11 @@ export async function setupWallet(context: BrowserContext, seedPhrase: string) {
   logger.step("Setting up MetaMask wallet");
 
   // deterministically open the UI (don’t wait for it to appear)
-  const onboarding = await openMetamaskPage(context, "onboarding/welcome", {
-    waitUntil: "domcontentloaded",
-    timeout: 60_000,
-    verifySelector: s.onboarding.start,  // first actionable element
-  });
+  const onboarding = await findPageWithUrl(context, s.urls.onboarding);
+  if (!onboarding) {
+    throw new Error("MetaMask onboarding page not found");
+  }
+  logger.debug(`MetaMask onboarding page: ${onboarding.url()}`);
   // Welcome and Terms of Service
   await onboarding.locator(s.onboarding.start).click();
   await onboarding.locator(s.onboarding.termsScroll).click();
@@ -129,6 +118,66 @@ export async function unlockMetamaskWallet(context: BrowserContext) {
 } }
 
 /**
+ * Scans the browser context for an existing MetaMask page that needs unlocking.
+ * @param context The Playwright BrowserContext.
+ * @returns A promise that resolves to the found Page, or undefined if not found.
+ */
+async function findExistingUnlockPage(context: BrowserContext): Promise<Page | undefined> {
+  for (const page of context.pages()) {
+    if (s.urls.unlock.test(page.url()) || s.urls.notification.test(page.url())) {
+      return page;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Conditionally unlocks the MetaMask wallet. It first checks if the unlock page
+ * is already open, and if not, waits for it to appear.
+ * @param context The Playwright BrowserContext.
+ */
+export async function conditionallyUnlockMetamask(context: BrowserContext) {
+  logger.step("Checking for MetaMask unlock page");
+
+  let unlockPage = await findExistingUnlockPage(context);
+
+  if (unlockPage) {
+    logger.info(`Found existing MetaMask page: ${unlockPage.url()}`);
+  } else {
+    logger.info("No existing MetaMask page found, waiting for it to appear...");
+    try {
+      // Wait for either the unlock or notification page to be created
+      unlockPage = await context.waitForEvent('page', {
+        predicate: page => s.urls.unlock.test(page.url()) || s.urls.notification.test(page.url()),
+        timeout: TEST_TIMEOUTS.POPUP_TIMEOUT,
+      });
+      logger.info(`MetaMask page appeared: ${unlockPage.url()}`);
+    } catch (error) {
+      logger.warning("MetaMask unlock page did not appear within the timeout. Continuing...");
+      return; // Exit if no page is found or appears
+    }
+  }
+
+  // If we have a page, proceed with unlocking
+  if (unlockPage && !unlockPage.isClosed()) {
+    try {
+      await unlockPage.bringToFront();
+      logger.info("Entering wallet password...");
+      await unlockPage.fill(s.unlock.pw, WALLET_PASSWORD, { timeout: TEST_TIMEOUTS.ELEMENT });
+      await unlockPage.click(s.unlock.pwSubmit);
+      logger.info("MetaMask unlocked successfully");
+    } catch (error) {
+      // Handle cases where the page might close faster than Playwright can detect
+      if (unlockPage.isClosed()) {
+        logger.info("MetaMask unlocked successfully (page closed before confirmation).");
+      } else {
+        logger.error(`An error occurred while trying to unlock MetaMask: ${error.message}`);
+      }
+    }
+  }
+}
+
+/**
  * MetaMask connection popup flows vary slightly by version/permissions.
  * We try a short sequence of common buttons: Next → Connect → Approve.
  * (If a Sign prompt appears later during auth, handle it in your auth flow.)
@@ -137,7 +186,6 @@ export async function handleMetamaskPopup(context: BrowserContext) {
   logger.info("Waiting for MetaMask popup…");
 
   const mm = await findPageWithUrl(context, s.urls.notification);
-
   if (!mm) {
     logger.warning("MetaMask popup did not appear; assuming connected or silent approval");
     return;
@@ -146,12 +194,12 @@ export async function handleMetamaskPopup(context: BrowserContext) {
   try {
     // Some builds show a "MetaMask Notification" title, others keep it blank.
     // Defensive: click the common flow buttons if present
-    await clickAnyButton(mm, [/^Next$/, /^Connect$/, /^Approve$/, /^Confirm$/], "MetaMask connect flow", {
+   const clicks = await clickAnyButton(mm, [/^Next$/, /^Connect$/, /^Approve$/, /^Confirm$/], "MetaMask connect flow", {
       overallTimeoutMs: 10000,
       pollMs: 150,
       maxClicks: 10,
     });
-
+    logger.info(`MetaMask popup handled: ${clicks} clicks`);
     // Close if MetaMask leaves the window open
     await mm.close().catch(() => {});
     logger.info("MetaMask popup handled");
@@ -166,7 +214,7 @@ export async function ensureMetamaskUnlocked(context: BrowserContext) {
   try {
     await unlockMetamaskWallet(context);
   } catch (error) {
-    
+
   }
 }
 

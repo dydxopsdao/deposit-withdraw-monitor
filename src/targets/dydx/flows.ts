@@ -6,7 +6,7 @@ import { DAPP_URL } from "../../config/constants";
 import { logger } from "../../utils/logger/logging-utils";
 import { WalletType } from "../../utils/route/routes";
 import { TEST_TIMEOUTS } from "../../config/timeouts";
-import { handleMetamaskPopup as handleMetamaskPopup, ensureMetamaskUnlocked as ensureMetamaskUnlocked } from "../wallets/metamask/flows";
+import { handleMetamaskPopup, ensureMetamaskUnlocked, conditionallyUnlockMetamask } from "../wallets/metamask/flows";
 import { handlePhantomPopup as handlePhantomPopup } from "../wallets/phantom/flows";
 import { dydxSelectors } from "./selectors";
 
@@ -216,10 +216,9 @@ export async function connectWallet(
   // 3) Choose provider and trigger the request from within the dApp
   logger.info("Choose provider");
   await chooseProvider(page, dydxSelectors.chooseProviderBtn(page, wallet), wallet);
-
   // 4) Handle occasionaly wallet sign in
   if (wallet === "metamask") {
-    await ensureMetamaskUnlocked(context);
+    await conditionallyUnlockMetamask(context);
   }
   // 5) Handle the extension popup (delegated to wallet-specific helpers)
   logger.info("Handling wallet popup");
