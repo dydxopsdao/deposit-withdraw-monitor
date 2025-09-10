@@ -58,6 +58,7 @@ export async function setupWallet(context: BrowserContext, seedPhrase: string) {
     throw new Error("MetaMask onboarding page not found");
   }
   logger.debug(`MetaMask onboarding page: ${onboarding.url()}`);
+
   // Welcome and Terms of Service
   await onboarding.locator(s.onboarding.start).click();
   await onboarding.locator(s.onboarding.termsScroll).click();
@@ -206,4 +207,3 @@ export async function handleMetamaskPopup(context: BrowserContext) {
     logger.warning(`MetaMask popup handling had issues: ${e?.message ?? e}`);
     try { await mm.close(); } catch {}
   }
-}
