@@ -21,10 +21,10 @@ data "archive_file" "lambda_basic_auth_zip" {
   output_path = "cloudfront_basic_auth.zip"
 
   source {
-    content = templatefile("${path.module}/lambda-auth.js", {
-      TF_VAR_AUTH_PASSWORD = var.report_service_password
-      TF_VAR_BUCKET_NAME   = aws_s3_bucket.reports.bucket
-      TF_VAR_BUCKET_REGION = data.aws_region.current.id
+    content = templatefile("${path.module}/cloudfront-lambda.js.tftpl", {
+      AUTH_PASSWORD = var.report_service_password
+      BUCKET_NAME   = aws_s3_bucket.reports.bucket
+      BUCKET_REGION = data.aws_region.current.id
     })
     filename = "index.js"
   }
