@@ -4,11 +4,12 @@
 resource "aws_lambda_function" "cloudfront_basic_auth" {
   filename         = "cloudfront_basic_auth.zip"
   function_name    = "deposit-withdraw-monitor-cloudfront-auth"
-  role            = aws_iam_role.lambda_basic_auth.arn
-  handler         = "index.handler"
+  role             = aws_iam_role.lambda_basic_auth.arn
+  handler          = "index.handler"
   source_code_hash = data.archive_file.lambda_basic_auth_zip.output_base64sha256
-  runtime         = "nodejs18.x"
-  publish         = true
+  runtime          = "nodejs18.x"
+  publish          = true
+  region           = "us-east-1" # Lambda@Edge is only available in us-east-1
 
   tags = {
     Name = "deposit-withdraw-monitor-cloudfront-auth"
@@ -19,9 +20,9 @@ resource "aws_lambda_function" "cloudfront_basic_auth" {
 data "archive_file" "lambda_basic_auth_zip" {
   type        = "zip"
   output_path = "cloudfront_basic_auth.zip"
-  
+
   source {
-    content = <<-EOT
+    content  = <<-EOT
       exports.handler = async (event, context) => {
         const request = event.Records[0].cf.request;
         const headers = request.headers;
@@ -54,7 +55,7 @@ data "archive_file" "lambda_basic_auth_zip" {
 # IAM role for Lambda@Edge
 resource "aws_iam_role" "lambda_basic_auth" {
   name = "deposit-withdraw-monitor-lambda-auth-role"
-  
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
