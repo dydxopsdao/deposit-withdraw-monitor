@@ -353,9 +353,8 @@ export async function deposit(
 export async function selectTokenDeposit(page: Page, token: string, chain: string) {
   //TODO wrap in a try catch retry
   // Open the picker
-  const pill =
-    dydxSelectors.tokenPillDeposit(page);
-  console.log("pill", pill);
+  const pill = dydxSelectors.tokenPillDeposit(page);
+  logger.debug("Token pill located for deposit", { locator: pill });
   await expect(pill).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
   await pill.click();
   const picker = dydxSelectors.tokenPickerDialogDeposit(page);
@@ -495,18 +494,17 @@ export async function withdraw(
 export async function selectTokenWithdraw(page: Page, token: string, chain: string) {
   //TODO wrap in a try catch retry
   // Open the picker
-  const pill =dydxSelectors.tokenPillWithdraw(page);
-  console.log("pill", pill);
+  const pill = dydxSelectors.tokenPillWithdraw(page);
+  logger.debug("Token pill located for withdraw", { locator: pill });
   await expect(pill).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
   await pill.click();
   const picker = dydxSelectors.chainPickerDialog(page);
-  console.log("picker", picker);
+  logger.debug("Withdraw chain picker dialog located", { locator: picker });
   await expect(picker).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
 
   // Find candidates that contain both pieces of text
   const candidates = dydxSelectors.chainPickerRow(page, chain);
-  
-  console.log("candidates", candidates);
+  logger.debug("Withdraw chain picker candidates", { count: await candidates.count() });
   // Wait up to 5s for at least one match
   await expect(candidates.first()).toBeVisible({ timeout: 5_000 });
 
