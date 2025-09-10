@@ -14,8 +14,9 @@
  * - BUCKET_REGION: AWS region where S3 bucket is located
  */
 
-const AWS = require('aws-sdk');
-const s3 = new AWS.S3({region: '${BUCKET_REGION}'});
+// Use AWS SDK v3 for Node.js 18.x runtime
+const { S3Client, ListObjectsV2Command } = require('@aws-sdk/client-s3');
+const s3Client = new S3Client({ region: '${BUCKET_REGION}' });
 
 exports.handler = async (event) => {
   const request = event.Records[0].cf.request;
@@ -52,7 +53,8 @@ exports.handler = async (event) => {
         Delimiter: '/'
       };
       
-      const data = await s3.listObjectsV2(params).promise();
+      const command = new ListObjectsV2Command(params);
+      const data = await s3Client.send(command);
       
       let html = `
         <!DOCTYPE html>
