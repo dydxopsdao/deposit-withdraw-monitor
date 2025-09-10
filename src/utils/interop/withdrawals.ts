@@ -19,19 +19,19 @@ import { getUsdcRoutes, UserAddress, executeRoute } from './skip';
  *
  * @param dYdXAddress - The address of the dYdX account
  * @param dYdXSeed - The seed of the dYdX account
- * @param toAddress - The address to withdraw to
- * @param toChain - The chain to withdraw to
+ * @param dstChain - The chain to withdraw to
+ * @param dstAddress - The address to withdraw to
  */
 export async function withdrawMaxUsdc(
   dYdXAddress: string,
   dYdXSeed: string,
-  toAddress: string,
-  toChain: string
+  dstChain: string,
+  dstAddress: string,
 ): Promise<void> {
-  logger.info(`Withdrawing all from ${dYdXAddress} on dYdX to ${toAddress} on ${toChain}`);
+  logger.info(`Withdrawing all from ${dYdXAddress} on dYdX to ${dstAddress} on ${dstChain}`);
 
   const dYdXChainId = CHAIN_IDS['dydx'];
-  const toChainId = CHAIN_IDS[toChain];
+  const dstChainId = CHAIN_IDS[dstChain];
 
   const dYdXBalance: UsdcBalance = await getFreeCollateral(dYdXAddress);
   logger.debug(`dYdX balance: ${dYdXBalance.formattedAmount} USDC`);
@@ -41,23 +41,23 @@ export async function withdrawMaxUsdc(
     return;
   }
 
-  const { slow, fast } = await getUsdcRoutes(dYdXChainId, toChainId, dYdXBalance.amountStr);
+  const { slow, fast } = await getUsdcRoutes(dYdXChainId, dstChainId, dYdXBalance.amountStr);
   const skipRoute = fast ?? slow;
 
   // These are also present in the Skip Route.
   // While we can generate dynamically, for the sake of safety, we'll force the withdrawal to happen via Noble.
   const userAddresses: UserAddress[] = [
     {
-      address: dYdXAddress,
       chainId: dYdXChainId,
+      address: dYdXAddress,
     },
     {
-      address: await deriveCosmosAddress(CHAIN_IDS.noble, dYdXSeed),
       chainId: CHAIN_IDS.noble,
+      address: await deriveCosmosAddress(CHAIN_IDS.noble, dYdXSeed),
     },
     {
-      address: toAddress,
-      chainId: toChainId,
+      chainId: dstChainId,
+      address: dstAddress,
     },
   ];
 
