@@ -22,7 +22,7 @@ import { getUsdcRoutes, UserAddress, executeRoute } from './skip';
  * @param toAddress - The address to withdraw to
  * @param toChain - The chain to withdraw to
  */
-export async function withdrawMax(
+export async function withdrawMaxUsdc(
   dYdXAddress: string,
   dYdXSeed: string,
   toAddress: string,
