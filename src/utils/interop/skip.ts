@@ -14,7 +14,7 @@ import { MsgWithdrawFromSubaccount } from '@dydxprotocol/v4-proto/src/codegen/dy
 
 import { CHAIN_CONFIGS, CHAIN_IDS } from '../../config/chains';
 import { SKIP_API_URL, TYPE_URL_MSG_WITHDRAW_FROM_SUBACCOUNT } from '../../config/constants';
-import { deriveCosmosAddress } from '../helpers/cosmos';
+import { deriveCosmosAddress } from '../signers';
 
 export { executeRoute, generateUserAddresses };
 

@@ -3,7 +3,7 @@ import { USDC_ASSET_ID, TYPE_URL_MSG_WITHDRAW_FROM_SUBACCOUNT } from '../../conf
 
 import { logger } from '../logger/logging-utils';
 
-import { getCosmosSigner } from '../helpers/cosmos';
+import { getCosmosSigner } from '../signers';
 
 import { getFreeCollateral, UsdcBalance } from './balances';
 import { getUsdcRoutes, executeRoute, generateUserAddresses } from './skip';
