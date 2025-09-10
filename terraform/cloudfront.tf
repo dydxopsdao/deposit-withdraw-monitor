@@ -56,6 +56,27 @@ resource "aws_iam_role_policy_attachment" "lambda_basic_auth_execution" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
+# Additional permissions for Lambda@Edge CloudWatch logs across regions
+resource "aws_iam_role_policy" "lambda_basic_auth_logs" {
+  name = "deposit-withdraw-monitor-lambda-auth-logs"
+  role = aws_iam_role.lambda_basic_auth.id
+  
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = "arn:aws:logs:*:*:*"
+      }
+    ]
+  })
+}
+
 # Add S3 read permissions to Lambda@Edge role for directory listing
 resource "aws_iam_role_policy" "lambda_basic_auth_s3_read" {
   name = "deposit-withdraw-monitor-lambda-auth-s3-read"
@@ -68,7 +89,15 @@ resource "aws_iam_role_policy" "lambda_basic_auth_s3_read" {
         Effect = "Allow"
         Action = [
           "s3:GetObject",
-          "s3:ListBucket"
+          "s3:GetObjectVersion",
+          "s3:GetObjectAttributes",
+          "s3:ListBucket",
+          "s3:ListBucketVersions",
+          "s3:ListObjectsV2",
+          "s3:GetBucketLocation",
+          "s3:GetBucketVersioning",
+          "s3:HeadObject",
+          "s3:HeadBucket"
         ]
         Resource = [
           aws_s3_bucket.reports.arn,
@@ -77,6 +106,20 @@ resource "aws_iam_role_policy" "lambda_basic_auth_s3_read" {
       }
     ]
   })
+}
+
+# S3 bucket for CloudFront logs
+resource "aws_s3_bucket" "cloudfront_logs" {
+  bucket = "dydxopsdao-deposit-withdraw-monitor-cloudfront-logs"
+}
+
+resource "aws_s3_bucket_public_access_block" "cloudfront_logs" {
+  bucket = aws_s3_bucket.cloudfront_logs.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
 }
 
 # Origin Access Control for CloudFront to access S3
@@ -99,6 +142,12 @@ resource "aws_cloudfront_distribution" "reports" {
   enabled             = true
   is_ipv6_enabled     = true
   default_root_object = "index.html"
+
+  logging_config {
+    include_cookies = false
+    bucket          = aws_s3_bucket.cloudfront_logs.bucket_domain_name
+    prefix          = "cloudfront-logs/"
+  }
 
   default_cache_behavior {
     allowed_methods        = ["GET", "HEAD", "OPTIONS"]
