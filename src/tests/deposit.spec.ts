@@ -13,11 +13,10 @@
 //   - rebalance result metric + log (with balances when provided)
 // Rebalance: never fails the test.
 
-import path from "path";
 import { test, expect } from "../fixtures";
 import { logger } from "../utils/logger/logging-utils";
 import { getRoutesSync, type Route, type WalletType } from "../utils/route/routes";
-import { createTelemetryContext, type ErrorStage } from "../utils/datadog/datadog-utils";
+import { createTelemetryContext } from "../utils/datadog/datadog-utils";
 import { openApp, connectWallet, deposit, submitDeposit } from "../targets/dydx/flows";
 import { dydxSelectors } from "../targets/dydx/selectors";
 import { TEST_TIMEOUTS } from "../config/timeouts";
@@ -75,10 +74,9 @@ for (const route of depositRoutes) {
 
       let txHash: string | undefined;
       let explorerUrl: string | undefined;
-      let passed = false; // becomes true ONLY after finality succeeds
-      let error_stage: ErrorStage | "none" = "none";
+      let passed = false;
 
-      logger.info("Starting deposit", {
+      logger.info(`Starting test: (${route.id})`, {
         route_id: route.id,
         wallet_type: route.wallet_type,
         wallet_alias: route.wallet_alias,
@@ -92,42 +90,25 @@ for (const route of depositRoutes) {
       });
 
       try {
-        // -------- Pre-submit block (open, connect, navigate, fill amount) ----
-        try {
           await test.step("Open app", async () => {
             await openApp(page, context, {
               waitUntil: "domcontentloaded",
               maxRetries: 3,
               retryDelayMs: 1500,
-              waitFor: [dydxSelectors.connectWalletBtn],
-              afterNavigate: async (page) => {
-                // e.g. build in click notifications etc
-              },
+              waitFor: [dydxSelectors.connectWalletBtn]
             });
           });
 
           await test.step(`Connect wallet (${route.wallet_type})`, async () => {
             await connectWallet(page, context, route.wallet_type);
           });
-          await test.step("Deposit", async () => {
+          await test.step("Deposit Dialog Input", async () => {
             await deposit(page, context, route.amount, route.src_chain, route.token, route.wallet_type);
           });
 
-
-        } catch (e: any) {
-          error_stage = "pre_submit";
-          logger.error("Pre-submit step failed", e, { route_id: route.id });
-          // Datadog: mark failed with pre_submit stage (also sends failure log)
-          await dd.routeResult({ passed: false, errorStage: error_stage, error: e });
-          throw e;
-        }
-
-        // -------- Submit + finality block ------------------------------------
-        try {
           await test.step("Submit deposit", async () => {
             return await submitDeposit(page, context, route.wallet_type);
           });
-
 
           await test.step("Wait for finality", async () => {
             const res = await waitForFinality(page);
@@ -136,20 +117,24 @@ for (const route of depositRoutes) {
             expect(res.ok).toBeTruthy();
             passed = true;
           });
+
           logger.success("Deposit flow complete", { route_id: route.id, txHash, explorerUrl });
-          //TODO close browser
-          await page.close();
-          // TODO: Consider closing the entire context here to avoid cross-test leakage when running multiple routes.
-          // Datadog: success metric (no success log needed)
+          // TODO: Consider closing the entire context here to avoid cross-test leakage when running multiple routes.       
+
+          /* =========================
+              TEST PASSED - SEND DATADOG METRICS and LOGS
+          ========================= */
           await dd.routeResult({ passed: true, txHash, explorerUrl });
         } catch (e: any) {
-          error_stage = "submit_or_finality";
-          logger.error("Submit/finality failed", e, { route_id: route.id, txHash, explorerUrl });
-          // Datadog: failure metric + failure log at submit/finality stage
-          await dd.routeResult({ passed: false, errorStage: error_stage, error: e, txHash, explorerUrl });
-          throw e;
-        }
 
+          /* =========================
+              TEST FAILED - SEND DATADOG METRICS and LOGS
+          ========================= */
+          logger.error("Deposit failed", e, { route_id: route.id, txHash, explorerUrl });
+          // Datadog: failure metric + failure log at deposit stage
+          await dd.routeResult({ passed: false, error: e, txHash, explorerUrl });
+          throw e;
+          
       } finally {
         // -------- Always attempt to rebalance — must not fail the test -------
         await test.step("Rebalance (teardown)", async () => {
@@ -175,13 +160,6 @@ for (const route of depositRoutes) {
     });
   });
 }
-
-/* =========================
-   Helper placeholders (TODO)
-   Keep this spec readable — implement these in targets flows.ts
-   ========================= */
-
-
 async function rebalanceNow(_route: Route, _opts: { reason: string; last_tx?: string; passed: boolean }) {
   // TODO: implement; return { balancesBefore?: {...}, balancesAfter?: {...} } if you can
 }
