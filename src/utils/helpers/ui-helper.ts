@@ -25,7 +25,7 @@ export async function clickAnyButton(
 
   const deadline = Date.now() + overallTimeoutMs;
   let clicks = 0;
-
+  logger.info(`Clicking any button: ${names.join(", ")}`);
   while (!page.isClosed() && Date.now() < deadline && clicks < maxClicks) {
     let clickedThisLoop = false;
 
@@ -52,6 +52,7 @@ export async function clickAnyButton(
 
     if (!clickedThisLoop) {
       // Nothing to click yet — wait a bit and scan again
+      logger.info(`${contextLabel}: waiting for a button to appear (${pollMs}ms)`);
       await page.waitForTimeout(pollMs).catch(() => {});
     }
   }
