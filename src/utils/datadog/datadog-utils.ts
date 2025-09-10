@@ -171,6 +171,7 @@ async function sendRebalanceResultMetric(passed: boolean, tags: string[]) {
 }
 
 async function sendGauge(metric: string, value: number, tags: string[]) {
+  // TODO: Support batching metrics to minimize HTTP overhead when emitting high volumes.
   if (!enabled()) return;
   const now = Math.floor(Date.now() / 1000);
   const body = {
@@ -326,6 +327,7 @@ async function postJSON(
   headers: Record<string, string>,
   meta: { kind: "metric"; metric: string } | { kind: "log"; event: string }
 ) {
+  // TODO: Allow configurable timeout and add retry/backoff for transient network failures.
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), TEST_TIMEOUTS.ACTION);
   const started = Date.now();

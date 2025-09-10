@@ -18,15 +18,16 @@ export async function launchContextWithExtension(
 ): Promise<BrowserContext> {
   assertMetamaskSecrets();
 
-  const ciArgs = [
-    `--disable-extensions-except=${METAMASK_EXT_PATH}`,
-    `--load-extension=${METAMASK_EXT_PATH}`,
-    "--no-sandbox",
-    "--disable-setuid-sandbox",
-    "--disable-dev-shm-usage",
-    "--disable-gpu",
-    "--start-maximized",
-  ];
+    const ciArgs = [
+      `--disable-extensions-except=${METAMASK_EXT_PATH}`,
+      `--load-extension=${METAMASK_EXT_PATH}`,
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
+      "--start-maximized",
+    ];
+    // TODO: Allow overriding default launch arguments to support local debugging and different CI setups.
 
   const context = await chromium.launchPersistentContext(userDataDir, {
     headless: false,
@@ -61,6 +62,7 @@ export async function launchContextWithExtension(
  */
 export async function setupWallet(context: BrowserContext, seedPhrase: string) {
   logger.step("Setting up MetaMask wallet");
+  // TODO: Add explicit error handling for selector changes between MetaMask versions.
 
   // deterministically open the UI (don’t wait for it to appear)
   const onboarding = await openMetamaskPage(context, "onboarding/welcome", {
@@ -114,8 +116,9 @@ export async function setupWallet(context: BrowserContext, seedPhrase: string) {
 
 export async function unlockMetamaskWallet(context: BrowserContext) {
   logger.step("Unlocking MetaMask wallet");
+  // TODO: Retry if the unlock page isn't found immediately to reduce flakiness.
   // MetaMask uses dynamic extension URLs → use regex from selectors
-  const unlock = await findPageWithUrl(context, s.urls.unlock); 
+  const unlock = await findPageWithUrl(context, s.urls.unlock);
   //TODO this is failing sometimes on the URL pattern /chrome-extension:\/\/.*\/home\.html#unlock/ vs chrome-extension://gipjnhcfkablljbiijlkcohbaniiimdi/home.html#onboarding/unlock
   if (!unlock) {
     logger.warning("MetaMask unlock page not found");
@@ -135,6 +138,7 @@ export async function unlockMetamaskWallet(context: BrowserContext) {
  */
 export async function handleMetamaskPopup(context: BrowserContext) {
   logger.info("Waiting for MetaMask popup…");
+  // TODO: Break out specific popup steps for clearer logging and easier reuse.
 
   const mm = await findPageWithUrl(context, s.urls.notification);
 
@@ -147,8 +151,8 @@ export async function handleMetamaskPopup(context: BrowserContext) {
     // Some builds show a "MetaMask Notification" title, others keep it blank.
     // Defensive: click the common flow buttons if present
     await clickAnyButton(mm, [/^Next$/, /^Connect$/, /^Approve$/, /^Confirm$/], "MetaMask connect flow", {
-      overallTimeoutMs: TEST_TIMEOUTS.ACTION,
-      pollMs: TEST_TIMEOUTS.DELAY / 6,
+      overallTimeoutMs: 10000,
+      pollMs: 150,
       maxClicks: 10,
     });
 
