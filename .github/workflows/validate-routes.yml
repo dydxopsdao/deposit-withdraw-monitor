@@ -1,0 +1,20 @@
+name: Validate routes.yaml
+
+on:
+  pull_request:
+    paths:
+      - 'routes.yaml'
+  workflow_dispatch: {}
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Validate routes.yaml via loader
+        run: npm run validate:routes

@@ -17,6 +17,7 @@
 import fs from "fs";
 import path from "path";
 import jsYaml from "js-yaml";
+import { logger } from "../logger/logging-utils";
 
 export type WalletType = "metamask" | "phantom";
 export type RouteKind = "deposit" | "withdraw";
@@ -90,11 +91,52 @@ export function getRoutesSync(): Route[] {
     if (typeof m.enabled === "undefined") m.enabled = true;
     if (typeof m.paused === "undefined") m.paused = false;
 
-    // TODO: Validate required fields by kind (deposit vs withdraw) and
-    // surface a friendly error early if something is missing.
+    // Validate required fields by kind (deposit vs withdraw) and surface a friendly error early.
+    const requiredCommon: Array<keyof Route> = [
+      "wallet_type",
+      "wallet_alias",
+      "wallet_address",
+      "wallet_seed",
+      "dydx_address",
+      "dydx_seed",
+      "amount",
+      "src_chain",
+      "dst_chain",
+    ];
+    const requiredByKind: Record<RouteKind, Array<keyof Route>> = {
+      deposit: ["token", "route_kind"],
+      withdraw: [],
+    };
+
+    const missing = [...requiredCommon, ...requiredByKind[m.kind]].filter((k) => {
+      const v = (m as any)[k];
+      return v === undefined || v === null || String(v).trim() === "";
+    });
+    if (missing.length > 0) {
+      const list = missing.join(", ");
+      throw new Error(
+        `Invalid route '${m.id}' (${m.kind}): missing required field(s): ${list}`
+      );
+    }
     return m;
   });
 
-  // TODO: Detect duplicate route IDs and warn or throw.
+  // Detect duplicate route IDs and warn or throw (config via ROUTE_ID_DUPLICATE_MODE=warn)
+  {
+    const counts = new Map<string, number>();
+    for (const r of merged) counts.set(r.id, (counts.get(r.id) || 0) + 1);
+    const dups = Array.from(counts.entries()).filter(([, c]) => c > 1);
+    if (dups.length) {
+      const mode = String(process.env.ROUTE_ID_DUPLICATE_MODE || "").toLowerCase();
+      const msg = `Duplicate route id(s) in routes.yaml: ${dups
+        .map(([id, c]) => `${id} (x${c})`)
+        .join(", ")}`;
+      if (mode === "warn" || mode === "warning" || mode === "ignore") {
+        logger.warning(msg);
+      } else {
+        throw new Error(msg);
+      }
+    }
+  }
   return merged;
 }
