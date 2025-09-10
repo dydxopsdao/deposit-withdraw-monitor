@@ -363,12 +363,12 @@ export async function selectToken(page: Page, token: string, chain: string) {
   // Find candidates that contain both pieces of text
   const candidates = dydxSelectors.tokenPickerCandidates(page, token, chain);
 
-  // Wait up to 5s for at least one match
-  await expect(candidates.first()).toBeVisible({ timeout: 5_000 });
+  // Wait for at least one match
+  await expect(candidates.first()).toBeVisible({ timeout: TEST_TIMEOUTS.ACTION });
 
-  // For up to 5s, if a second appears, prefer it
+  // For a short window, if a second appears, prefer it
   let target = candidates.first();
-  const deadline = Date.now() + 5_000;
+  const deadline = Date.now() + TEST_TIMEOUTS.ACTION;
   while (Date.now() < deadline) {
     if ((await candidates.count()) >= 2) {
       target = candidates.nth(1);

@@ -1,5 +1,6 @@
 import { Page } from "@playwright/test";
 import { logger } from "../logger/logging-utils";
+import { TEST_TIMEOUTS } from "../../config/timeouts";
 
 type ClickAnyOpts = {
   /** Total time to keep scanning/clicking */
@@ -17,8 +18,8 @@ export async function clickAnyButton(
   opts: ClickAnyOpts = {}
 ): Promise<number> {
   const {
-    overallTimeoutMs = 10_000,
-    pollMs = 150,
+    overallTimeoutMs = TEST_TIMEOUTS.ACTION,
+    pollMs = TEST_TIMEOUTS.POLL,
     maxClicks = Number.POSITIVE_INFINITY,
   } = opts;
 

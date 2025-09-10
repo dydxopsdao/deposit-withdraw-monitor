@@ -155,7 +155,7 @@ function extractId(u: string): string | null {
  * Since you launch with ONLY Phantom loaded (disable-extensions-except + load-extension),
  * the first chrome-extension service worker is Phantom.
  */
-export async function getPhantomId(ctx: BrowserContext, timeoutMs = 15000): Promise<string> {
+export async function getPhantomId(ctx: BrowserContext, timeoutMs = TEST_TIMEOUTS.EXTENSIONS): Promise<string> {
   const existing = ctx.serviceWorkers().filter(w => w.url().startsWith("chrome-extension://"));
   if (existing.length) {
     const id = extractId(existing[0].url());

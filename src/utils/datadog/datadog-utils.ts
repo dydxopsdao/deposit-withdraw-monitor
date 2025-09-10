@@ -7,6 +7,7 @@
 
 import os from "os";
 import { logger } from "../logger/logging-utils";
+import { TEST_TIMEOUTS } from "../../config/timeouts";
 
 // ----- Config (keep defaults tiny) ------------------------------------------
 const DD_API_KEY = process.env.DD_API_KEY || process.env.DATADOG_API_KEY || "";
@@ -326,7 +327,7 @@ async function postJSON(
   meta: { kind: "metric"; metric: string } | { kind: "log"; event: string }
 ) {
   const ctl = new AbortController();
-  const t = setTimeout(() => ctl.abort(), 5000);
+  const t = setTimeout(() => ctl.abort(), TEST_TIMEOUTS.ACTION);
   const started = Date.now();
   try {
     const res = await fetch(url, {

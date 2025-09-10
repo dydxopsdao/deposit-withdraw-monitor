@@ -188,9 +188,9 @@ export async function handleMetamaskPopup(context: BrowserContext) {
   try {
     // Some builds show a "MetaMask Notification" title, others keep it blank.
     // Defensive: click the common flow buttons if present
-   const clicks = await clickAnyButton(mm, [/^Next$/, /^Connect$/, /^Approve$/, /^Confirm$/], "MetaMask connect flow", {
-      overallTimeoutMs: 10000,
-      pollMs: 150,
+    await clickAnyButton(mm, [/^Next$/, /^Connect$/, /^Approve$/, /^Confirm$/], "MetaMask connect flow", {
+      overallTimeoutMs: TEST_TIMEOUTS.ACTION,
+      pollMs: TEST_TIMEOUTS.DELAY / 6,
       maxClicks: 10,
     });
     logger.info(`MetaMask popup handled: ${clicks} clicks`);
