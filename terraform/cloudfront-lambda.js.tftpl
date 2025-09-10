@@ -72,7 +72,7 @@ exports.handler = async (event) => {
           </style>
         </head>
         <body>
-          <h1>Reports Directory</h1>
+          <h1>Deposit Withdraw Monitor: Test Reports Directory</h1>
           $${prefix ? `<p>Current path: /$${prefix}</p>` : ''}
           <ul>
       `;
@@ -81,7 +81,7 @@ exports.handler = async (event) => {
       if (prefix !== '') {
         const parentPath = prefix.split('/').slice(0, -2).join('/');
         const parentUrl = parentPath === '' ? '/' : `/$${parentPath}/`;
-        html += `<li><a href="$${parentUrl}" class="directory">[DIR] ../</a></li>`;
+        html += `<li><a href="$${parentUrl}" class="directory">[BACK]</a></li>`;
       }
       
       // Add subdirectories
@@ -94,7 +94,7 @@ exports.handler = async (event) => {
           
           if (isTimestampDir) {
             // For timestamp directories, link directly to index.html
-            html += `<li><a href="/$${item.Prefix}index.html" class="file">[REPORT] $${folderName}</a></li>`;
+            html += `<li><a href="/$${item.Prefix}index.html" class="file">$${folderName}</a></li>`;
           } else {
             // For other directories, show as directory
             html += `<li><a href="/$${item.Prefix}" class="directory">[DIR] $${folderName}/</a></li>`;
