@@ -23,7 +23,7 @@ data "template_file" "lambda_auth_js" {
   vars = {
     TF_VAR_AUTH_PASSWORD  = var.report_service_password
     TF_VAR_BUCKET_NAME    = aws_s3_bucket.reports.bucket
-    TF_VAR_BUCKET_REGION  = data.aws_region.current.name
+    TF_VAR_BUCKET_REGION  = data.aws_region.current.id
   }
 }
 

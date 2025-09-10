@@ -71,14 +71,14 @@ exports.handler = async (event) => {
         </head>
         <body>
           <h1>Reports Directory</h1>
-          <p>Current path: /${prefix}</p>
+          <p>Current path: /$${prefix}</p>
           <ul>
       `;
       
       // Add parent directory link if not at root
       if (prefix !== '') {
         const parentPath = prefix.split('/').slice(0, -2).join('/');
-        const parentUrl = parentPath === '' ? '/' : `/${parentPath}/`;
+        const parentUrl = parentPath === '' ? '/' : `/$${parentPath}/`;
         html += `<li><a href="${parentUrl}" class="directory">📁 ../</a></li>`;
       }
       
@@ -86,7 +86,7 @@ exports.handler = async (event) => {
       if (data.CommonPrefixes) {
         data.CommonPrefixes.forEach(item => {
           const folderName = item.Prefix.replace(prefix, '').replace('/', '');
-          html += `<li><a href="/${item.Prefix}" class="directory">📁 ${folderName}/</a></li>`;
+          html += `<li><a href="/$${item.Prefix}" class="directory">📁 $${folderName}/</a></li>`;
         });
       }
       
@@ -96,7 +96,7 @@ exports.handler = async (event) => {
           if (item.Key.endsWith('index.html')) {
             const relativePath = item.Key.replace(prefix, '');
             const fileName = relativePath.split('/').pop();
-            html += `<li><a href="/${item.Key}" class="file">📄 ${fileName}</a></li>`;
+            html += `<li><a href="/$${item.Key}" class="file">📄 $${fileName}</a></li>`;
           }
         });
       }
@@ -124,7 +124,7 @@ exports.handler = async (event) => {
       const response = {
         status: '500',
         statusDescription: 'Internal Server Error',
-        body: `Error listing directory: ${error.message}`
+        body: `Error listing directory: $${error.message}`
       };
       return response;
     }
