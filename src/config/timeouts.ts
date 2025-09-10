@@ -9,5 +9,6 @@ export const TEST_TIMEOUTS = {
     TEST: 29 * 60_000,
     FINALITY: 28 * 60_000,
     EXTENSIONS: 25000,
+    POLL: 150,
   } as const;
   

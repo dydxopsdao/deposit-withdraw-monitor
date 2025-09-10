@@ -1,5 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 import dotenv from "dotenv";
+import { TEST_TIMEOUTS } from "./src/config/timeouts";
 
 const envFile = process.env.CI ? ".env" : ".env.local";
 dotenv.config({ path: envFile });
@@ -18,6 +19,9 @@ console.log(`> Loaded environment from ${envFile}`);
  */
 export default defineConfig({
   testDir: "./src/tests",
+
+  timeout: TEST_TIMEOUTS.TEST,
+  expect: { timeout: TEST_TIMEOUTS.ELEMENT },
 
   // Initialize resources required for all tests
   globalSetup: "./global-setup.ts",

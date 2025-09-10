@@ -44,10 +44,10 @@ export async function launchContextWithExtension(
   logger.debug(`METAMASK_EXT_PATH=${METAMASK_EXT_PATH}, exists=${fs.existsSync(METAMASK_EXT_PATH)}`);
 
   try {
-    await context.waitForEvent("serviceworker", { timeout: 15_000 });
+    await context.waitForEvent("serviceworker", { timeout: TEST_TIMEOUTS.EXTENSIONS });
     logger.debug("Service worker found. Adding extra delay for initialization...");
     // This delay is often the key to stability in CI.
-    await new Promise(resolve => setTimeout(resolve, 5000)); // 5 seconds
+    await new Promise(resolve => setTimeout(resolve, TEST_TIMEOUTS.DEFAULT));
   } catch (e) {
       logger.error("MetaMask service worker failed to initialize", e);
       // Fail fast if the extension itself is broken.
@@ -65,7 +65,7 @@ export async function setupWallet(context: BrowserContext, seedPhrase: string) {
   // deterministically open the UI (don’t wait for it to appear)
   const onboarding = await openMetamaskPage(context, "onboarding/welcome", {
     waitUntil: "domcontentloaded",
-    timeout: 60_000,
+    timeout: TEST_TIMEOUTS.NAVIGATION,
     verifySelector: s.onboarding.start,  // first actionable element
   });
   // Welcome and Terms of Service
@@ -147,8 +147,8 @@ export async function handleMetamaskPopup(context: BrowserContext) {
     // Some builds show a "MetaMask Notification" title, others keep it blank.
     // Defensive: click the common flow buttons if present
     await clickAnyButton(mm, [/^Next$/, /^Connect$/, /^Approve$/, /^Confirm$/], "MetaMask connect flow", {
-      overallTimeoutMs: 10000,
-      pollMs: 150,
+      overallTimeoutMs: TEST_TIMEOUTS.ACTION,
+      pollMs: TEST_TIMEOUTS.DELAY / 6,
       maxClicks: 10,
     });
 
@@ -166,7 +166,7 @@ function extractId(u: string): string | null {
   return m ? m[1] : null;
 }
 
-export async function getMetamaskId(ctx: BrowserContext, timeoutMs = 15000): Promise<string> {
+export async function getMetamaskId(ctx: BrowserContext, timeoutMs = TEST_TIMEOUTS.EXTENSIONS): Promise<string> {
   // Use existing SW if present; otherwise wait for the next one
   const existing = ctx.serviceWorkers();
   if (existing.length) {
@@ -198,7 +198,7 @@ export async function openMetamaskPage(
 ): Promise<Page> {
   const {
     waitUntil = "domcontentloaded",
-    timeout = 90_000,
+    timeout = TEST_TIMEOUTS.NAVIGATION,
     verifySelector,
   } = options;
 
@@ -224,7 +224,7 @@ export async function openMetamaskPage(
     if (verifySelector) {
       const locator = page.locator(verifySelector);
       // Using a specific, shorter timeout for the selector itself
-      await locator.waitFor({ state: "visible", timeout: 45_000 });
+      await locator.waitFor({ state: "visible", timeout: TEST_TIMEOUTS.PAGE_LOAD });
     }
 
     logger.info(`[SUCCESS] Successfully opened MetaMask page at ${hashPath}`);
