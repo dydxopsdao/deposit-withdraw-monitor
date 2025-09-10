@@ -17,6 +17,7 @@
 import fs from "fs";
 import path from "path";
 import jsYaml from "js-yaml";
+import { logger } from "../logger/logging-utils";
 
 export type WalletType = "metamask" | "phantom";
 export type RouteKind = "deposit" | "withdraw";
@@ -120,6 +121,22 @@ export function getRoutesSync(): Route[] {
     return m;
   });
 
-  // TODO: Detect duplicate route IDs and warn or throw.
+  // Detect duplicate route IDs and warn or throw (config via ROUTE_ID_DUPLICATE_MODE=warn)
+  {
+    const counts = new Map<string, number>();
+    for (const r of merged) counts.set(r.id, (counts.get(r.id) || 0) + 1);
+    const dups = Array.from(counts.entries()).filter(([, c]) => c > 1);
+    if (dups.length) {
+      const mode = String(process.env.ROUTE_ID_DUPLICATE_MODE || "").toLowerCase();
+      const msg = `Duplicate route id(s) in routes.yaml: ${dups
+        .map(([id, c]) => `${id} (x${c})`)
+        .join(", ")}`;
+      if (mode === "warn" || mode === "warning" || mode === "ignore") {
+        logger.warning(msg);
+      } else {
+        throw new Error(msg);
+      }
+    }
+  }
   return merged;
 }
