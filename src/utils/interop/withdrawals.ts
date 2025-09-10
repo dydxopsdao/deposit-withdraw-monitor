@@ -5,7 +5,7 @@ import { logger } from '../logger/logging-utils';
 
 import { getCosmosSigner, getEvmSigner, getSvmSigner } from '../signers';
 
-import { getFreeCollateral, UsdcBalance } from './balances';
+import { getFreeCollateral } from './balances';
 import { getUsdcRoutes, executeRoute, generateUserAddresses } from './skip';
 
 /**
@@ -35,10 +35,10 @@ export async function withdrawMaxUsdc(
   const dYdXChainId = CHAIN_IDS['dydx'];
   const dstChainId = CHAIN_IDS[dstChain];
 
-  const dYdXBalance: UsdcBalance = await getFreeCollateral(dYdXAddress);
+  const dYdXBalance = await getFreeCollateral(dYdXAddress);
   logger.debug(`dYdX balance: ${dYdXBalance.formattedAmount} USDC`);
 
-  if (dYdXBalance.amount === BigInt(0)) {
+  if (dYdXBalance.amount === 0n) {
     logger.warn(`No free collateral found for ${dYdXAddress} on dYdX`);
     return;
   }
@@ -50,6 +50,7 @@ export async function withdrawMaxUsdc(
   );
 
   const userAddresses = await generateUserAddresses(skipRoute.requiredChainAddresses, dstAddress, dYdXSeed);
+  logger.debug(`Addresses: ${userAddresses.map(a => `${a.address}`).join(' -> ')}`);
 
   await executeRoute({
     getCosmosSigner: async (chainId: string) => {

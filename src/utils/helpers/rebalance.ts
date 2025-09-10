@@ -1,4 +1,5 @@
 import { CHAIN_IDS } from '../../config/chains';
+import { assertAlchemySecrets } from '../../config/alchemy';
 
 import { Route } from '../route/routes';
 import interop from '../interop';
@@ -8,6 +9,7 @@ export async function rebalanceNow(
   _route: Route,
   _opts: { reason: string; last_tx?: string; passed: boolean }
 ): Promise<{ balancesBefore: BalanceMap; balancesAfter: BalanceMap }> {
+  assertAlchemySecrets();
   interop.configureSkipClient();
 
   let balancesBefore: BalanceMap = [];

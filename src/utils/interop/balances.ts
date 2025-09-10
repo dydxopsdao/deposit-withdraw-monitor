@@ -25,11 +25,13 @@ export async function getUsdcBalance(walletAddress: string, chainId: string): Pr
   }
 
   const balances = await getBalances(walletAddress, [chainId]);
+  // The response is a bigint
+  const amount = BigInt(balances?.chains[chainId]?.denoms[usdcDenom]?.amount ?? '0');
 
   return {
-    amount: balances?.chains[chainId]?.denoms[usdcDenom]?.amount as unknown as bigint,
-    amountStr: balances?.chains[chainId]?.denoms[usdcDenom]?.amount.toString(),
-    formattedAmount: balances?.chains[chainId]?.denoms[usdcDenom]?.formattedAmount,
+    amount: amount,
+    amountStr: amount.toString(),
+    formattedAmount: formatUnits(amount, USDC_DECIMALS),
   } as UsdcBalance;
 }
 
@@ -46,9 +48,10 @@ export async function getFreeCollateral(dYdXAddress: string): Promise<UsdcBalanc
   });
 
   const data = await response.json();
-  const freeCollateral = data?.subaccounts?.[0]?.freeCollateral 
-    ? parseUnits(data.subaccounts[0].freeCollateral, USDC_DECIMALS) as bigint
-    : BigInt(0);
+  // The response is a formatted string, so we need to parse it into a bigint
+  const freeCollateral = data?.subaccounts?.[0]?.freeCollateral
+    ? (parseUnits(data.subaccounts[0].freeCollateral, USDC_DECIMALS) as bigint)
+    : 0n;
 
   return {
     amount: freeCollateral,
