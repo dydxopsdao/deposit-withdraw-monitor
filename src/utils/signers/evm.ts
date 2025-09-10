@@ -4,11 +4,11 @@ import { CHAIN_CONFIGS } from '../../config/chains';
 
 /**
  * Gets a Viem WalletClient for Skip API's executeRoute
+ * @param chainId - The chain to create the wallet client for
  * @param mnemonic - The BIP39 mnemonic phrase
- * @param chain - The chain to create the wallet client for
  * @returns A Viem WalletClient compatible with Skip API
  */
-export function getEvmSigner(mnemonic: string, chainId: string): WalletClient {
+export function getEvmSigner(chainId: string, mnemonic: string): WalletClient {
   // Get RPC endpoint from config
   const chainConfig = CHAIN_CONFIGS[chainId];
   if (!chainConfig?.rpcEndpoint) {
@@ -30,8 +30,11 @@ export function getEvmSigner(mnemonic: string, chainId: string): WalletClient {
 
 /**
  * Derives an EVM address from a mnemonic (for address-only operations)
+ * @param chainId - The chain to derive the address for
+ * @param mnemonic - The BIP39 mnemonic phrase
+ * @returns The derived address
  */
-export function deriveEvmAddress(mnemonic: string, chainId: string): string {
+export function deriveEvmAddress(chainId: string, mnemonic: string): string {
   const chainConfig = CHAIN_CONFIGS[chainId];
   if (!chainConfig?.derivationPath) {
     throw new Error(`No derivation path found for chain ID: ${chainId}`);
