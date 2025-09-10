@@ -16,133 +16,23 @@ resource "aws_lambda_function" "cloudfront_basic_auth" {
   }
 }
 
-# Create the Lambda function code
+# Create the Lambda function code with template substitution
+data "template_file" "lambda_auth_js" {
+  template = file("${path.module}/lambda-auth.js")
+  
+  vars = {
+    TF_VAR_AUTH_PASSWORD  = var.report_service_password
+    TF_VAR_BUCKET_NAME    = aws_s3_bucket.reports.bucket
+    TF_VAR_BUCKET_REGION  = data.aws_region.current.name
+  }
+}
+
 data "archive_file" "lambda_basic_auth_zip" {
   type        = "zip"
   output_path = "cloudfront_basic_auth.zip"
 
   source {
-    content  = <<-EOT
-      const AWS = require('aws-sdk');
-      const s3 = new AWS.S3({region: 'ap-northeast-1'});
-      
-      exports.handler = async (event, context) => {
-        const request = event.Records[0].cf.request;
-        const headers = request.headers;
-        const uri = request.uri;
-        
-        const authUser = 'viewer';
-        const authPass = '${var.report_service_password}';
-        
-        const authString = 'Basic ' + Buffer.from(authUser + ':' + authPass).toString('base64');
-        
-        if (typeof headers.authorization == 'undefined' || headers.authorization[0].value != authString) {
-          const body = 'Unauthorized';
-          const response = {
-            status: '401',
-            statusDescription: 'Unauthorized',
-            body: body,
-            headers: {
-              'www-authenticate': [{key: 'WWW-Authenticate', value:'Basic'}]
-            }
-          };
-          return response;
-        }
-        
-        // Handle directory listing requests
-        if (uri === '/' || uri.endsWith('/')) {
-          try {
-            const bucketName = '${aws_s3_bucket.reports.bucket}';
-            const prefix = uri === '/' ? '' : uri.slice(1); // Remove leading slash
-            
-            const params = {
-              Bucket: bucketName,
-              Prefix: prefix,
-              Delimiter: '/'
-            };
-            
-            const data = await s3.listObjectsV2(params).promise();
-            
-            let html = `
-              <!DOCTYPE html>
-              <html>
-              <head>
-                <title>Reports Index</title>
-                <style>
-                  body { font-family: Arial, sans-serif; margin: 40px; }
-                  h1 { color: #333; }
-                  .directory { color: #0066cc; text-decoration: none; display: block; padding: 5px 0; }
-                  .directory:hover { text-decoration: underline; }
-                  .file { color: #666; }
-                  ul { list-style-type: none; padding-left: 0; }
-                  li { margin: 5px 0; }
-                </style>
-              </head>
-              <body>
-                <h1>Reports Directory</h1>
-                <p>Current path: /${prefix}</p>
-                <ul>
-            `;
-            
-            // Add parent directory link if not at root
-            if (prefix !== '') {
-              const parentPath = prefix.split('/').slice(0, -2).join('/');
-              const parentUrl = parentPath === '' ? '/' : `/${parentPath}/`;
-              html += `<li><a href="${parentUrl}" class="directory">📁 ../</a></li>`;
-            }
-            
-            // Add subdirectories
-            if (data.CommonPrefixes) {
-              data.CommonPrefixes.forEach(item => {
-                const folderName = item.Prefix.replace(prefix, '').replace('/', '');
-                html += `<li><a href="/${item.Prefix}" class="directory">📁 ${folderName}/</a></li>`;
-              });
-            }
-            
-            // Add files (look for index.html in subdirectories)
-            if (data.Contents) {
-              data.Contents.forEach(item => {
-                if (item.Key.endsWith('index.html')) {
-                  const relativePath = item.Key.replace(prefix, '');
-                  const fileName = relativePath.split('/').pop();
-                  html += `<li><a href="/${item.Key}" class="file">📄 ${fileName}</a></li>`;
-                }
-              });
-            }
-            
-            html += `
-                </ul>
-              </body>
-              </html>
-            `;
-            
-            const response = {
-              status: '200',
-              statusDescription: 'OK',
-              headers: {
-                'content-type': [{key: 'Content-Type', value: 'text/html'}],
-                'cache-control': [{key: 'Cache-Control', value: 'max-age=300'}]
-              },
-              body: html
-            };
-            
-            return response;
-            
-          } catch (error) {
-            console.log('S3 Error:', error);
-            const response = {
-              status: '500',
-              statusDescription: 'Internal Server Error',
-              body: `Error listing directory: ${error.message}`
-            };
-            return response;
-          }
-        }
-        
-        // For file requests, pass through to S3
-        return request;
-      };
-    EOT
+    content  = data.template_file.lambda_auth_js.rendered
     filename = "index.js"
   }
 }
