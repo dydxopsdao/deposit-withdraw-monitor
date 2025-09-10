@@ -6,7 +6,8 @@
   "scripts": {
     "download-phantom": "node src/scripts/download-extension.js phantom bfnaelmomeimhlpmgjnjophhpkkoljpa",
     "download-metamask": "node src/scripts/download-extension.js metamask nkbihfbeogaeaoehlefnkodbefgpgknn",
-    "download-extensions": "npm run download-phantom && npm run download-metamask"
+    "download-extensions": "npm run download-phantom && npm run download-metamask",
+    "validate:routes": "tsx src/scripts/validate-routes.ts"
   },
   "repository": {
     "type": "git",
@@ -32,6 +33,7 @@
     "yaml": "^2.8.1"
   },
   "devDependencies": {
-    "@types/node": "^24.0.3"
+    "@types/node": "^24.0.3",
+    "tsx": "^4.19.1"
   }
 }
