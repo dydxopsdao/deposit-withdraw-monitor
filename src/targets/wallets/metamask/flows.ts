@@ -53,8 +53,6 @@ export async function setupWallet(context: BrowserContext, seedPhrase: string) {
   logger.step("Setting up MetaMask wallet");
   // TODO: Add explicit error handling for selector changes between MetaMask versions.
   // TODO: Feature-detect onboarding flow version and branch accordingly to reduce flakiness across versions.
-
-  // deterministically open the UI (don’t wait for it to appear)
   const onboarding = await findPageWithUrl(context, s.urls.onboarding);
   if (!onboarding) {
     throw new Error("MetaMask onboarding page not found");
@@ -163,15 +161,20 @@ export async function conditionallyUnlockMetamask(context: BrowserContext) {
   }
 
   // If we have a page, proceed with unlocking
-  if (unlockPage) {
+  if (unlockPage && !unlockPage.isClosed()) {
     try {
       await unlockPage.bringToFront();
-      logger.info("Attempting to unlock MetaMask with wallet password...");
-      await unlockPage.fill(s.unlock.pw, WALLET_PASSWORD, { timeout: TEST_TIMEOUTS.DEFAULT });
+      logger.info("Entering wallet password...");
+      await unlockPage.fill(s.unlock.pw, WALLET_PASSWORD, { timeout: TEST_TIMEOUTS.ELEMENT });
       await unlockPage.click(s.unlock.pwSubmit);
       logger.info("MetaMask unlocked successfully");
     } catch (error) {
-        logger.info(`Wallet unlock not required or failed: ${error.message}`);
+      // Handle cases where the page might close faster than Playwright can detect
+      if (unlockPage.isClosed()) {
+        logger.info("MetaMask unlocked successfully (page closed before confirmation).");
+      } else {
+        logger.error(`An error occurred while trying to unlock MetaMask: ${error.message}`);
+      }
     }
   }
 }
@@ -195,7 +198,7 @@ export async function handleMetamaskPopup(context: BrowserContext) {
   try {
     // Some builds show a "MetaMask Notification" title, others keep it blank.
     // Defensive: click the common flow buttons if present
-    await clickAnyButton(mm, [/^Next$/, /^Connect$/, /^Approve$/, /^Confirm$/], "MetaMask connect flow", {
+   const clicks = await clickAnyButton(mm, [/^Next$/, /^Connect$/, /^Approve$/, /^Confirm$/], "MetaMask connect flow", {
       overallTimeoutMs: 10000,
       pollMs: 150,
       maxClicks: 10,
