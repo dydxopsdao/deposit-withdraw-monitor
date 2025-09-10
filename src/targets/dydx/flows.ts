@@ -170,6 +170,7 @@ export async function openApp(
       logger.warning(
         `Navigation attempt ${attemptNo} failed for ${targetUrl}: ${(err as Error)?.message}`
       );
+      // TODO: Optionally capture details to be used on the final error.
       // Loop continues unless we hit the max retries; then we break below.
     }
   }
@@ -207,6 +208,7 @@ export async function connectWallet(
   logger.step(`Connecting wallet: ${wallet}`);
   // TODO: Emit metrics or structured logs for each connection attempt to aid debugging in CI.
   //TODO add hahndling of the warning / disconnect
+  // TODO: If stale wallet popups are open from previous runs, close them proactively.
   // 1) If already connected, short-circuit (account/user menu present)
   if (await dydxSelectors.accountMenuButton(page, wallet).isVisible()) {
     logger.info("Wallet appears already connected (account menu visible)");
@@ -258,6 +260,7 @@ export async function connectWallet(
 async function chooseProvider(page: Page, provider: Locator, name: string) {
   logger.info(`Selecting wallet provider: ${name}`);
   // TODO: Add retry or clearer error messaging if the provider element is not found.
+  // TODO: Handle the case where the wallet picker is behind a modal or overlay (scroll into view).
   await provider.isVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
   await provider.click();
 }
@@ -276,6 +279,7 @@ async function handleWalletPopup(context: BrowserContext, wallet: WalletType) {
 // Click a locator if it’s visible; log what happened.
 async function clickIfVisible(locator: Locator, label: string, timeout: number ): Promise<boolean> {
   // TODO: Replace manual wait/visibility check with expect to capture screenshots on failure.
+  // TODO: Avoid duplicate first() calls by storing the locator.
   await locator.first().waitFor({ state: "visible", timeout }).catch(() => {});
   if (await locator.first().isVisible()) {
     logger.info(`Clicking: ${label}`);
@@ -291,6 +295,7 @@ async function sendRequest(page: Page, locator: Locator) {
   logger.info("Sending request");
   await locator.isVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
   await locator.click();
+  // TODO: Verify UI transitions to a pending/confirmation state after sending.
 }
 
 /** Click Connect Wallet → verify picker appeared → retry if not */
@@ -298,6 +303,7 @@ export async function openWalletPicker(page: Page, retries = 2) {
   // If already open, we're done
   if (await isPickerOpen(page)) return;
   // TODO: Consider adding logging for each retry attempt for better traceability.
+  // TODO: Add a short jitter between retries to reduce sync collisions.
 
   for (let attempt = 0; attempt <= retries; attempt++) {
     // 1) wait for button, then click
@@ -370,6 +376,7 @@ export async function selectToken(page: Page, token: string, chain: string) {
 
   // Find candidates that contain both pieces of text
   const candidates = dydxSelectors.tokenPickerCandidates(page, token, chain);
+  // TODO: If multiple matches exist (duplicate token bridges), prefer an exact/labelled match.
 
   // Wait for at least one match
   await expect(candidates.first()).toBeVisible({ timeout: TEST_TIMEOUTS.ACTION });
@@ -401,6 +408,7 @@ export async function selectToken(page: Page, token: string, chain: string) {
       await target.click({ force: true });
     }
   }
+  // TODO: Extract this click-with-fallback pattern into a shared helper (DRY).
 }
 
 /** Fill the Amount input and blur to trigger validation */
@@ -458,6 +466,7 @@ export async function submitDeposit(page: Page, context: BrowserContext, wallet:
     //Here just to approve spending cap
     await handleWalletPopup(context, wallet);
     // TODO: Implement retry logic if the wallet popup is dismissed unexpectedly.
+    // TODO: Detect and log specific error banners (e.g. insufficient funds, slippage) before exiting.
 
 
 }

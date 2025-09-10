@@ -51,9 +51,6 @@ export const dydxSelectors = {
       .filter({ hasText: chain });  // substring match (no regex)
   }) as Selector,
 
-  
-
-
   depositInProgress: (p) =>
     dydxSelectors.depositDialog(p).getByText(/deposit in progress/i),
   depositCompleted: (p) =>

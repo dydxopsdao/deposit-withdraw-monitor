@@ -38,6 +38,7 @@ export const walletContextTest = test.extend<{
     const base = path.resolve(USER_DATA_DIR);
     if (!resolved.startsWith(base)) throw new Error("Refusing to delete outside USER_DATA_DIR");
     fs.rmSync(resolved, { recursive: true, force: true });
+    // TODO: The existence check below will always be false after rmSync; clarify intended unlock/setup path.
       
     const userDataDirExists = fs.existsSync(userDataDir);
 

@@ -27,6 +27,7 @@ export async function launchContextWithExtension(
       "--start-maximized",
     ];
     // TODO: Allow overriding default launch arguments to support local debugging and different CI setups.
+    // TODO: Share a common set of Chromium args with Phantom to avoid drift (DRY).
 
   const context = await chromium.launchPersistentContext(userDataDir, {
     headless: false,
@@ -51,6 +52,7 @@ export async function launchContextWithExtension(
 export async function setupWallet(context: BrowserContext, seedPhrase: string) {
   logger.step("Setting up MetaMask wallet");
   // TODO: Add explicit error handling for selector changes between MetaMask versions.
+  // TODO: Feature-detect onboarding flow version and branch accordingly to reduce flakiness across versions.
 
   // deterministically open the UI (don’t wait for it to appear)
   const onboarding = await findPageWithUrl(context, s.urls.onboarding);
@@ -182,6 +184,7 @@ export async function conditionallyUnlockMetamask(context: BrowserContext) {
 export async function handleMetamaskPopup(context: BrowserContext) {
   logger.info("Waiting for MetaMask popup…");
   // TODO: Break out specific popup steps for clearer logging and easier reuse.
+  // TODO: Add a maximum total wait with a helpful error when popups never appear.
 
   const mm = await findPageWithUrl(context, s.urls.notification);
   if (!mm) {

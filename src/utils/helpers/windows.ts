@@ -69,6 +69,8 @@ export async function findPageWithUrl(
     }
   }
 
+  // TODO: Optionally throw when not found (e.g. required=true) to avoid silent nulls.
+  // TODO: Consider listening for 'popup' events and scanning their URLs as well.
   logger.error(`❌ No page found matching pattern after ${maxRetries} retries`);
   return null;
 }
