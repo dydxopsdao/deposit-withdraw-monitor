@@ -113,31 +113,6 @@ resource "aws_s3_bucket" "cloudfront_logs" {
   bucket = "dydxopsdao-deposit-withdraw-monitor-cloudfront-logs"
 }
 
-# Enable ACLs for CloudFront logging
-resource "aws_s3_bucket_ownership_controls" "cloudfront_logs" {
-  bucket = aws_s3_bucket.cloudfront_logs.id
-
-  rule {
-    object_ownership = "BucketOwnerPreferred"
-  }
-}
-
-resource "aws_s3_bucket_acl" "cloudfront_logs" {
-  depends_on = [aws_s3_bucket_ownership_controls.cloudfront_logs]
-
-  bucket = aws_s3_bucket.cloudfront_logs.id
-  acl    = "private"
-}
-
-resource "aws_s3_bucket_public_access_block" "cloudfront_logs" {
-  bucket = aws_s3_bucket.cloudfront_logs.id
-
-  block_public_acls       = false
-  block_public_policy     = true
-  ignore_public_acls      = false
-  restrict_public_buckets = true
-}
-
 # Origin Access Control for CloudFront to access S3
 resource "aws_cloudfront_origin_access_control" "reports" {
   name                              = "deposit-withdraw-monitor-reports-oac"
@@ -158,12 +133,6 @@ resource "aws_cloudfront_distribution" "reports" {
   enabled             = true
   is_ipv6_enabled     = true
   default_root_object = "index.html"
-
-  logging_config {
-    include_cookies = false
-    bucket          = aws_s3_bucket.cloudfront_logs.bucket_domain_name
-    prefix          = "cloudfront-logs/"
-  }
 
   default_cache_behavior {
     allowed_methods        = ["GET", "HEAD", "OPTIONS"]
