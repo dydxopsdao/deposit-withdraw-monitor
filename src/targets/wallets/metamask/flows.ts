@@ -28,6 +28,7 @@ export async function launchContextWithExtension(
       "--start-maximized",
     ];
     // TODO: Allow overriding default launch arguments to support local debugging and different CI setups.
+    // TODO: Share a common set of Chromium args with Phantom to avoid drift (DRY).
 
   const context = await chromium.launchPersistentContext(userDataDir, {
     headless: false,
@@ -63,6 +64,7 @@ export async function launchContextWithExtension(
 export async function setupWallet(context: BrowserContext, seedPhrase: string) {
   logger.step("Setting up MetaMask wallet");
   // TODO: Add explicit error handling for selector changes between MetaMask versions.
+  // TODO: Feature-detect onboarding flow version and branch accordingly to reduce flakiness across versions.
 
   // deterministically open the UI (don’t wait for it to appear)
   const onboarding = await openMetamaskPage(context, "onboarding/welcome", {
@@ -139,6 +141,7 @@ export async function unlockMetamaskWallet(context: BrowserContext) {
 export async function handleMetamaskPopup(context: BrowserContext) {
   logger.info("Waiting for MetaMask popup…");
   // TODO: Break out specific popup steps for clearer logging and easier reuse.
+  // TODO: Add a maximum total wait with a helpful error when popups never appear.
 
   const mm = await findPageWithUrl(context, s.urls.notification);
 
@@ -171,6 +174,7 @@ function extractId(u: string): string | null {
 }
 
 export async function getMetamaskId(ctx: BrowserContext, timeoutMs = TEST_TIMEOUTS.EXTENSIONS): Promise<string> {
+  // TODO: Move extractId/get*Id helpers into a shared module (used by Phantom too).
   // Use existing SW if present; otherwise wait for the next one
   const existing = ctx.serviceWorkers();
   if (existing.length) {
@@ -212,6 +216,7 @@ export async function openMetamaskPage(
   const extensionId = await getMetamaskId(ctx);
   
   const entryFile = "home.html"; // The standard entry point for the full-page UI
+  // TODO: Detect entry dynamically (e.g. pickEntryFile()) to tolerate packaging differences.
   const url = `chrome-extension://${extensionId}/${entryFile}#${hashPath}`;
 
   // --- 2. Create New Page and Prepare for Navigation ---
@@ -237,6 +242,7 @@ export async function openMetamaskPage(
   } catch (error: any) {
     // --- 6. Detailed Error Handling ---
     logger.error(`Failed to open MetaMask page at ${hashPath}: ${error.message}`);
+    // TODO: Attach a screenshot or dump console logs here to improve debuggability in CI.
     
     // Tracing will capture a full trace of this failure.
     // This is the most valuable artifact for debugging.

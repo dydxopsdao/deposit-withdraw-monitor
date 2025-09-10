@@ -90,8 +90,11 @@ export function getRoutesSync(): Route[] {
     if (typeof m.enabled === "undefined") m.enabled = true;
     if (typeof m.paused === "undefined") m.paused = false;
 
+    // TODO: Validate required fields by kind (deposit vs withdraw) and
+    // surface a friendly error early if something is missing.
     return m;
   });
 
+  // TODO: Detect duplicate route IDs and warn or throw.
   return merged;
 }

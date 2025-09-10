@@ -12,6 +12,7 @@ export const phantomSelectors = {
     notification: `chrome-extension://${PHANTOM_EXT_ID}/notification.html`,
     unlock: `chrome-extension://${PHANTOM_EXT_ID}/popup.html`,
   },
+  // TODO: Prefer dynamic extension ID (getPhantomId) in flows to avoid stale PHANTOM_EXT_ID assumptions.
 
   // Phantom onboarding page
   onboarding: {

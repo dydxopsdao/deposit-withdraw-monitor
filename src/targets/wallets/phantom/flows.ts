@@ -16,6 +16,7 @@ export async function launchContextWithExtension(
   assertPhantomSecrets();
 
   const context = await chromium.launchPersistentContext(userDataDir, {
+    // TODO: Respect the headless argument above instead of hardcoding false.
     headless: false,
     ignoreDefaultArgs: ['--enable-automation'],
     args: [
@@ -181,5 +182,6 @@ export async function openPhantomUrl(
   const url = urlWithAnyId.replace(/^chrome-extension:\/\/[^/]+/, `chrome-extension://${id}`);
   const page = await ctx.newPage();
   await page.goto(url, { waitUntil });
+  // TODO: Optionally verify a selector to assert the page is truly ready.
   return page;
 }

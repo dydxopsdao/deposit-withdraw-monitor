@@ -240,6 +240,7 @@ function enabled(): boolean {
 }
 
 function normalizeTags(tags: Array<string | null | undefined>): string[] {
+  // TODO: Enforce a whitelist/length cap for tag values to avoid high-cardinality explosions.
   return (tags || []).map(String).map((s) => s.trim()).filter(Boolean);
 }
 

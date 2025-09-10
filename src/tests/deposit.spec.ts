@@ -139,6 +139,7 @@ for (const route of depositRoutes) {
           logger.success("Deposit flow complete", { route_id: route.id, txHash, explorerUrl });
           //TODO close browser
           await page.close();
+          // TODO: Consider closing the entire context here to avoid cross-test leakage when running multiple routes.
           // Datadog: success metric (no success log needed)
           await dd.routeResult({ passed: true, txHash, explorerUrl });
         } catch (e: any) {
