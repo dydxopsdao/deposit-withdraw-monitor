@@ -1,4 +1,4 @@
-export function assertAlchemySecrets() {
+export function assertChainConfigSecrets() {
   if (!process.env.ALCHEMY_API_KEY) {
     throw new Error('ALCHEMY_API_KEY is not set');
   }
