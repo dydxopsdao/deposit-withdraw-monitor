@@ -13,5 +13,5 @@ export default {
   configureSkipClient,
   getBalances,
   getUsdcRoutes,
-  executeRoute
+  executeRoute,
 } as const;

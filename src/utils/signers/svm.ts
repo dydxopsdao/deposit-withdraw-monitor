@@ -5,12 +5,14 @@ import { derivePath } from 'ed25519-hd-key';
 
 import { CHAIN_CONFIGS } from '../../config/chains';
 
+export { getSvmSigner, deriveSvmAddress };
+
 /**
  * Gets a Solana signer for Skip API's executeRoute
  * @param mnemonic - The BIP39 mnemonic phrase
  * @returns A Solana Adapter compatible with Skip API
  */
-export function getSvmSigner(mnemonic: string): Adapter {
+function getSvmSigner(mnemonic: string): Adapter {
   if (!bip39.validateMnemonic(mnemonic)) {
     throw new Error('Invalid mnemonic phrase');
   }
@@ -49,7 +51,7 @@ export function getSvmSigner(mnemonic: string): Adapter {
  * @param mnemonic - The BIP39 mnemonic phrase
  * @returns The derived address in base58 format
  */
-export function deriveSvmAddress(mnemonic: string): string {
+function deriveSvmAddress(mnemonic: string): string {
   if (!bip39.validateMnemonic(mnemonic)) {
     throw new Error('Invalid mnemonic phrase');
   }

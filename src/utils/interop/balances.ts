@@ -5,8 +5,10 @@ import { INDEXER_API_URL, USDC_DECIMALS } from '../../config/constants';
 
 import { getBalances } from './skip';
 
+export { getUsdcBalance, getFreeCollateral };
+
 // The USDC balance for a given address on a given chain
-export interface UsdcBalance {
+interface UsdcBalance {
   amount: bigint;
   amountStr: string;
   formattedAmount: string;
@@ -18,7 +20,7 @@ export interface UsdcBalance {
  * @param chainId - The chain ID to get the balance for
  * @returns The USDC balance for the address on the given chain in USDC
  */
-export async function getUsdcBalance(walletAddress: string, chainId: string): Promise<UsdcBalance> {
+async function getUsdcBalance(walletAddress: string, chainId: string): Promise<UsdcBalance> {
   const usdcDenom = CHAIN_CONFIGS[chainId]?.usdcDenom;
   if (!usdcDenom) {
     throw new Error(`No USDC denom found for chain ${chainId}`);
@@ -40,7 +42,7 @@ export async function getUsdcBalance(walletAddress: string, chainId: string): Pr
  * @param dYdXAddress - The address of the dYdX account
  * @returns The free collateral of the dYdX account in USDC
  */
-export async function getFreeCollateral(dYdXAddress: string): Promise<UsdcBalance> {
+async function getFreeCollateral(dYdXAddress: string): Promise<UsdcBalance> {
   const response = await fetch(`${INDEXER_API_URL}/v4/addresses/${dYdXAddress}`, {
     headers: {
       'Content-Type': 'application/json',

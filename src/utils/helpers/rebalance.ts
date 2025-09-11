@@ -5,7 +5,15 @@ import { Route } from '../route/routes';
 import interop from '../interop';
 import { BalanceMap } from '../datadog/datadog-utils';
 
-export async function rebalanceNow(
+export { rebalanceNow };
+
+/**
+ * Rebalances the given route
+ * @param _route - The route to rebalance
+ * @param _opts - The options for the rebalance
+ * @returns The balances before and after the rebalance
+ */
+async function rebalanceNow(
   _route: Route,
   _opts: { reason: string; last_tx?: string; passed: boolean }
 ): Promise<{ balancesBefore: BalanceMap; balancesAfter: BalanceMap }> {
