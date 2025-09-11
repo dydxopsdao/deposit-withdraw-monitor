@@ -47,6 +47,11 @@ exports.handler = async (event) => {
       const bucketName = '${BUCKET_NAME}';
       const prefix = uri === '/' ? '' : uri.slice(1); // Remove leading slash
       
+      // Parse pagination parameters from query string
+      const url = new URL(`https://example.com$${request.uri}$${request.querystring ? '?' + request.querystring : ''}`);
+      const page = parseInt(url.searchParams.get('page') || '1');
+      const pageSize = 50;
+      
       const params = {
         Bucket: bucketName,
         Prefix: prefix,
@@ -84,6 +89,9 @@ exports.handler = async (event) => {
         html += `<li><a href="$${parentUrl}" class="directory">[BACK]</a></li>`;
       }
       
+      // Collect all items for pagination
+      let allItems = [];
+      
       // Add subdirectories
       if (data.CommonPrefixes) {
         // Convert to array and sort
@@ -112,10 +120,10 @@ exports.handler = async (event) => {
           
           if (isTimestampDir) {
             // For timestamp directories, link directly to index.html
-            html += `<li><a href="/$${item.Prefix}index.html" class="file">$${folderName}</a></li>`;
+            allItems.push({ type: 'report', name: folderName, url: `/$${item.Prefix}index.html` });
           } else {
             // For other directories, show as directory
-            html += `<li><a href="/$${item.Prefix}" class="directory">$${folderName}/</a></li>`;
+            allItems.push({ type: 'directory', name: `$${folderName}/`, url: `/$${item.Prefix}` });
           }
         });
       }
@@ -126,9 +134,68 @@ exports.handler = async (event) => {
           if (item.Key.endsWith('index.html')) {
             const relativePath = item.Key.replace(prefix, '');
             const fileName = relativePath.split('/').pop();
-            html += `<li><a href="/$${item.Key}" class="file">[FILE] $${fileName}</a></li>`;
+            allItems.push({ type: 'file', name: `[FILE] $${fileName}`, url: `/$${item.Key}` });
           }
         });
+      }
+      
+      // Pagination logic
+      const totalItems = allItems.length;
+      const totalPages = Math.ceil(totalItems / pageSize);
+      const showPagination = totalItems >= pageSize;
+      
+      // Calculate pagination bounds
+      const startIndex = (page - 1) * pageSize;
+      const endIndex = Math.min(startIndex + pageSize, totalItems);
+      const paginatedItems = allItems.slice(startIndex, endIndex);
+      
+      // Add pagination info
+      if (showPagination) {
+        html += `<p><strong>Showing $${startIndex + 1}-$${endIndex} of $${totalItems} items (Page $${page} of $${totalPages})</strong></p>`;
+      }
+      
+      // Render items
+      paginatedItems.forEach(item => {
+        const cssClass = item.type === 'directory' ? 'directory' : 'file';
+        const label = item.type === 'report' ? item.name : 
+                     item.type === 'directory' ? `[DIR] $${item.name}` :
+                     item.name;
+        html += `<li><a href="$${item.url}" class="$${cssClass}">$${label}</a></li>`;
+      });
+      
+      // Add pagination controls
+      if (showPagination) {
+        html += `</ul><div style="margin-top: 20px; text-align: center;">`;
+        
+        const currentPath = request.uri;
+        
+        // Previous page
+        if (page > 1) {
+          html += `<a href="$${currentPath}?page=$${page - 1}" style="margin: 0 10px; padding: 8px 12px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px;">‹ Previous</a>`;
+        } else {
+          html += `<span style="margin: 0 10px; padding: 8px 12px; background-color: #ccc; color: #666; border-radius: 4px;">‹ Previous</span>`;
+        }
+        
+        // Page numbers (show current page and 2 pages on each side)
+        const startPage = Math.max(1, page - 2);
+        const endPage = Math.min(totalPages, page + 2);
+        
+        for (let p = startPage; p <= endPage; p++) {
+          if (p === page) {
+            html += `<span style="margin: 0 5px; padding: 8px 12px; background-color: #28a745; color: white; border-radius: 4px; font-weight: bold;">$${p}</span>`;
+          } else {
+            html += `<a href="$${currentPath}?page=$${p}" style="margin: 0 5px; padding: 8px 12px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px;">$${p}</a>`;
+          }
+        }
+        
+        // Next page
+        if (page < totalPages) {
+          html += `<a href="$${currentPath}?page=$${page + 1}" style="margin: 0 10px; padding: 8px 12px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px;">Next ›</a>`;
+        } else {
+          html += `<span style="margin: 0 10px; padding: 8px 12px; background-color: #ccc; color: #666; border-radius: 4px;">Next ›</span>`;
+        }
+        
+        html += `</div><ul style="list-style: none;">`; // Reopen ul for consistency
       }
       
       html += `
