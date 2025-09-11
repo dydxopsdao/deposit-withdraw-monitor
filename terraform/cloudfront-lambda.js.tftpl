@@ -171,9 +171,9 @@ exports.handler = async (event) => {
         
         // Previous page
         if (page > 1) {
-          html += `<a href="$${currentPath}?page=$${page - 1}" style="margin: 0 10px; padding: 8px 12px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px;">‹ Previous</a>`;
+          html += `<a href="$${currentPath}?page=$${page - 1}" style="margin: 0 10px; padding: 8px 12px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px;">Previous</a>`;
         } else {
-          html += `<span style="margin: 0 10px; padding: 8px 12px; background-color: #ccc; color: #666; border-radius: 4px;">‹ Previous</span>`;
+          html += `<span style="margin: 0 10px; padding: 8px 12px; background-color: #ccc; color: #666; border-radius: 4px;">Previous</span>`;
         }
         
         // Page numbers (show current page and 2 pages on each side)
@@ -190,9 +190,9 @@ exports.handler = async (event) => {
         
         // Next page
         if (page < totalPages) {
-          html += `<a href="$${currentPath}?page=$${page + 1}" style="margin: 0 10px; padding: 8px 12px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px;">Next ›</a>`;
+          html += `<a href="$${currentPath}?page=$${page + 1}" style="margin: 0 10px; padding: 8px 12px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px;">Next</a>`;
         } else {
-          html += `<span style="margin: 0 10px; padding: 8px 12px; background-color: #ccc; color: #666; border-radius: 4px;">Next ›</span>`;
+          html += `<span style="margin: 0 10px; padding: 8px 12px; background-color: #ccc; color: #666; border-radius: 4px;">Next</span>`;
         }
         
         html += `</div><ul style="list-style: none;">`; // Reopen ul for consistency
