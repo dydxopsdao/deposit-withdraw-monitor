@@ -50,6 +50,9 @@ npx playwright test src/tests/ --reporter=line
 # 5) (Optional) Run specific test (uses routes.yaml)
 ROUTE_ID=metamask-ethereum-usdc-deposit-regular \
   npx playwright test src/tests/deposit.spec.ts --reporter=line
+
+# 6) (Optional) Rebalance a specific route manually
+npx tsx src/scripts/rebalance-route.ts metamask-ethereum-usdc-deposit-regular
 ```
 ---
 
