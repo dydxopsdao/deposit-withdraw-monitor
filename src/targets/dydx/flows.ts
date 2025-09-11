@@ -436,17 +436,16 @@ export async function submitDeposit(page: Page, context: BrowserContext, wallet:
 
   // Wait until it’s actually enabled (handles disabled/aria-disabled)
   await expect(btn).toBeEnabled({ timeout: T });
-
   // Click for real
   await btn.click();
+  logger.info("Deposit funds button clicked");
 
   // Add / Approve Network
   await handleWalletPopup(context, wallet);
-
   // Confirm the transaction
   // TODO handle alert for network costs
-    //Here just to approve spending cap
-    await handleWalletPopup(context, wallet);
+  //Here just to approve spending cap
+  await handleWalletPopup(context, wallet);
 
 
 }

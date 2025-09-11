@@ -13,17 +13,14 @@
 //   - rebalance result metric + log (with balances when provided)
 // Rebalance: never fails the test.
 
-import path from "path";
 import { test, expect } from "../fixtures";
 import { logger } from "../utils/logger/logging-utils";
 import { getRoutesSync, type Route, type WalletType } from "../utils/route/routes";
-import { createTelemetryContext, type ErrorStage } from "../utils/datadog/datadog-utils";
+import { createTelemetryContext} from "../utils/datadog/datadog-utils";
 import { openApp, connectWallet, withdraw, submitWithdraw } from "../targets/dydx/flows";
 import { dydxSelectors } from "../targets/dydx/selectors";
 import { TEST_TIMEOUTS } from "../config/timeouts";
 import { waitForFinality } from "../utils/finality/finality";
-import { uploadTraceToS3 } from "../utils/helpers/tracing";
-import { BrowserContext, Page } from "@playwright/test";
 
 // ---- Route discovery (sync so tests can be defined at import time) ----------
 const onlyRouteId = process.env.ROUTE_ID?.trim();
@@ -44,7 +41,6 @@ if (withdrawRoutes.length === 0) {
 // ---- Per-route test definitions -------------------------------------------
 for (const route of withdrawRoutes) {
   const title = `withdraw: ${route.id} — ${route.wallet_type} — ${route.src_chain}→${route.dst_chain} — $${route.amount} — ${route.token}`;
-  const timestamp = new Date().toISOString();
 
   test.describe(`Route: ${route.id}`, () => {
     test.use({ route });
@@ -53,15 +49,7 @@ for (const route of withdrawRoutes) {
       testInfo.setTimeout(TEST_TIMEOUTS.TEST);
     });
 
-    test(title, async ({ page, context }, testInfo) => {
-      // Start tracing
-      logger.info("Starting tracing", { route_id: route.id });
-      await context.tracing.start({
-        screenshots: true,
-        snapshots: true,
-        sources: true,
-      });
-
+    test(title, async ({ page, context }, testInfo) => {    
       // Datadog context (keeps tags consistent, sends metrics/logs)
       const dd = createTelemetryContext({
         route: {
@@ -81,8 +69,9 @@ for (const route of withdrawRoutes) {
 
       let txHash: string | undefined;
       let explorerUrl: string | undefined;
+      let explorerUrlsAll: string[] = [];
+      let txHashesAll: (string | undefined)[] = [];
       let passed = false;
-      let error_stage: ErrorStage | "none" = "none";
 
       logger.info("Starting withdraw", {
         route_id: route.id,
@@ -98,17 +87,13 @@ for (const route of withdrawRoutes) {
       });
 
       try {
-        // -------- Pre-submit block (open, connect, navigate, fill amount) ----
         try {
           await test.step("Open app", async () => {
             await openApp(page, context, {
               waitUntil: "domcontentloaded",
               maxRetries: 3,
               retryDelayMs: 1500,
-              waitFor: [dydxSelectors.connectWalletBtn],
-              afterNavigate: async (_page) => {
-                // place for any after-nav hooks
-              },
+              waitFor: [dydxSelectors.connectWalletBtn]
             });
           });
 
@@ -117,40 +102,34 @@ for (const route of withdrawRoutes) {
           });
 
           await test.step("Withdraw", async () => {
-            // Implemented in targets/dydx/flows.ts similar to deposit()
             await withdraw(page, context, String(route.amount), route.dst_chain, route.token, route.wallet_type);
           });
-
-        } catch (e: any) {
-          error_stage = "pre_submit";
-          logger.error("Pre-submit step failed", e, { route_id: route.id });
-          await dd.routeResult({ passed: false, errorStage: error_stage, error: e });
-          throw e;
-        }
-
-        // -------- Submit + finality block ------------------------------------
-        try {
           await test.step("Submit withdraw", async () => {
-            // Implemented in targets/dydx/flows.ts similar to submitDeposit()
             return await submitWithdraw(page, context, route.wallet_type);
           });
 
           await test.step("Wait for finality", async () => {
+            logger.info("Waiting for finality");
             const res = await waitForFinality(page);
+            logger.info("Finality result", { res });
             txHash = res.txHash;
             explorerUrl = res.explorerUrl;
+            explorerUrlsAll = res.explorerUrlsAll ?? [];
+            txHashesAll = res.txHashesAll ?? [];
             expect(res.ok).toBeTruthy();
             passed = true;
           });
-
-          logger.success("Withdraw flow complete", { route_id: route.id, txHash, explorerUrl });
-          await page.close();
-
-          await dd.routeResult({ passed: true, txHash, explorerUrl });
+          /* =========================
+            TEST PASSED
+            ========================= */
+          logger.success("Withdraw flow complete", { route_id: route.id, explorerUrlsAll, txHashesAll });
+          await dd.routeResult({ passed: true, txHash, explorerUrlsAll, txHashesAll });
         } catch (e: any) {
-          error_stage = "submit_or_finality";
-          logger.error("Submit/finality failed", e, { route_id: route.id, txHash, explorerUrl });
-          await dd.routeResult({ passed: false, errorStage: error_stage, error: e, txHash, explorerUrl });
+          /* =========================
+            TEST FAILED
+            ========================= */
+          logger.error("Submit/finality failed", e, { route_id: route.id, explorerUrlsAll, txHashesAll });
+          await dd.routeResult({ passed: false, error: e, explorerUrlsAll, txHashesAll });
           throw e;
         }
 
@@ -171,26 +150,12 @@ for (const route of withdrawRoutes) {
             logger.warning("Rebalance failed", { route_id: route.id, error: { message: e?.message } });
             await dd.rebalanceResult({ passed: false, error: e });
           }
-        });
-
-        // Stop tracing and upload
-        try {
-          logger.info("Stopping tracing", { route_id: route.id });
-          const tracePath = path.join(testInfo.outputDir, `trace-${route.id}-${timestamp}/trace.zip`);
-          await context.tracing.stop({ path: tracePath });
-          await uploadTraceToS3(tracePath, route.id, timestamp);
-        } catch (e: any) {
-          logger.error("Trace file processing failed", e?.message, { route_id: route.id });
-        }
+        });        
       }
     });
   });
 }
 
-/* =========================
-   Helper placeholders (TODO)
-   Keep this spec readable — implement these in targets flows.ts
-   ========================= */
 async function rebalanceNow(_route: Route, _opts: { reason: string; last_tx?: string; passed: boolean }) {
   // TODO: implement; return { balancesBefore?: {...}, balancesAfter?: {...} } if you can
 }

@@ -70,10 +70,17 @@ export const dydxSelectors = {
 
   transferInProgress: (p) =>
     dydxSelectors.fundsDialog(p).getByText(/ in progress/i),
-  transferCompleted: (p) =>
-    dydxSelectors.fundsDialog(p).getByText(/ completed/i),
-  transferTxLink: (p) =>
-    dydxSelectors.fundsDialog(p).locator('a[href*="/tx/"]').first(),
+  depositDoneTitle: (p) =>
+    dydxSelectors.fundsDialog(p).getByText(/^deposit completed$/i).first(),  
+  depositDoneCta: (p) =>
+    dydxSelectors.fundsDialog(p).getByRole('button', { name: /start trading/i }),
+  
+  withdrawDoneLine: (p) =>
+    dydxSelectors.fundsDialog(p).getByText(/your withdrawal.*is now available\./i).first(),
+  transferTxLinks: (p) =>
+    dydxSelectors
+    .fundsDialog(p)
+    .locator('a[href*="/txs/"], a[href*="/tx/"], a[href*="/transaction/"]'),
 
   /* withdraw */
   withdrawButton: ((p) => p.getByRole('button', { name: 'Withdraw' })) as Selector,

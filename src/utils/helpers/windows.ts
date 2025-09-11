@@ -17,7 +17,7 @@ export async function findPageWithUrl(
   context: BrowserContext,
   urlPattern: string | RegExp,
   maxRetries = 10,
-  retryDelayMs = 1000,
+  retryDelayMs = 750,
   waitForState: LoadState = "domcontentloaded",
 ): Promise<Page | null> {
   const rx = toRegex(urlPattern);

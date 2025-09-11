@@ -134,11 +134,12 @@ for (const route of depositRoutes) {
         // -------- Submit + finality block ------------------------------------
         try {
           await test.step("Submit deposit", async () => {
+            logger.info("Submitting deposit");
             return await submitDeposit(page, context, route.wallet_type);
           });
 
-
           await test.step("Wait for finality", async () => {
+            logger.info("Waiting for finality");
             const res = await waitForFinality(page);
             txHash = res.txHash;
             explorerUrl = res.explorerUrl;
@@ -146,8 +147,6 @@ for (const route of depositRoutes) {
             passed = true;
           });
           logger.success("Deposit flow complete", { route_id: route.id, txHash, explorerUrl });
-          //TODO close browser
-          await page.close();
           // Datadog: success metric (no success log needed)
           await dd.routeResult({ passed: true, txHash, explorerUrl });
         } catch (e: any) {
