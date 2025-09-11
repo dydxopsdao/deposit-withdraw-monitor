@@ -486,6 +486,7 @@ export async function withdraw(
   wallet: WalletType
 ) {
   logger.step(`Withdrawing ${amount} ${token} to ${dst_chain}`);
+  await page.pause();
   // Close the deposit dialog if open
   try {
     await expect(dydxSelectors.fundsDialog(page)).toBeVisible({ timeout: TEST_TIMEOUTS.DEFAULT });
