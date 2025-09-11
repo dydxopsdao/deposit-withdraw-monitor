@@ -72,9 +72,13 @@ export async function rebalanceNow(
         },
       ];
 
-      // TODO
-      // TODO: implement interop.depositMax
-      // TODO
+      await interop.depositMaxUsdc(
+        _route.dst_chain,
+        _route.wallet_address,
+        _route.wallet_seed,
+        _route.dydx_address,
+        _route.dydx_seed
+      );
 
       balancesAfter = [
         // on dYdX:
