@@ -33,7 +33,7 @@ export const CHAIN_CONFIGS = {
     usdcDenom: '0x3c499c542cef5e3811e1192ce70d8cc03d5c3359',
     derivationPath: "m/44'/60'/0'/0/0",
   },
-  solana: {
+  'solana': {
     yamlKey: 'solana',
     rpcEndpoint: `https://solana-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`,
     nativeDenom: 'solana-native',
