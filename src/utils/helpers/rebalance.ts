@@ -1,5 +1,4 @@
-import { CHAIN_IDS } from '../../config/chains';
-import { assertAlchemySecrets } from '../../config/alchemy';
+import { CHAIN_IDS, assertAlchemySecrets } from '../../config/chains';
 
 import { Route } from '../route/routes';
 import interop from '../interop';

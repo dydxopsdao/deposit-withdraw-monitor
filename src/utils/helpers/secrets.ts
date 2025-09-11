@@ -75,7 +75,7 @@ async function loadAlchemyApiKey(): Promise<void> {
   // Set the Alchemy API key directly in process.env
   process.env.ALCHEMY_API_KEY = secretString;
 
-  logger.info(`�� Loaded Alchemy API key from AWS Secrets Manager`);
+  logger.info(`🔑 Loaded Alchemy API key from AWS Secrets Manager`);
 }
 
 /**
