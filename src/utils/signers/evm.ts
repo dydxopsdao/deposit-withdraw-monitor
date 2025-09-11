@@ -1,48 +1,34 @@
 import { Account, createWalletClient, http, WalletClient } from 'viem';
 import { mnemonicToAccount } from 'viem/accounts';
-import { CHAIN_CONFIGS } from '../../config/chains';
 
 export { getEvmSigner, deriveEvmAddress };
 
 /**
  * Gets a Viem WalletClient for Skip API's executeRoute
- * @param chainId - The chain to create the wallet client for
+ * @param rpcEndpoint - The RPC endpoint to create the wallet client for
+ * @param derivationPath - The derivation path - default for EVMs: m/44'/60'/0'/0/0
  * @param mnemonic - The BIP39 mnemonic phrase
  * @returns A Viem WalletClient compatible with Skip API
  */
-function getEvmSigner(chainId: string, mnemonic: string): WalletClient {
-  // Get RPC endpoint from config
-  const chainConfig = CHAIN_CONFIGS[chainId];
-  if (!chainConfig?.rpcEndpoint) {
-    throw new Error(`No RPC endpoint found for chain ID: ${chainId}`);
-  }
-  if (!chainConfig?.derivationPath) {
-    throw new Error(`No derivation path found for chain ID: ${chainId}`);
-  }
-
+function getEvmSigner(rpcEndpoint: string, derivationPath: string, mnemonic: string): WalletClient {
   // Convert mnemonic directly to Viem account with derivation path
-  const account = getAccount(mnemonic, chainConfig.derivationPath);
+  const account = getAccount(derivationPath, mnemonic);
 
   // Create WalletClient with transport
   return createWalletClient({
     account,
-    transport: http(chainConfig.rpcEndpoint),
+    transport: http(rpcEndpoint),
   });
 }
 
 /**
  * Derives an EVM address from a mnemonic (for address-only operations)
- * @param chainId - The chain to derive the address for
+ * @param derivationPath - The derivation path - default for EVMs: m/44'/60'/0'/0/0
  * @param mnemonic - The BIP39 mnemonic phrase
  * @returns The derived address
  */
-function deriveEvmAddress(chainId: string, mnemonic: string): string {
-  const chainConfig = CHAIN_CONFIGS[chainId];
-  if (!chainConfig?.derivationPath) {
-    throw new Error(`No derivation path found for chain ID: ${chainId}`);
-  }
-
-  const account = getAccount(mnemonic, chainConfig.derivationPath);
+function deriveEvmAddress(derivationPath: string, mnemonic: string): string {
+  const account = getAccount(derivationPath, mnemonic);
   return account.address;
 }
 
@@ -50,11 +36,11 @@ function deriveEvmAddress(chainId: string, mnemonic: string): string {
 
 /**
  * Gets an account from a mnemonic and derivation path
- * @param mnemonic - The BIP39 mnemonic phrase
  * @param derivationPath - The derivation path - default for EVMs: m/44'/60'/0'/0/0
+ * @param mnemonic - The BIP39 mnemonic phrase
  * @returns The account
  */
-function getAccount(mnemonic: string, derivationPath: string): Account {
+function getAccount(derivationPath: string, mnemonic: string): Account {
   const pathParts = derivationPath.split('/');
   const addressIndex = parseInt(pathParts[4] || '0');
   const changeIndex = parseInt(pathParts[3] || '0');

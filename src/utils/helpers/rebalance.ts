@@ -1,7 +1,6 @@
-import { CHAIN_IDS, assertChainConfigSecrets } from '../../config/chains';
 
 import { Route } from '../route/routes';
-import interop from '../interop';
+import interop, { CHAIN_IDS } from '../interop';
 import { BalanceMap } from '../datadog/datadog-utils';
 
 export { rebalanceNow };
@@ -16,7 +15,6 @@ async function rebalanceNow(
   _route: Route,
   _opts: { reason: string; last_tx?: string; passed: boolean }
 ): Promise<{ balancesBefore: BalanceMap; balancesAfter: BalanceMap }> {
-  assertChainConfigSecrets();
   interop.configureSkipClient();
 
   let balancesBefore: BalanceMap = [];

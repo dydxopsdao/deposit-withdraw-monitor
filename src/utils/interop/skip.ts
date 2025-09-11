@@ -12,9 +12,9 @@ import {
 //import { MsgWithdrawFromSubaccount } from '@dydxprotocol/v4-client-js';
 import { MsgWithdrawFromSubaccount } from '@dydxprotocol/v4-proto/src/codegen/dydxprotocol/sending/transfer.js';
 
-import { CHAIN_CONFIGS, CHAIN_IDS } from '../../config/chains';
-import { SKIP_API_URL, TYPE_URL_MSG_WITHDRAW_FROM_SUBACCOUNT } from '../../config/constants';
 import { deriveCosmosAddress, deriveEvmAddress, deriveSvmAddress } from '../signers';
+
+import { assertInteropSecrets, CHAIN_CONFIGS, CHAIN_IDS, SKIP_API_URL, TYPE_URL_MSG_WITHDRAW_FROM_SUBACCOUNT } from './constants';
 
 export { configureSkipClient, executeRoute, getBalances, getUsdcRoutes, generateUserAddresses };
 
@@ -22,11 +22,13 @@ export { configureSkipClient, executeRoute, getBalances, getUsdcRoutes, generate
  * Configures the Skip client so that it knows hot to withdraw from dYdX.
  */
 const configureSkipClient = (): void => {
+  assertInteropSecrets();
+
   const options: SkipClientOptions = {
     apiUrl: SKIP_API_URL, // Skip's main API endpoint
     endpointOptions: {
       getRpcEndpointForChain: async (chainId: string) => {
-        const endpoint = CHAIN_CONFIGS[chainId].rpcEndpoint;
+        const endpoint = CHAIN_CONFIGS[chainId].getRpcEndpoint();
         if (!endpoint) {
           throw new Error(`No RPC endpoint found for chainId: ${chainId}`);
         }
@@ -147,7 +149,7 @@ async function generateUserAddresses(
         // For Cosmos chains: derive the address from the dYdX seed
         userAddresses.push({
           chainId: chainId,
-          address: await deriveCosmosAddress(chainId, dYdXSeed),
+          address: await deriveCosmosAddress(CHAIN_CONFIGS[chainId].bech32Prefix, dYdXSeed),
         });
         break;
       case CHAIN_IDS.ethereum:
@@ -157,14 +159,14 @@ async function generateUserAddresses(
         // For EVM chains: derive the address from the wallet seed
         userAddresses.push({
           chainId: chainId,
-          address: deriveEvmAddress(chainId, walletSeed),
+          address: deriveEvmAddress(CHAIN_CONFIGS[chainId].derivationPath, walletSeed),
         });
         break;
       case CHAIN_IDS.solana:
         // For Solana: derive the address from the wallet seed
         userAddresses.push({
           chainId: chainId,
-          address: deriveSvmAddress(walletSeed),
+          address: deriveSvmAddress(CHAIN_CONFIGS.solana.derivationPath, walletSeed),
         });
         break;
       default:

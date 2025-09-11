@@ -1,8 +1,9 @@
-import { CHAIN_CONFIGS, CHAIN_IDS } from '../../config/chains';
 import { logger } from '../logger/logging-utils';
+import { getCosmosSigner, getEvmSigner, getSvmSigner } from '../signers';
+
+import { CHAIN_CONFIGS, CHAIN_IDS } from './constants';
 import { getUsdcBalance } from './balances';
 import { executeRoute, getUsdcRoutes, generateUserAddresses } from './skip';
-import { getCosmosSigner, getEvmSigner, getSvmSigner } from '../signers';
 
 export { depositMaxUsdc };
 
@@ -52,13 +53,13 @@ async function depositMaxUsdc(
 
   await executeRoute({
     getCosmosSigner: async (chainId: string) => {
-      return await getCosmosSigner(chainId, dYdXSeed);
+      return await getCosmosSigner(CHAIN_CONFIGS[chainId].bech32Prefix, dYdXSeed);
     },
     getEvmSigner: async (chainId: string) => {
-      return await getEvmSigner(chainId, walletSeed);
+      return await getEvmSigner(CHAIN_CONFIGS[chainId].getRpcEndpoint(), CHAIN_CONFIGS[chainId].derivationPath, walletSeed);
     },
     getSvmSigner: async () => {
-      return await getSvmSigner(walletSeed);
+      return await getSvmSigner(CHAIN_CONFIGS.solana.derivationPath, walletSeed);
     },
     route: skipRoute,
     userAddresses,

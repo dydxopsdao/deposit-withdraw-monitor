@@ -3,21 +3,20 @@ import { Adapter } from '@solana/wallet-adapter-base';
 import * as bip39 from 'bip39';
 import { derivePath } from 'ed25519-hd-key';
 
-import { CHAIN_CONFIGS } from '../../config/chains';
-
 export { getSvmSigner, deriveSvmAddress };
 
 /**
  * Gets a Solana signer for Skip API's executeRoute
+ * @param derivationPath - The derivation path - default for Solana: m/44'/501'/0'/0'
  * @param mnemonic - The BIP39 mnemonic phrase
  * @returns A Solana Adapter compatible with Skip API
  */
-function getSvmSigner(mnemonic: string): Adapter {
+function getSvmSigner(derivationPath: string, mnemonic: string): Adapter {
   if (!bip39.validateMnemonic(mnemonic)) {
     throw new Error('Invalid mnemonic phrase');
   }
 
-  const keypair = keypairFromMnemonic(mnemonic, CHAIN_CONFIGS.solana.derivationPath);
+  const keypair = keypairFromMnemonic(derivationPath, mnemonic);
 
   const adapter = {
     publicKey: keypair.publicKey,
@@ -48,15 +47,16 @@ function getSvmSigner(mnemonic: string): Adapter {
 
 /**
  * Derives a Solana address from a mnemonic (for debugging/consistency)
+ * @param derivationPath - The derivation path - default for Solana: m/44'/501'/0'/0'
  * @param mnemonic - The BIP39 mnemonic phrase
  * @returns The derived address in base58 format
  */
-function deriveSvmAddress(mnemonic: string): string {
+function deriveSvmAddress(derivationPath: string, mnemonic: string): string {
   if (!bip39.validateMnemonic(mnemonic)) {
     throw new Error('Invalid mnemonic phrase');
   }
 
-  const keypair = keypairFromMnemonic(mnemonic, CHAIN_CONFIGS.solana.derivationPath);
+  const keypair = keypairFromMnemonic(derivationPath, mnemonic);
   return keypair.publicKey.toBase58();
 }
 
@@ -64,11 +64,11 @@ function deriveSvmAddress(mnemonic: string): string {
 
 /**
  * Derives a Solana keypair from a mnemonic
- * @param mnemonic - The BIP39 mnemonic phrase
  * @param derivationPath - The derivation path - default for Solana: m/44'/501'/0'/0'
+ * @param mnemonic - The BIP39 mnemonic phrase
  * @returns The derived keypair
  */
-function keypairFromMnemonic(mnemonic: string, derivationPath: string): Keypair {
+function keypairFromMnemonic(derivationPath: string, mnemonic: string): Keypair {
   const seed = bip39.mnemonicToSeedSync(mnemonic);
   const derived = derivePath(derivationPath, seed.toString('hex'));
   return Keypair.fromSeed(derived.key);

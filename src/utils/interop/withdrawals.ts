@@ -1,10 +1,7 @@
-import { CHAIN_CONFIGS, CHAIN_IDS } from '../../config/chains';
-import { USDC_ASSET_ID, TYPE_URL_MSG_WITHDRAW_FROM_SUBACCOUNT } from '../../config/constants';
-
 import { logger } from '../logger/logging-utils';
-
 import { getCosmosSigner, getEvmSigner, getSvmSigner } from '../signers';
 
+import { CHAIN_CONFIGS, CHAIN_IDS, USDC_ASSET_ID, TYPE_URL_MSG_WITHDRAW_FROM_SUBACCOUNT } from './constants';
 import { getFreeCollateral } from './balances';
 import { getUsdcRoutes, executeRoute, generateUserAddresses } from './skip';
 
@@ -56,15 +53,15 @@ async function withdrawMaxUsdc(
 
   await executeRoute({
     getCosmosSigner: async (chainId: string) => {
-      return await getCosmosSigner(chainId, dYdXSeed);
+      return await getCosmosSigner(CHAIN_CONFIGS[chainId].bech32Prefix, dYdXSeed);
     },
     // In theory, a route can go through an EVM chain
     getEvmSigner: async (chainId: string) => {
-      return await getEvmSigner(chainId, walletSeed);
+      return await getEvmSigner(CHAIN_CONFIGS[chainId].getRpcEndpoint(), CHAIN_CONFIGS[chainId].derivationPath, walletSeed);
     },
     // In theory, a route can go through Solana
     getSvmSigner: async () => {
-      return await getSvmSigner(walletSeed);
+      return await getSvmSigner(CHAIN_CONFIGS.solana.derivationPath, walletSeed);
     },
     route: skipRoute,
     userAddresses,

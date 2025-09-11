@@ -1,8 +1,6 @@
 import { formatUnits, parseUnits } from 'viem';
 
-import { CHAIN_CONFIGS } from '../../config/chains';
-import { INDEXER_API_URL, USDC_DECIMALS } from '../../config/constants';
-
+import { CHAIN_CONFIGS, INDEXER_API_URL, USDC_DECIMALS } from './constants';
 import { getBalances } from './skip';
 
 export { getUsdcBalance, getFreeCollateral };
