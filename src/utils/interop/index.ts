@@ -8,8 +8,8 @@ import {
   USDC_DECIMALS,
   TYPE_URL_MSG_WITHDRAW_FROM_SUBACCOUNT,
 } from './constants';
-import { withdrawMaxUsdc } from './withdrawals';
-import { depositMaxUsdc } from './deposits';
+import { withdrawMaxUsdc } from './withdraw';
+import { depositMaxUsdc } from './deposit';
 import { getUsdcBalance, getFreeCollateral } from './balances';
 import { configureSkipClient, getBalances, getUsdcRoutes, executeRoute } from './skip';
 
