@@ -4,7 +4,24 @@ import { getUsdcBalance } from './balances';
 import { executeRoute, getUsdcRoutes, generateUserAddresses } from './skip';
 import { getCosmosSigner, getEvmSigner, getSvmSigner } from '../signers';
 
-export async function depositMaxUsdc(
+export { depositMaxUsdc };
+
+/**
+ * Deposits all the USDC balance from the given route so that it's rebalanced.
+ *
+ * This function will:
+ * - Get the USDC balance
+ * - Get the Skip routes
+ * - Generate the user addresses
+ * - Execute the deposit
+ *
+ * @param srcChain - The chain to deposit from
+ * @param walletAddress - The address to deposit from
+ * @param walletSeed - The seed of the account on the source chain
+ * @param dYdXAddress - The address to deposit to
+ * @param dYdXSeed - The seed of the account on dYdX
+ */
+async function depositMaxUsdc(
   srcChain: string,
   walletAddress: string,
   walletSeed: string,
@@ -30,7 +47,7 @@ export async function depositMaxUsdc(
     `Found skip route: ${skipRoute.requiredChainAddresses.map(c => `${CHAIN_CONFIGS[c].yamlKey}`).join(' -> ')}`
   );
 
-  const userAddresses = await generateUserAddresses(skipRoute.requiredChainAddresses, walletAddress, dYdXSeed);
+  const userAddresses = await generateUserAddresses(skipRoute.requiredChainAddresses, walletSeed, dYdXSeed);
   logger.debug(`Addresses: ${userAddresses.map(a => `${a.address}`).join(' -> ')}`);
 
   await executeRoute({

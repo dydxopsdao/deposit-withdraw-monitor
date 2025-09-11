@@ -14,14 +14,14 @@ import { MsgWithdrawFromSubaccount } from '@dydxprotocol/v4-proto/src/codegen/dy
 
 import { CHAIN_CONFIGS, CHAIN_IDS } from '../../config/chains';
 import { SKIP_API_URL, TYPE_URL_MSG_WITHDRAW_FROM_SUBACCOUNT } from '../../config/constants';
-import { deriveCosmosAddress } from '../signers';
+import { deriveCosmosAddress, deriveEvmAddress, deriveSvmAddress } from '../signers';
 
-export { executeRoute, generateUserAddresses };
+export { configureSkipClient, executeRoute, getBalances, getUsdcRoutes, generateUserAddresses };
 
 /**
  * Configures the Skip client so that it knows hot to withdraw from dYdX.
  */
-export const configureSkipClient = (): void => {
+const configureSkipClient = (): void => {
   const options: SkipClientOptions = {
     apiUrl: SKIP_API_URL, // Skip's main API endpoint
     endpointOptions: {
@@ -50,7 +50,7 @@ interface BalanceRequest {
 }
 
 // Define the Skip API balance response structure
-export interface BalanceResponse {
+interface BalanceResponse {
   chains: {
     [chainId: string]: {
       denoms: {
@@ -69,7 +69,7 @@ export interface BalanceResponse {
  * @param chainIds - The IDs of the chains to get the balances for
  * @returns The balances for the wallet on the given chains
  */
-export async function getBalances(walletAddress: string, chainIds: string[]): Promise<BalanceResponse> {
+async function getBalances(walletAddress: string, chainIds: string[]): Promise<BalanceResponse> {
   // Build the balance request with chain-specific denoms
   const balanceRequest: BalanceRequest = {
     chains: chainIds.reduce((acc, chainId) => {
@@ -101,7 +101,7 @@ export async function getBalances(walletAddress: string, chainIds: string[]): Pr
  * @param amount - The amount to route
  * @returns The skip routes
  */
-export async function getUsdcRoutes(
+async function getUsdcRoutes(
   sourceChainId: string,
   destChainId: string,
   amount: string
@@ -127,13 +127,13 @@ export async function getUsdcRoutes(
 /**
  * Generates the user addresses for a given set of chain IDs, wallet address, and dYdX seed for the Cosmos chains
  * @param chainIds - The chain IDs to generate the user addresses for
- * @param walletAddress - The wallet address to generate the user addresses for
+ * @param walletSeed - The wallet seed to generate the user addresses for
  * @param dYdXSeed - The dYdX seed to generate the user addresses for the Cosmos chains
  * @returns The user addresses
  */
 async function generateUserAddresses(
   chainIds: string[],
-  walletAddress: string,
+  walletSeed: string,
   dYdXSeed: string
 ): Promise<UserAddress[]> {
   const userAddresses: UserAddress[] = [];
@@ -150,13 +150,25 @@ async function generateUserAddresses(
           address: await deriveCosmosAddress(chainId, dYdXSeed),
         });
         break;
-      default:
-        // For EVM chains and Solana: use the wallet address
+      case CHAIN_IDS.ethereum:
+      case CHAIN_IDS.base:
+      case CHAIN_IDS.arbitrum:
+      case CHAIN_IDS.polygon:
+        // For EVM chains: derive the address from the wallet seed
         userAddresses.push({
           chainId: chainId,
-          address: walletAddress,
+          address: deriveEvmAddress(chainId, walletSeed),
         });
         break;
+      case CHAIN_IDS.solana:
+        // For Solana: derive the address from the wallet seed
+        userAddresses.push({
+          chainId: chainId,
+          address: deriveSvmAddress(walletSeed),
+        });
+        break;
+      default:
+        throw new Error(`Unsupported chain ID: ${chainId}`);
     }
   }
 
