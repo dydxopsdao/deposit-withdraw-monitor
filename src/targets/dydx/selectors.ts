@@ -65,9 +65,6 @@ export const dydxSelectors = {
       .filter({ hasText: chain });  // substring match (no regex)
   }) as Selector,
 
-  
-
-
   transferInProgress: (p) =>
     dydxSelectors.fundsDialog(p).getByText(/ in progress/i),
   depositDoneTitle: (p) =>

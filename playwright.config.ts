@@ -1,5 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 import dotenv from "dotenv";
+import { TEST_TIMEOUTS } from "./src/config/timeouts";
 
 const envFile = process.env.CI ? ".env" : ".env.local";
 dotenv.config({ path: envFile });
@@ -19,6 +20,9 @@ console.log(`> Loaded environment from ${envFile}`);
 export default defineConfig({
   testDir: "./src/tests",
 
+  timeout: TEST_TIMEOUTS.TEST,
+  expect: { timeout: TEST_TIMEOUTS.ELEMENT },
+
   // Initialize resources required for all tests
   globalSetup: "./global-setup.ts",
 
@@ -31,14 +35,14 @@ export default defineConfig({
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI ? 1 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: "html",
+  reporter: [['html', { open: 'never' }]],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
     // baseURL: 'http://localhost:3000',
 
-    /* We handle tracing manually in the tests */
-    trace: "off"
+    /* Create trace files */
+    trace: "on"
   },
 
   /* Configure projects for major browsers */

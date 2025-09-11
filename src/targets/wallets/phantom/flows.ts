@@ -16,6 +16,7 @@ export async function launchContextWithExtension(
   assertPhantomSecrets();
 
   const context = await chromium.launchPersistentContext(userDataDir, {
+    // TODO: Respect the headless argument above instead of hardcoding false.
     headless: false,
     ignoreDefaultArgs: ['--enable-automation'],
     args: [
@@ -155,7 +156,7 @@ function extractId(u: string): string | null {
  * Since you launch with ONLY Phantom loaded (disable-extensions-except + load-extension),
  * the first chrome-extension service worker is Phantom.
  */
-export async function getPhantomId(ctx: BrowserContext, timeoutMs = 15000): Promise<string> {
+export async function getPhantomId(ctx: BrowserContext, timeoutMs = TEST_TIMEOUTS.EXTENSIONS): Promise<string> {
   const existing = ctx.serviceWorkers().filter(w => w.url().startsWith("chrome-extension://"));
   if (existing.length) {
     const id = extractId(existing[0].url());
@@ -181,5 +182,6 @@ export async function openPhantomUrl(
   const url = urlWithAnyId.replace(/^chrome-extension:\/\/[^/]+/, `chrome-extension://${id}`);
   const page = await ctx.newPage();
   await page.goto(url, { waitUntil });
+  // TODO: Optionally verify a selector to assert the page is truly ready.
   return page;
 }

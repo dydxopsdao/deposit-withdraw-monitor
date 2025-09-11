@@ -5,6 +5,8 @@ import { logger } from '../logger/logging-utils';
  * Loads secrets from AWS Secrets Manager and populates process.env
  */
 export async function loadSecretsFromAWS(): Promise<void> {
+  // TODO: Cache secrets in-memory between calls to avoid repeated AWS roundtrips.
+  // TODO: Provide optional local .env fallback when AWS is unavailable (dev mode).
   await loadSeedPhrases();
   await loadWalletPassword();
   await loadDatadogApiKey();
@@ -24,6 +26,7 @@ async function loadSeedPhrases(): Promise<void> {
 
   const secretString = await getSecretFromAWS(secretArn);
 
+  // TODO: Validate secret JSON shape and handle JSON parse errors gracefully.
   const seedPhrases = JSON.parse(secretString) as Record<string, string>;
 
   // Overwrite process.env with seed phrases
@@ -80,6 +83,7 @@ async function loadDatadogApiKey(): Promise<void> {
 async function getSecretFromAWS(secretArn: string): Promise<string> {
   try {
     const client = new SecretsManagerClient({
+      // TODO: Provide a sensible region default or allow override per secret.
       region: process.env.AWS_REGION
     });
 

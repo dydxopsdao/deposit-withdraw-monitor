@@ -2,6 +2,7 @@ import { LogLevel, LogMetadata, Logger } from "./types";
 import { formatters } from "./formatters";
 
 class ConsoleLogger implements Logger {
+  // TODO: Make log level configurable via env (e.g. LOG_LEVEL)
   private createLogEntry(
     level: LogLevel,
     message: string,
@@ -23,6 +24,8 @@ class ConsoleLogger implements Logger {
     metadata?: LogMetadata,
     error?: Error
   ) {
+    // TODO: Integrate with Playwright attachments (e.g. attach screenshots on error)
+    // and include test info context (route_id, wallet, etc.) if available.
     const entry = this.createLogEntry(level, message, metadata, error);
     const formattedMessage = formatters.pretty(entry);
 

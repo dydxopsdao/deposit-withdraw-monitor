@@ -6,7 +6,7 @@ import { DAPP_URL } from "../../config/constants";
 import { logger } from "../../utils/logger/logging-utils";
 import { WalletType } from "../../utils/route/routes";
 import { TEST_TIMEOUTS } from "../../config/timeouts";
-import { handleMetamaskPopup as handleMetamaskPopup } from "../wallets/metamask/flows";
+import { handleMetamaskPopup, conditionallyUnlockMetamask } from "../wallets/metamask/flows";
 import { handlePhantomPopup as handlePhantomPopup } from "../wallets/phantom/flows";
 import { dydxSelectors } from "./selectors";
 
@@ -113,6 +113,7 @@ export async function openApp(
   let lastError: unknown;
 
   // Retry loop: we intentionally catch errors, log context, back off, and retry
+  // TODO: Extract this retry/backoff block into a shared helper to keep navigation logic DRY.
   // a bounded number of times before surfacing the final error.
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const attemptNo = attempt + 1;
@@ -169,6 +170,7 @@ export async function openApp(
       logger.warning(
         `Navigation attempt ${attemptNo} failed for ${targetUrl}: ${(err as Error)?.message}`
       );
+      // TODO: Optionally capture details to be used on the final error.
       // Loop continues unless we hit the max retries; then we break below.
     }
   }
@@ -204,7 +206,9 @@ export async function connectWallet(
   wallet: WalletType
 ): Promise<Page> {
   logger.step(`Connecting wallet: ${wallet}`);
+  // TODO: Emit metrics or structured logs for each connection attempt to aid debugging in CI.
   //TODO add hahndling of the warning / disconnect
+  // TODO: If stale wallet popups are open from previous runs, close them proactively.
   // 1) If already connected, short-circuit (account/user menu present)
   if (await dydxSelectors.accountMenuButton(page, wallet).isVisible()) {
     logger.info("Wallet appears already connected (account menu visible)");
@@ -216,7 +220,10 @@ export async function connectWallet(
   // 3) Choose provider and trigger the request from within the dApp
   logger.info("Choose provider");
   await chooseProvider(page, dydxSelectors.chooseProviderBtn(page, wallet), wallet);
-
+  // 4) Handle occasionaly wallet sign in
+  if (wallet === "metamask") {
+    await conditionallyUnlockMetamask(context);
+  }
   // 5) Handle the extension popup (delegated to wallet-specific helpers)
   logger.info("Handling wallet popup");
   await handleWalletPopup(context, wallet);
@@ -255,11 +262,14 @@ export async function connectWallet(
 // Click the provider tile/button in the wallet picker.
 async function chooseProvider(page: Page, provider: Locator, name: string) {
   logger.info(`Selecting wallet provider: ${name}`);
+  // TODO: Add retry or clearer error messaging if the provider element is not found.
+  // TODO: Handle the case where the wallet picker is behind a modal or overlay (scroll into view).
   await provider.isVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
   await provider.click();
 }
 //TODO improve this as it doesn'throw or inform if not found properly
 async function handleWalletPopup(context: BrowserContext, wallet: WalletType) {
+  // TODO: Surface an explicit error when wallet popups fail to appear to avoid silent skips.
   if (wallet === "metamask") {
     await handleMetamaskPopup(context);
     logger.info("MetaMask wallet popup handled");
@@ -271,6 +281,8 @@ async function handleWalletPopup(context: BrowserContext, wallet: WalletType) {
 
 // Click a locator if it’s visible; log what happened.
 async function clickIfVisible(locator: Locator, label: string, timeout: number ): Promise<boolean> {
+  // TODO: Replace manual wait/visibility check with expect to capture screenshots on failure.
+  // TODO: Avoid duplicate first() calls by storing the locator.
   await locator.first().waitFor({ state: "visible", timeout }).catch(() => {});
   if (await locator.first().isVisible()) {
     logger.info(`Clicking: ${label}`);
@@ -286,12 +298,15 @@ async function sendRequest(page: Page, locator: Locator) {
   logger.info("Sending request");
   await locator.isVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
   await locator.click();
+  // TODO: Verify UI transitions to a pending/confirmation state after sending.
 }
 
 /** Click Connect Wallet → verify picker appeared → retry if not */
 export async function openWalletPicker(page: Page, retries = 2) {
   // If already open, we're done
   if (await isPickerOpen(page)) return;
+  // TODO: Consider adding logging for each retry attempt for better traceability.
+  // TODO: Add a short jitter between retries to reduce sync collisions.
 
   for (let attempt = 0; attempt <= retries; attempt++) {
     // 1) wait for button, then click
@@ -334,6 +349,7 @@ export async function deposit(
   wallet: WalletType
 ) {
   logger.step(`Depositing ${amount} ${token} from ${src_chain}`);
+  // TODO: Validate inputs (amount/token/chain) before interacting with the UI to fail fast.
   // Open the deposit dialog
   
   await clickAnyDeposit(page);
@@ -362,13 +378,14 @@ export async function selectTokenDeposit(page: Page, token: string, chain: strin
 
   // Find candidates that contain both pieces of text
   const candidates = dydxSelectors.tokenPickerCandidates(page, token, chain);
+  // TODO: If multiple matches exist (duplicate token bridges), prefer an exact/labelled match.
 
-  // Wait up to 5s for at least one match
-  await expect(candidates.first()).toBeVisible({ timeout: 5_000 });
+  // Wait for at least one match
+  await expect(candidates.first()).toBeVisible({ timeout: TEST_TIMEOUTS.ACTION });
 
-  // For up to 5s, if a second appears, prefer it
+  // For a short window, if a second appears, prefer it
   let target = candidates.first();
-  const deadline = Date.now() + 5_000;
+  const deadline = Date.now() + TEST_TIMEOUTS.ACTION;
   while (Date.now() < deadline) {
     if ((await candidates.count()) >= 2) {
       target = candidates.nth(1);
@@ -393,6 +410,7 @@ export async function selectTokenDeposit(page: Page, token: string, chain: strin
       await target.click({ force: true });
     }
   }
+  // TODO: Extract this click-with-fallback pattern into a shared helper (DRY).
 }
 
 /** Fill the Amount input and blur to trigger validation */
@@ -413,6 +431,7 @@ export async function clickAnyDeposit(page: Page) {
   }
   const btns = dydxSelectors.depositButtons(page);
   const n = await btns.count();
+  // TODO: Add logging for which deposit button was clicked to aid debugging.
 
   for (let i = 0; i < n; i++) {
     const btn = btns.nth(i);
@@ -427,6 +446,7 @@ export async function clickAnyDeposit(page: Page) {
 
 export async function submitDeposit(page: Page, context: BrowserContext, wallet: WalletType): Promise<void> {
   const btn = dydxSelectors.depositFundsButton(page);
+  // TODO: Consolidate transaction submission logic to reduce duplication with withdraw flow.
 
   // Make sure the dialog is present and the button is on-screen
   await expect(btn).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });

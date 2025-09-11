@@ -1,0 +1,258 @@
+/**
+ * Lambda@Edge function for CloudFront request processing
+ * 
+ * Architecture: CloudFront -> Lambda@Edge -> S3
+ * - Runs at CloudFront edge locations globally for low latency
+ * - Intercepts viewer requests before cache lookup or S3 origin access
+ * - Provides basic authentication and dynamic directory listing for S3 reports bucket
+ * - For directory requests (/), generates HTML index of S3 bucket contents
+ * - For file requests, passes through to S3 origin via CloudFront OAC
+ * 
+ * Template variables (substituted by Terraform):
+ * - AUTH_PASSWORD: Basic auth password from Terraform variable
+ * - BUCKET_NAME: S3 reports bucket name
+ * - BUCKET_REGION: AWS region where S3 bucket is located
+ */
+
+// Use AWS SDK v3 for Node.js 18.x runtime
+const { S3Client, ListObjectsV2Command } = require('@aws-sdk/client-s3');
+const s3Client = new S3Client({ region: '${BUCKET_REGION}' });
+
+exports.handler = async (event) => {
+  const request = event.Records[0].cf.request;
+  const headers = request.headers;
+  const uri = request.uri;
+  
+  const authUser = 'viewer';
+  const authPass = '${AUTH_PASSWORD}';
+  
+  const authString = 'Basic ' + Buffer.from(authUser + ':' + authPass).toString('base64');
+  
+  if (typeof headers.authorization == 'undefined' || headers.authorization[0].value != authString) {
+    const body = 'Unauthorized';
+    const response = {
+      status: '401',
+      statusDescription: 'Unauthorized',
+      body: body,
+      headers: {
+        'www-authenticate': [{key: 'WWW-Authenticate', value:'Basic'}]
+      }
+    };
+    return response;
+  }
+  
+  // Handle directory listing requests
+  if (uri === '/' || uri.endsWith('/')) {
+    try {
+      const bucketName = '${BUCKET_NAME}';
+      const prefix = uri === '/' ? '' : uri.slice(1); // Remove leading slash
+      
+      // Parse pagination parameters from query string
+      const url = new URL(`https://example.com$${request.uri}$${request.querystring ? '?' + request.querystring : ''}`);
+      const page = parseInt(url.searchParams.get('page') || '1');
+      const pageSize = 50;
+      
+      const params = {
+        Bucket: bucketName,
+        Prefix: prefix,
+        Delimiter: '/'
+      };
+      
+      const command = new ListObjectsV2Command(params);
+      const data = await s3Client.send(command);
+      
+      let html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Reports Index</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 40px; }
+            h1 { color: #333; }
+            .directory { color: #0066cc; text-decoration: none; display: block; padding: 5px 0; }
+            .directory:hover { text-decoration: underline; }
+            .file { color: #666; }
+            ul { list-style-type: none; padding-left: 0; }
+            li { margin: 5px 0; }
+          </style>
+        </head>
+        <body>
+          <h1>Deposit Withdraw Monitor: Test Reports Directory</h1>
+          $${prefix ? `<p>Current path: <span style="color: green;">/$${prefix}</span></p>` : ''}
+          <ul>
+      `;
+      
+      // Add parent directory link if not at root
+      if (prefix !== '') {
+        const parentPath = prefix.split('/').slice(0, -2).join('/');
+        const parentUrl = parentPath === '' ? '/' : `/$${parentPath}/`;
+        html += `<li><a href="$${parentUrl}" class="directory">[BACK]</a></li>`;
+      }
+      
+      // Collect all items for pagination
+      let allItems = [];
+      
+      // Add subdirectories
+      if (data.CommonPrefixes) {
+        // Convert to array and sort
+        let directories = Array.from(data.CommonPrefixes);
+        
+        // Check if we have timestamp directories and sort them in reverse order
+        const hasTimestampDirs = directories.some(item => {
+          const folderName = item.Prefix.replace(prefix, '').replace('/', '');
+          return /^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}$/.test(folderName);
+        });
+        
+        if (hasTimestampDirs) {
+          // Sort timestamp directories in reverse chronological order (newest first)
+          directories.sort((a, b) => {
+            const folderA = a.Prefix.replace(prefix, '').replace('/', '');
+            const folderB = b.Prefix.replace(prefix, '').replace('/', '');
+            return folderB.localeCompare(folderA); // Reverse order
+          });
+        }
+        
+        directories.forEach(item => {
+          const folderName = item.Prefix.replace(prefix, '').replace('/', '');
+          
+          // Check if this looks like a timestamp directory (contains date/time pattern)
+          const isTimestampDir = /^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}$/.test(folderName);
+          
+          if (isTimestampDir) {
+            // For timestamp directories, link directly to index.html
+            allItems.push({ type: 'report', name: folderName, url: `/$${item.Prefix}index.html` });
+          } else {
+            // For other directories, show as directory
+            allItems.push({ type: 'directory', name: `$${folderName}/`, url: `/$${item.Prefix}` });
+          }
+        });
+      }
+      
+      // Add files (look for index.html in subdirectories)
+      if (data.Contents) {
+        data.Contents.forEach(item => {
+          if (item.Key.endsWith('index.html')) {
+            const relativePath = item.Key.replace(prefix, '');
+            const fileName = relativePath.split('/').pop();
+            allItems.push({ type: 'file', name: `[FILE] $${fileName}`, url: `/$${item.Key}` });
+          }
+        });
+      }
+      
+      // Pagination logic
+      const totalItems = allItems.length;
+      const totalPages = Math.ceil(totalItems / pageSize);
+      const showPagination = totalItems >= pageSize;
+      
+      // Calculate pagination bounds
+      const startIndex = (page - 1) * pageSize;
+      const endIndex = Math.min(startIndex + pageSize, totalItems);
+      const paginatedItems = allItems.slice(startIndex, endIndex);
+      
+      // Add pagination info
+      if (showPagination) {
+        html += `<p><strong>Showing $${startIndex + 1}-$${endIndex} of $${totalItems} items (Page $${page} of $${totalPages})</strong></p>`;
+      }
+      
+      // Render items
+      paginatedItems.forEach(item => {
+        const cssClass = item.type === 'directory' ? 'directory' : 'file';
+        const label = item.type === 'report' ? item.name : 
+                     item.type === 'directory' ? `$${item.name}` :
+                     item.name;
+        html += `<li><a href="$${item.url}" class="$${cssClass}">$${label}</a></li>`;
+      });
+      
+      // Add pagination controls
+      if (showPagination) {
+        html += `</ul><div style="margin-top: 20px; text-align: center;">`;
+        
+        const currentPath = request.uri;
+        
+        // Previous page
+        if (page > 1) {
+          html += `<a href="$${currentPath}?page=$${page - 1}" style="margin: 0 10px; padding: 8px 12px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px;">Previous</a>`;
+        } else {
+          html += `<span style="margin: 0 10px; padding: 8px 12px; background-color: #ccc; color: #666; border-radius: 4px;">Previous</span>`;
+        }
+        
+        // Page numbers with first and last always shown
+        const renderPageButton = (pageNum, isActive = false) => {
+          if (isActive) {
+            return `<span style="margin: 0 5px; padding: 8px 12px; background-color: #28a745; color: white; border-radius: 4px; font-weight: bold;">$${pageNum}</span>`;
+          } else {
+            return `<a href="$${currentPath}?page=$${pageNum}" style="margin: 0 5px; padding: 8px 12px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px;">$${pageNum}</a>`;
+          }
+        };
+        
+        // Always show first page
+        if (totalPages > 1) {
+          html += renderPageButton(1, page === 1);
+        }
+        
+        // Show ellipsis if needed before current page range
+        const startPage = Math.max(2, page - 2);
+        if (startPage > 2) {
+          html += `<span style="margin: 0 5px; padding: 8px 12px; color: #666;">...</span>`;
+        }
+        
+        // Show current page range (excluding first and last page)
+        const endPage = Math.min(totalPages - 1, page + 2);
+        for (let p = startPage; p <= endPage; p++) {
+          if (p > 1 && p < totalPages) {
+            html += renderPageButton(p, page === p);
+          }
+        }
+        
+        // Show ellipsis if needed after current page range
+        if (endPage < totalPages - 1) {
+          html += `<span style="margin: 0 5px; padding: 8px 12px; color: #666;">...</span>`;
+        }
+        
+        // Always show last page (if more than 1 page total)
+        if (totalPages > 1) {
+          html += renderPageButton(totalPages, page === totalPages);
+        }
+        
+        // Next page
+        if (page < totalPages) {
+          html += `<a href="$${currentPath}?page=$${page + 1}" style="margin: 0 10px; padding: 8px 12px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px;">Next</a>`;
+        } else {
+          html += `<span style="margin: 0 10px; padding: 8px 12px; background-color: #ccc; color: #666; border-radius: 4px;">Next</span>`;
+        }
+        
+        html += `</div><ul style="list-style: none;">`; // Reopen ul for consistency
+      }
+      
+      html += `
+          </ul>
+        </body>
+        </html>
+      `;
+      
+      const response = {
+        status: '200',
+        statusDescription: 'OK',
+        headers: {
+          'content-type': [{key: 'Content-Type', value: 'text/html'}],
+          'cache-control': [{key: 'Cache-Control', value: 'max-age=300'}]
+        },
+        body: html
+      };
+      
+      return response;
+      
+    } catch (error) {
+      console.log('S3 Error:', error);
+      const response = {
+        status: '500',
+        statusDescription: 'Internal Server Error',
+        body: `Error listing directory: $${error.message}`
+      };
+      return response;
+    }
+  }
+  
+  // For file requests, pass through to S3
+  return request;
+};

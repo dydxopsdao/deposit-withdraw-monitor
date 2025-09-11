@@ -7,6 +7,7 @@
 
 import os from "os";
 import { logger } from "../logger/logging-utils";
+import { TEST_TIMEOUTS } from "../../config/timeouts";
 
 // ----- Config (keep defaults tiny) ------------------------------------------
 const DD_API_KEY = process.env.DD_API_KEY || process.env.DATADOG_API_KEY || "";
@@ -172,6 +173,7 @@ async function sendRebalanceResultMetric(passed: boolean, tags: string[]) {
 }
 
 async function sendGauge(metric: string, value: number, tags: string[]) {
+  // TODO: Support batching metrics to minimize HTTP overhead when emitting high volumes.
   if (!enabled()) return;
   const now = Math.floor(Date.now() / 1000);
   const body = {
@@ -240,6 +242,7 @@ function enabled(): boolean {
 }
 
 function normalizeTags(tags: Array<string | null | undefined>): string[] {
+  // TODO: Enforce a whitelist/length cap for tag values to avoid high-cardinality explosions.
   return (tags || []).map(String).map((s) => s.trim()).filter(Boolean);
 }
 
@@ -327,8 +330,9 @@ async function postJSON(
   headers: Record<string, string>,
   meta: { kind: "metric"; metric: string } | { kind: "log"; event: string }
 ) {
+  // TODO: Allow configurable timeout and add retry/backoff for transient network failures.
   const ctl = new AbortController();
-  const t = setTimeout(() => ctl.abort(), 5000);
+  const t = setTimeout(() => ctl.abort(), TEST_TIMEOUTS.ACTION);
   const started = Date.now();
   try {
     const res = await fetch(url, {

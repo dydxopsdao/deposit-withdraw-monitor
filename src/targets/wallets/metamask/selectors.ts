@@ -16,6 +16,7 @@ export const metamaskSelectors = {
   // dApp-side buttons
   dapp: {
     connectBtn:      { role: "button", name: "Connect wallet" } as RoleSel,
+    // TODO: Verify the double-label and tighten to a stable name if possible.
     pickMetamaskBtn: { role: "button", name: "MetaMask MetaMask" } as RoleSel,
     sendRequestBtn:  { role: "button", name: "Send request" } as RoleSel,
   },
