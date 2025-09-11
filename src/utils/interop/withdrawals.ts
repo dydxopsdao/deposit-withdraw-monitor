@@ -38,7 +38,7 @@ async function withdrawMaxUsdc(
   logger.debug(`dYdX balance: ${dYdXBalance.formattedAmount} USDC`);
 
   if (dYdXBalance.amount === 0n) {
-    logger.warn(`No free collateral found for ${dYdXAddress} on dYdX`);
+    logger.info(`No free collateral found for ${dYdXAddress} on dYdX - aborting withdrawal`);
     return;
   }
 

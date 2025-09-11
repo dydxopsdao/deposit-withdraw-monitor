@@ -38,7 +38,7 @@ async function depositMaxUsdc(
   logger.debug(`wallet balance: ${walletBalance.formattedAmount} USDC`);
 
   if (walletBalance.amount === 0n) {
-    logger.warn(`No USDC balance found for ${walletAddress} on ${srcChain}`);
+    logger.info(`No USDC balance found for ${walletAddress} on ${srcChain} - aborting deposit`);
     return;
   }
 

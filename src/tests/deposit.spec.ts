@@ -141,7 +141,7 @@ for (const route of depositRoutes) {
         await test.step("Rebalance (teardown)", async () => {
           try {
             // Assume your rebalance returns optional balances; OK if it returns void
-            const result = await rebalanceNow(route, { reason: "post_test_teardown", last_tx: txHash, passed });
+            const result = await rebalanceNow(route);
             const balancesBefore = (result as any)?.balancesBefore;
             const balancesAfter = (result as any)?.balancesAfter;
 
