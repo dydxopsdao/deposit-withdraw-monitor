@@ -33,7 +33,7 @@ async function depositMaxUsdc(
   const srcChainId = CHAIN_IDS[srcChain];
   const dYdXChainId = CHAIN_IDS['dydx'];
 
-  const walletBalance = await getUsdcBalance(walletAddress, srcChainId);
+  const walletBalance = await getUsdcBalance(srcChainId, walletAddress);
   logger.debug(`wallet balance: ${walletBalance.formattedAmount} USDC`);
 
   if (walletBalance.amount === 0n) {

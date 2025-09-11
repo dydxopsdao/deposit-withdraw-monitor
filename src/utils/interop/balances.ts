@@ -16,11 +16,11 @@ interface UsdcBalance {
 
 /**
  * Gets the USDC balance for a given address on a given chain
- * @param walletAddress - The address to get the balance for
  * @param chainId - The chain ID to get the balance for
+ * @param walletAddress - The address to get the balance for
  * @returns The USDC balance for the address on the given chain in USDC
  */
-async function getUsdcBalance(walletAddress: string, chainId: string): Promise<UsdcBalance> {
+async function getUsdcBalance(chainId: string, walletAddress: string): Promise<UsdcBalance> {
   const usdcDenom = CHAIN_CONFIGS[chainId]?.usdcDenom;
   if (!usdcDenom) {
     throw new Error(`No USDC denom found for chain ${chainId}`);

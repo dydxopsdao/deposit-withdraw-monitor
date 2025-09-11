@@ -29,7 +29,7 @@ async function rebalanceNow(
         {
           token: 'USDC',
           chain: _route.src_chain,
-          amount: (await interop.getUsdcBalance(_route.wallet_address, CHAIN_IDS[_route.src_chain])).formattedAmount,
+          amount: (await interop.getUsdcBalance(CHAIN_IDS[_route.src_chain], _route.wallet_address)).formattedAmount,
         },
         // on dYdX:
         {
@@ -52,7 +52,7 @@ async function rebalanceNow(
         {
           token: 'USDC',
           chain: _route.src_chain,
-          amount: (await interop.getUsdcBalance(_route.wallet_address, CHAIN_IDS[_route.src_chain])).formattedAmount,
+          amount: (await interop.getUsdcBalance(CHAIN_IDS[_route.src_chain], _route.wallet_address)).formattedAmount,
         },
         // on dYdX:
         {
@@ -75,7 +75,7 @@ async function rebalanceNow(
         {
           token: 'USDC',
           chain: _route.dst_chain,
-          amount: (await interop.getUsdcBalance(_route.wallet_address, CHAIN_IDS[_route.dst_chain])).formattedAmount,
+          amount: (await interop.getUsdcBalance(CHAIN_IDS[_route.dst_chain], _route.wallet_address)).formattedAmount,
         },
       ];
 
@@ -98,7 +98,7 @@ async function rebalanceNow(
         {
           token: 'USDC',
           chain: _route.dst_chain,
-          amount: (await interop.getUsdcBalance(_route.wallet_address, CHAIN_IDS[_route.dst_chain])).formattedAmount,
+          amount: (await interop.getUsdcBalance(CHAIN_IDS[_route.dst_chain], _route.wallet_address)).formattedAmount,
         },
       ];
 
