@@ -107,10 +107,12 @@ for (const route of depositRoutes) {
           });
 
           await test.step("Submit deposit", async () => {
+            logger.info("Submitting deposit");
             return await submitDeposit(page, context, route.wallet_type);
           });
 
           await test.step("Wait for finality", async () => {
+            logger.info("Waiting for finality");
             const res = await waitForFinality(page);
             txHash = res.txHash;
             explorerUrl = res.explorerUrl;
@@ -119,8 +121,6 @@ for (const route of depositRoutes) {
           });
 
           logger.success("Deposit flow complete", { route_id: route.id, txHash, explorerUrl });
-          // TODO: Consider closing the entire context here to avoid cross-test leakage when running multiple routes.       
-
           /* =========================
               TEST PASSED - SEND DATADOG METRICS and LOGS
           ========================= */

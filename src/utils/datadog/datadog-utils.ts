@@ -82,6 +82,8 @@ export function createTelemetryContext(cfg: {
       passed: boolean;
       txHash?: string;
       explorerUrl?: string;
+      explorerUrlsAll?: string[];
+      txHashesAll?: (string | undefined)[];
       errorStage?: ErrorStage;
       error?: ErrorLike;
     }) {

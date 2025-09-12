@@ -207,3 +207,4 @@ export async function handleMetamaskPopup(context: BrowserContext) {
     logger.warning(`MetaMask popup handling had issues: ${e?.message ?? e}`);
     try { await mm.close(); } catch {}
   }
+}
