@@ -6,6 +6,7 @@ import { logger as consoleLogger } from "../logger/logging-utils";
 import { Route } from "../route/routes";
 import { TEST_TIMEOUTS } from "../../config/timeouts";
 import os from "os";
+import { logger } from "../logger/logging-utils";
 
 // Datadog configuration
 const DD_API_KEY = process.env.DD_API_KEY || process.env.DATADOG_API_KEY || "";
@@ -14,6 +15,10 @@ const DD_SERVICE = process.env.DD_SERVICE || "dos-synth";
 const DD_SOURCE = process.env.DD_SOURCE || "playwright";
 const DD_DRY_RUN = process.env.DD_DRY_RUN === "1";
 const DD_VERBOSE = process.env.DD_VERBOSE === "1";
+
+// Report configuration
+const REPORTS_CLOUDFRONT_URL = process.env.REPORTS_CLOUDFRONT_URL || "https://d15e662yct7lwz.cloudfront.net";
+const UPLOAD_TIMESTAMP = process.env.UPLOAD_TIMESTAMP; // Set by entrypoint.sh
 const LOGS_URL = `https://http-intake.logs.${DD_SITE}/api/v2/logs`;
 
 // v4-web-aligned funnel steps
@@ -57,6 +62,10 @@ export interface TestRunLog {
   // Transaction details (for successful flows)
   tx_hash?: string;
   explorer_url?: string;
+  
+  // Report URLs
+  report_url?: string;
+  trace_url?: string;
   
   // Rebalance status
   rebalance_attempted: boolean;
@@ -136,6 +145,7 @@ class TestRunLogger {
    * Emit the final test run log to Datadog
    */
   async logTestResult(result: TestResult): Promise<void> {
+    logger.info("Logging test result", { result });
     const totalDuration = Date.now() - this.startTime;
     
     const log: TestRunLog = {
@@ -163,6 +173,10 @@ class TestRunLogger {
       // Transaction details
       tx_hash: result.txHash,
       explorer_url: result.explorerUrl,
+      
+      // Report URLs (generated at completion time to match upload timing)
+      report_url: this.generateReportUrl(),
+      trace_url: this.generateTraceUrl(),
       
       // Rebalance status
       rebalance_attempted: result.rebalanceAttempted || false,
@@ -210,9 +224,31 @@ class TestRunLogger {
    */
   private generateTestId(): string {
     const now = new Date();
-    const dateStr = now.toISOString().slice(0, 19).replace(/[-:]/g, '').replace('T', '-');
-    const random = Math.random().toString(36).substring(2, 8);
-    return `${this.route.id}-${dateStr}-${random}`;
+    const timestamp = now.toISOString()
+      .slice(0, 19)           // Take YYYY-MM-DDTHH:MM:SS
+      .replace('T', '_')      // Replace T with _
+      .replace(/:/g, '-');    // Replace colons with dashes
+    
+    // Format: route-id/timestamp (matches S3 path structure)
+    return `${this.route.id}/${timestamp}`;
+  }
+
+  /**
+   * Generate CloudFront report URL matching the S3 upload path structure
+   * Uses upload timestamp if available, otherwise current time
+   */
+  private generateReportUrl(): string {       
+    // Format: https://d15e662yct7lwz.cloudfront.net/route-id/timestamp/index.html
+    return `${REPORTS_CLOUDFRONT_URL}/${this.route.id}/${UPLOAD_TIMESTAMP}/index.html`;
+  }
+
+  /**
+   * Generate trace URL for the test run
+   * Uses upload timestamp if available, otherwise current time
+   */
+  private generateTraceUrl(): string {
+    // Format: https://d15e662yct7lwz.cloudfront.net/route-id/timestamp/trace.zip
+    return `${REPORTS_CLOUDFRONT_URL}/${this.route.id}/${UPLOAD_TIMESTAMP}/trace.zip`;
   }
 
   /**
@@ -372,6 +408,28 @@ export const datadog = {
   isEnabled: () => Boolean(DD_API_KEY),
 
   /**
+   * Generate report URL for a given route and timestamp
+   */
+  generateReportUrl: (routeId: string, timestamp?: string) => {
+    const ts = timestamp || UPLOAD_TIMESTAMP
+      .slice(0, 19)
+      .replace('T', '_')
+      .replace(/:/g, '-');
+    return `${REPORTS_CLOUDFRONT_URL}/${routeId}/${ts}/index.html`;
+  },
+
+  /**
+   * Generate trace URL for a given route and timestamp
+   */
+  generateTraceUrl: (routeId: string, timestamp?: string) => {
+    const ts = timestamp || UPLOAD_TIMESTAMP
+      .slice(0, 19)
+      .replace('T', '_')
+      .replace(/:/g, '-');
+    return `${REPORTS_CLOUDFRONT_URL}/${routeId}/${ts}/trace.zip`;
+  },
+
+  /**
    * Get current Datadog configuration
    */
   getConfig: () => ({
@@ -382,5 +440,6 @@ export const datadog = {
     dryRun: DD_DRY_RUN,
     verbose: DD_VERBOSE,
     enabled: Boolean(DD_API_KEY),
+    reportsUrl: REPORTS_CLOUDFRONT_URL,
   }),
 };
