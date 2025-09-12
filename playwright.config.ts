@@ -1,8 +1,8 @@
-import { defineConfig, devices } from "@playwright/test";
-import dotenv from "dotenv";
-import { TEST_TIMEOUTS } from "./src/config/timeouts";
+import { defineConfig, devices } from '@playwright/test';
+import dotenv from 'dotenv';
+import { TEST_TIMEOUTS } from './src/config/timeouts';
 
-const envFile = process.env.CI ? ".env" : ".env.local";
+const envFile = process.env.CI ? '.env' : '.env.local';
 dotenv.config({ path: envFile });
 console.log(`> Loaded environment from ${envFile}`);
 
@@ -18,13 +18,13 @@ console.log(`> Loaded environment from ${envFile}`);
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
-  testDir: "./src/tests",
+  testDir: './src/tests',
 
   timeout: TEST_TIMEOUTS.TEST,
   expect: { timeout: TEST_TIMEOUTS.ELEMENT },
 
   // Initialize resources required for all tests
-  globalSetup: "./global-setup.ts",
+  globalSetup: './global-setup.ts',
 
   /* Run tests in files in parallel */
   fullyParallel: false,
@@ -42,28 +42,30 @@ export default defineConfig({
     // baseURL: 'http://localhost:3000',
 
     /* Create trace files */
-    trace: "on"
+    trace: 'on',
   },
 
   /* Configure projects for major browsers */
   projects: [
     {
-      name: "chromium",
+      name: 'chromium',
       use: {
-        ...devices["Desktop Chrome"],
+        ...devices['Desktop Chrome'],
         headless: false,
         launchOptions: {
-          ignoreDefaultArgs: ["--enable-automation"],
+          ignoreDefaultArgs: ['--enable-automation'],
           args: [
-            "--disable-blink-features=AutomationControlled",
-            ...(process.env.CI ? [
-              "--no-sandbox",
-              "--disable-setuid-sandbox",
-              "--disable-dev-shm-usage",
-              "--disable-gpu",
-              "--disable-infobars",
-              "--disable-blink-features=AutomationControlled",
-            ] : [])
+            '--disable-blink-features=AutomationControlled',
+            ...(process.env.CI
+              ? [
+                  '--no-sandbox',
+                  '--disable-setuid-sandbox',
+                  '--disable-dev-shm-usage',
+                  '--disable-gpu',
+                  '--disable-infobars',
+                  '--disable-blink-features=AutomationControlled',
+                ]
+              : []),
           ],
         },
       },

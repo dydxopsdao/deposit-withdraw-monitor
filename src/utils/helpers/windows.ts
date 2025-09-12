@@ -1,19 +1,23 @@
-import { BrowserContext, Page } from "@playwright/test";
-import { logger } from "../logger/logging-utils";
-import { TEST_TIMEOUTS } from "../../config/timeouts";
+import { BrowserContext, Page } from '@playwright/test';
+import { logger } from '../logger/logging-utils';
+import { TEST_TIMEOUTS } from '../../config/timeouts';
 
 const t = TEST_TIMEOUTS;
 
-type LoadState = "domcontentloaded" | "load" | "networkidle";
+type LoadState = 'domcontentloaded' | 'load' | 'networkidle';
 
 function escapeRegExp(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 function toRegex(pattern: string | RegExp): RegExp {
   return pattern instanceof RegExp ? pattern : new RegExp(escapeRegExp(pattern));
 }
 function safeUrl(p: Page): string {
-  try { return p.url(); } catch { return "(unavailable)"; }
+  try {
+    return p.url();
+  } catch {
+    return '(unavailable)';
+  }
 }
 
 export async function findPageWithUrl(
@@ -21,7 +25,7 @@ export async function findPageWithUrl(
   urlPattern: string | RegExp,
   maxRetries = 10,
   retryDelayMs = t.DELAY,
-  waitForState: LoadState = "domcontentloaded",
+  waitForState: LoadState = 'domcontentloaded',
 ): Promise<Page | null> {
   const rx = toRegex(urlPattern);
   logger.debug(`🔎 findPageWithUrl → pattern: ${rx}, retries: ${maxRetries}, delay: ${retryDelayMs}ms`);
@@ -30,8 +34,8 @@ export async function findPageWithUrl(
     logger.debug(`Attempt ${attempt}/${maxRetries}`);
 
     // Log current pages
-    const urls = context.pages().map(p => safeUrl(p));
-    logger.debug(`context.pages(): ${urls.join(" | ") || "(none)"}`);
+    const urls = context.pages().map((p) => safeUrl(p));
+    logger.debug(`context.pages(): ${urls.join(' | ') || '(none)'}`);
 
     // 1) check all existing pages
     for (const p of context.pages()) {
@@ -51,7 +55,7 @@ export async function findPageWithUrl(
     // 2) wait briefly for a new page event
     try {
       logger.debug(`Waiting up to ${retryDelayMs}ms for a new page event…`);
-      const p = await context.waitForEvent("page", { timeout: retryDelayMs });
+      const p = await context.waitForEvent('page', { timeout: retryDelayMs });
       const u = safeUrl(p);
       logger.debug(`New page detected: ${u}`);
       if (rx.test(u)) {

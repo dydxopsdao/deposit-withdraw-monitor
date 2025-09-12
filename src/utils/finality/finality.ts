@@ -1,28 +1,31 @@
 // flows.ts (or targets/dydx/flows.ts)
-import { expect, type Page } from "@playwright/test";
-import { dydxSelectors as dydxSelectors } from "../../targets/dydx/selectors";
-import { TEST_TIMEOUTS } from "../../config/timeouts";
-import { logger } from "../logger/logging-utils";
+import { expect, type Page } from '@playwright/test';
+import { dydxSelectors as dydxSelectors } from '../../targets/dydx/selectors';
+import { TEST_TIMEOUTS } from '../../config/timeouts';
+import { logger } from '../logger/logging-utils';
 
-type FinalityResult = { ok: boolean; explorerUrl?: string; txHash?: string; explorerUrlsAll?: string[]; txHashesAll?: (string | undefined)[] };
+type FinalityResult = {
+  ok: boolean;
+  explorerUrl?: string;
+  txHash?: string;
+  explorerUrlsAll?: string[];
+  txHashesAll?: (string | undefined)[];
+};
 
 const DEFAULT_FINALITY_TIMEOUT =
-  (TEST_TIMEOUTS as any)?.FINALITY ??
-  (TEST_TIMEOUTS as any)?.NETWORK ??
-  (TEST_TIMEOUTS as any)?.TEST ??
-  10 * 60_000; // fallback 10m
+  (TEST_TIMEOUTS as any)?.FINALITY ?? (TEST_TIMEOUTS as any)?.NETWORK ?? (TEST_TIMEOUTS as any)?.TEST ?? 10 * 60_000; // fallback 10m
 
 export async function waitForFinality(
   page: Page,
   timeoutMs = DEFAULT_FINALITY_TIMEOUT,
   pollMs = 1500,
-  graceMs = 500
+  graceMs = 500,
 ): Promise<FinalityResult> {
   const dlg = dydxSelectors.fundsDialog(page);
   const inProgress = dydxSelectors.transferInProgress(page);
-  const depDone    = dydxSelectors.depositDoneTitle(page);
-  const depCTA     = dydxSelectors.depositDoneCta(page);
-  const wdrDone    = dydxSelectors.withdrawDoneLine(page);
+  const depDone = dydxSelectors.depositDoneTitle(page);
+  const depCTA = dydxSelectors.depositDoneCta(page);
+  const wdrDone = dydxSelectors.withdrawDoneLine(page);
 
   // Make sure the dialog is open
   await expect(dlg).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
@@ -30,45 +33,38 @@ export async function waitForFinality(
 
   const end = Date.now() + timeoutMs;
 
-
-
   // Poll until completed or timeout
   while (Date.now() < end) {
     // If dialog vanished unexpectedly, bail
     if (!(await dlg.isVisible())) break;
-     // Still “in progress”? keep polling
-     if (await inProgress.isVisible().catch(() => false)) {
+    // Still “in progress”? keep polling
+    if (await inProgress.isVisible().catch(() => false)) {
       await page.waitForTimeout(pollMs);
       continue;
     }
     const isDepositDone =
-      (await depDone.isVisible().catch(() => false)) ||
-      (await depCTA.isVisible().catch(() => false));
+      (await depDone.isVisible().catch(() => false)) || (await depCTA.isVisible().catch(() => false));
 
-    const isWithdrawDone =
-      await wdrDone.isVisible().catch(() => false);
+    const isWithdrawDone = await wdrDone.isVisible().catch(() => false);
     // Completed?
     if (isDepositDone || isWithdrawDone) {
-      logger.info("Transfer completed");
+      logger.info('Transfer completed');
       let explorerUrl: string | undefined;
       let txHash: string | undefined;
       let explorerUrlsAll: string[] = [];
       let txHashesAll: (string | undefined)[] = [];
-    
+
       try {
-        logger.info("Extracting transaction links");
+        logger.info('Extracting transaction links');
         const links = dydxSelectors.transferTxLinks(page);
         // grab all hrefs currently in the dialog
         const hrefs = await links.evaluateAll((els) =>
-          Array.from(new Set(els
-            .map((e) => (e as HTMLAnchorElement).href)
-            .filter(Boolean)))
+          Array.from(new Set(els.map((e) => (e as HTMLAnchorElement).href).filter(Boolean))),
         );
 
-    
         explorerUrlsAll = hrefs;
         txHashesAll = hrefs.map(extractTxHash);
-    
+
         // backwards compatible “primary” pick: first with a parsed hash, else first href
         const firstWithHash = hrefs.find((h, i) => txHashesAll[i]);
         if (firstWithHash) {
@@ -80,13 +76,13 @@ export async function waitForFinality(
       } catch {
         // links optional; ignore
       }
-    
+
       return {
         ok: true,
-        explorerUrl,      // primary (for existing callers)
-        txHash,           // primary
-        explorerUrlsAll,  // all links
-        txHashesAll,      // all parsed hashes (may contain undefineds)
+        explorerUrl, // primary (for existing callers)
+        txHash, // primary
+        explorerUrlsAll, // all links
+        txHashesAll, // all parsed hashes (may contain undefineds)
       } as FinalityResult & {
         explorerUrlsAll?: string[];
         txHashesAll?: (string | undefined)[];

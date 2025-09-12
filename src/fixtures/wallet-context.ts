@@ -36,17 +36,17 @@ export const walletContextTest = test.extend<{
     //Sanitize the userDataDir
     const resolved = path.resolve(userDataDir);
     const base = path.resolve(USER_DATA_DIR);
-    if (!resolved.startsWith(base)) throw new Error("Refusing to delete outside USER_DATA_DIR");
+    if (!resolved.startsWith(base)) throw new Error('Refusing to delete outside USER_DATA_DIR');
     fs.rmSync(resolved, { recursive: true, force: true });
     // TODO: The existence check below will always be false after rmSync; clarify intended unlock/setup path.
-      
+
     const userDataDirExists = fs.existsSync(userDataDir);
 
     // Use wallet-specific context creation based on route
     switch (route.wallet_type) {
       case 'metamask':
         context = await launchMetamaskContext(userDataDir);
-        if(userDataDirExists) {
+        if (userDataDirExists) {
           await unlockMetamaskWallet(context);
         } else {
           await setupMetamaskWallet(context, route.wallet_seed);
@@ -54,7 +54,7 @@ export const walletContextTest = test.extend<{
         break;
       case 'phantom':
         context = await launchPhantomContext(userDataDir);
-        if(userDataDirExists) {
+        if (userDataDirExists) {
           await unlockPhantomWallet(context);
         } else {
           await setupPhantomWallet(context, route.wallet_seed);

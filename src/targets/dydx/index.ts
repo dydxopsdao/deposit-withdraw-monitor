@@ -1,2 +1,2 @@
-export * as flows from "./flows";
-export { selectors } from "./selectors";
+export * as flows from './flows';
+export { dydxSelectors } from './selectors';

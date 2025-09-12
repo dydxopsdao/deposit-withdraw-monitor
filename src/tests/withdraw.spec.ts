@@ -13,14 +13,14 @@
 //   - rebalance result metric + log (with balances when provided)
 // Rebalance: never fails the test.
 
-import { test, expect } from "../fixtures";
-import { logger } from "../utils/logger/logging-utils";
-import { getRoutesSync, type Route, type WalletType } from "../utils/route/routes";
-import { createTelemetryContext} from "../utils/datadog/datadog-utils";
-import { openApp, connectWallet, withdraw, submitWithdraw } from "../targets/dydx/flows";
-import { dydxSelectors } from "../targets/dydx/selectors";
-import { TEST_TIMEOUTS } from "../config/timeouts";
-import { waitForFinality } from "../utils/finality/finality";
+import { test, expect } from '../fixtures';
+import { logger } from '../utils/logger/logging-utils';
+import { getRoutesSync, type Route, type WalletType } from '../utils/route/routes';
+import { createTelemetryContext } from '../utils/datadog/datadog-utils';
+import { openApp, connectWallet, withdraw, submitWithdraw } from '../targets/dydx/flows';
+import { dydxSelectors } from '../targets/dydx/selectors';
+import { TEST_TIMEOUTS } from '../config/timeouts';
+import { waitForFinality } from '../utils/finality/finality';
 
 // ---- Route discovery (sync so tests can be defined at import time) ----------
 const onlyRouteId = process.env.ROUTE_ID?.trim();
@@ -28,14 +28,16 @@ const onlyWallet = process.env.WALLET?.trim()?.toLowerCase() as WalletType | und
 
 const allRoutes: Route[] = getRoutesSync();
 const withdrawRoutes = allRoutes
-  .filter(r => r.kind === "withdraw")
-  .filter(r => (r.enabled ?? true) && !(r.paused ?? false))
-  .filter(r => (onlyRouteId ? r.id === onlyRouteId : true))
-  .filter(r => (onlyWallet ? r.wallet_type === onlyWallet : true));
+  .filter((r) => r.kind === 'withdraw')
+  .filter((r) => (r.enabled ?? true) && !(r.paused ?? false))
+  .filter((r) => (onlyRouteId ? r.id === onlyRouteId : true))
+  .filter((r) => (onlyWallet ? r.wallet_type === onlyWallet : true));
 
 if (withdrawRoutes.length === 0) {
-  logger.warning("No matching withdraw routes found", { onlyRouteId, onlyWallet });
-  test("no withdraw routes matched", () => { test.skip(); });
+  logger.warning('No matching withdraw routes found', { onlyRouteId, onlyWallet });
+  test('no withdraw routes matched', () => {
+    test.skip();
+  });
 }
 
 // ---- Per-route test definitions -------------------------------------------
@@ -49,12 +51,12 @@ for (const route of withdrawRoutes) {
       testInfo.setTimeout(TEST_TIMEOUTS.TEST);
     });
 
-    test(title, async ({ page, context }, testInfo) => {    
+    test(title, async ({ page, context }, testInfo) => {
       // Datadog context (keeps tags consistent, sends metrics/logs)
       const dd = createTelemetryContext({
         route: {
           id: route.id,
-          kind: "withdraw",
+          kind: 'withdraw',
           wallet_type: route.wallet_type,
           wallet_alias: route.wallet_alias,
           wallet_address: route.wallet_address,
@@ -64,7 +66,7 @@ for (const route of withdrawRoutes) {
           dst_chain: route.dst_chain,
           token: route.token,
         },
-        operation: "withdraw",
+        operation: 'withdraw',
       });
 
       let txHash: string | undefined;
@@ -73,7 +75,7 @@ for (const route of withdrawRoutes) {
       let txHashesAll: (string | undefined)[] = [];
       let passed = false;
 
-      logger.info("Starting withdraw", {
+      logger.info('Starting withdraw', {
         route_id: route.id,
         wallet_type: route.wallet_type,
         wallet_alias: route.wallet_alias,
@@ -88,12 +90,12 @@ for (const route of withdrawRoutes) {
 
       try {
         try {
-          await test.step("Open app", async () => {
+          await test.step('Open app', async () => {
             await openApp(page, context, {
-              waitUntil: "domcontentloaded",
+              waitUntil: 'domcontentloaded',
               maxRetries: 3,
               retryDelayMs: 1500,
-              waitFor: [dydxSelectors.connectWalletBtn]
+              waitFor: [dydxSelectors.connectWalletBtn],
             });
           });
 
@@ -101,17 +103,17 @@ for (const route of withdrawRoutes) {
             await connectWallet(page, context, route.wallet_type);
           });
 
-          await test.step("Withdraw", async () => {
+          await test.step('Withdraw', async () => {
             await withdraw(page, context, String(route.amount), route.dst_chain, route.token, route.wallet_type);
           });
-          await test.step("Submit withdraw", async () => {
+          await test.step('Submit withdraw', async () => {
             return await submitWithdraw(page, context, route.wallet_type);
           });
 
-          await test.step("Wait for finality", async () => {
-            logger.info("Waiting for finality");
+          await test.step('Wait for finality', async () => {
+            logger.info('Waiting for finality');
             const res = await waitForFinality(page);
-            logger.info("Finality result", { res });
+            logger.info('Finality result', { res });
             txHash = res.txHash;
             explorerUrl = res.explorerUrl;
             explorerUrlsAll = res.explorerUrlsAll ?? [];
@@ -122,24 +124,23 @@ for (const route of withdrawRoutes) {
           /* =========================
             TEST PASSED
             ========================= */
-          logger.success("Withdraw flow complete", { route_id: route.id, explorerUrlsAll, txHashesAll });
+          logger.success('Withdraw flow complete', { route_id: route.id, explorerUrlsAll, txHashesAll });
           await dd.routeResult({ passed: true, txHash, explorerUrlsAll, txHashesAll });
         } catch (e: any) {
           /* =========================
             TEST FAILED
             ========================= */
-          logger.error("Submit/finality failed", e, { route_id: route.id, explorerUrlsAll, txHashesAll });
+          logger.error('Submit/finality failed', e, { route_id: route.id, explorerUrlsAll, txHashesAll });
           await dd.routeResult({ passed: false, error: e, explorerUrlsAll, txHashesAll });
           throw e;
         }
-
       } finally {
         // -------- Always attempt to rebalance — must not fail the test -------
-        await test.step("Rebalance (teardown)", async () => {
+        await test.step('Rebalance (teardown)', async () => {
           try {
-            const result = await rebalanceNow(route, { reason: "post_test_teardown", last_tx: txHash, passed });
+            const result = await rebalanceNow(route, { reason: 'post_test_teardown', last_tx: txHash, passed });
             const balancesBefore = (result as any)?.balancesBefore;
-            const balancesAfter  = (result as any)?.balancesAfter;
+            const balancesAfter = (result as any)?.balancesAfter;
 
             await dd.rebalanceResult({
               passed: true,
@@ -147,10 +148,10 @@ for (const route of withdrawRoutes) {
               balancesAfter,
             });
           } catch (e: any) {
-            logger.warning("Rebalance failed", { route_id: route.id, error: { message: e?.message } });
+            logger.warning('Rebalance failed', { route_id: route.id, error: { message: e?.message } });
             await dd.rebalanceResult({ passed: false, error: e });
           }
-        });        
+        });
       }
     });
   });

@@ -1,6 +1,6 @@
-import { Page } from "@playwright/test";
-import { logger } from "../logger/logging-utils";
-import { TEST_TIMEOUTS } from "../../config/timeouts";
+import { Page } from '@playwright/test';
+import { logger } from '../logger/logging-utils';
+import { TEST_TIMEOUTS } from '../../config/timeouts';
 
 type ClickAnyOpts = {
   /** Total time to keep scanning/clicking */
@@ -15,7 +15,7 @@ export async function clickAnyButton(
   page: Page,
   names: RegExp[],
   contextLabel: string,
-  opts: ClickAnyOpts = {}
+  opts: ClickAnyOpts = {},
 ): Promise<number> {
   const {
     overallTimeoutMs = TEST_TIMEOUTS.ACTION,
@@ -25,12 +25,12 @@ export async function clickAnyButton(
 
   const deadline = Date.now() + overallTimeoutMs;
   let clicks = 0;
-  logger.info(`Clicking any button: ${names.join(", ")}`);
+  logger.info(`Clicking any button: ${names.join(', ')}`);
   while (!page.isClosed() && Date.now() < deadline && clicks < maxClicks) {
     let clickedThisLoop = false;
 
     for (const re of names) {
-      const btn = page.getByRole("button", { name: re }).first();
+      const btn = page.getByRole('button', { name: re }).first();
       // `isVisible()` is cheap; we poll until one appears
       const visible = await btn.isVisible().catch(() => false);
       if (!visible) continue;

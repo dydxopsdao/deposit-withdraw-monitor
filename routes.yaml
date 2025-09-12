@@ -6,14 +6,14 @@ routes:
   # ---------------------------
   - id: metamask-ethereum-usdc-withdrawal
     kind: withdraw
-    description: "$101 USDC to Ethereum Withdrawal with MetaMask"
+    description: '$101 USDC to Ethereum Withdrawal with MetaMask'
     wallet_type: metamask
     wallet_alias: metamask-ethereum-usdc-withdrawal
-    wallet_address: "0x01C229f4bDb7552b564619554C8a805aE4Ca2ADB"
+    wallet_address: '0x01C229f4bDb7552b564619554C8a805aE4Ca2ADB'
     wallet_seed: ${SEED_PHRASE_METAMASK_ETHEREUM_USDC_WITHDRAWAL}
-    dydx_address: "dydx135pnjlthctp4vtk8hzl5w38958hwazcs3ln8pc"
+    dydx_address: 'dydx135pnjlthctp4vtk8hzl5w38958hwazcs3ln8pc'
     dydx_seed: ${SEED_PHRASE_DYDX_ETHEREUM_USDC_WITHDRAWAL}
-    amount: "101"
+    amount: '101'
     src_chain: dydx
     dst_chain: ethereum
     cadence_min: 30
@@ -21,14 +21,14 @@ routes:
 
   - id: metamask-polygon-usdc-withdrawal
     kind: withdraw
-    description: "$101 USDC to Polygon Withdrawal with MetaMask"
+    description: '$101 USDC to Polygon Withdrawal with MetaMask'
     wallet_type: metamask
     wallet_alias: metamask-polygon-usdc-withdrawal
-    wallet_address: "0x031722775539dDBeA9C559ed632fdC9F491D306E"
+    wallet_address: '0x031722775539dDBeA9C559ed632fdC9F491D306E'
     wallet_seed: ${SEED_PHRASE_METAMASK_POLYGON_USDC_WITHDRAWAL}
-    dydx_address: "dydx1va7e3pvr9zwnw04j80x6pvgs3m9e4ksk2rn785"
+    dydx_address: 'dydx1va7e3pvr9zwnw04j80x6pvgs3m9e4ksk2rn785'
     dydx_seed: ${SEED_PHRASE_DYDX_POLYGON_USDC_WITHDRAWAL}
-    amount: "101"
+    amount: '101'
     src_chain: dydx
     dst_chain: polygon
     cadence_min: 30
@@ -36,14 +36,14 @@ routes:
 
   - id: metamask-arbitrum-usdc-withdrawal
     kind: withdraw
-    description: "$101 USDC to Arbitrum Withdrawal with MetaMask"
+    description: '$101 USDC to Arbitrum Withdrawal with MetaMask'
     wallet_type: metamask
     wallet_alias: metamask-arbitrum-usdc-withdrawal
-    wallet_address: "0x442f8CC719875d5ae9b7C6Ef4D934AC0c64Eb7D8"
+    wallet_address: '0x442f8CC719875d5ae9b7C6Ef4D934AC0c64Eb7D8'
     wallet_seed: ${SEED_PHRASE_METAMASK_ARBITRUM_USDC_WITHDRAWAL}
-    dydx_address: "dydx172r4vqp45a3723yhzucsxhj7mpwhmucfnar3pe"
+    dydx_address: 'dydx172r4vqp45a3723yhzucsxhj7mpwhmucfnar3pe'
     dydx_seed: ${SEED_PHRASE_DYDX_ARBITRUM_USDC_WITHDRAWAL}
-    amount: "101"
+    amount: '101'
     src_chain: dydx
     dst_chain: arbitrum
     cadence_min: 30
@@ -51,14 +51,14 @@ routes:
 
   - id: metamask-base-usdc-withdrawal
     kind: withdraw
-    description: "$101 USDC to Base Withdrawal with MetaMask"
+    description: '$101 USDC to Base Withdrawal with MetaMask'
     wallet_type: metamask
     wallet_alias: metamask-base-usdc-withdrawal
-    wallet_address: "0xdB2a7Ac396eB54ebe49231443847Ab4FF180C3E6"
+    wallet_address: '0xdB2a7Ac396eB54ebe49231443847Ab4FF180C3E6'
     wallet_seed: ${SEED_PHRASE_METAMASK_BASE_USDC_WITHDRAWAL}
-    dydx_address: "dydx1qt3236y9efrv4k38utw3ygwdxfvdc6a3e0sgqn"
+    dydx_address: 'dydx1qt3236y9efrv4k38utw3ygwdxfvdc6a3e0sgqn'
     dydx_seed: ${SEED_PHRASE_DYDX_BASE_USDC_WITHDRAWAL}
-    amount: "101"
+    amount: '101'
     src_chain: dydx
     dst_chain: base
     cadence_min: 30
@@ -66,14 +66,14 @@ routes:
 
   - id: phantom-solana-usdc-withdrawal
     kind: withdraw
-    description: "$101 USDC to Solana Withdrawal with Phantom"
+    description: '$101 USDC to Solana Withdrawal with Phantom'
     wallet_type: phantom
     wallet_alias: phantom-solana-usdc-withdrawal
-    wallet_address: "GMT491QXoAtz3rpjUxioABTayjcVKrUuTeGs1RMPWDpj"
+    wallet_address: 'GMT491QXoAtz3rpjUxioABTayjcVKrUuTeGs1RMPWDpj'
     wallet_seed: ${SEED_PHRASE_PHANTOM_SOLANA_USDC_WITHDRAWAL}
-    dydx_address: "dydx19pg8nznm04r0ah072hpuvtwtapc7k4s4ekw2ma"
+    dydx_address: 'dydx19pg8nznm04r0ah072hpuvtwtapc7k4s4ekw2ma'
     dydx_seed: ${SEED_PHRASE_DYDX_SOLANA_USDC_WITHDRAWAL}
-    amount: "101"
+    amount: '101'
     src_chain: dydx
     dst_chain: solana
     cadence_min: 30
@@ -84,15 +84,15 @@ routes:
   # ---------------------------
   - id: metamask-ethereum-usdc-deposit-regular
     kind: deposit
-    description: "$10 USDC from Ethereum Regular Deposit with MetaMask"
+    description: '$10 USDC from Ethereum Regular Deposit with MetaMask'
     wallet_type: metamask
     wallet_alias: metamask-ethereum-usdc-deposit-regular
-    wallet_address: "0xF844969B9f6B552aB190E6169861d79d4Df10c4E"
+    wallet_address: '0xF844969B9f6B552aB190E6169861d79d4Df10c4E'
     wallet_seed: ${SEED_PHRASE_METAMASK_ETHEREUM_USDC_DEPOSIT_REGULAR}
-    dydx_address: "dydx14dzatfzpu4ha32dtuwrc2uu8jh9qzvlp9x8yup"
+    dydx_address: 'dydx14dzatfzpu4ha32dtuwrc2uu8jh9qzvlp9x8yup'
     dydx_seed: ${SEED_PHRASE_DYDX_ETHEREUM_USDC_DEPOSIT_REGULAR}
     route_kind: regular
-    amount: "10"
+    amount: '10'
     token: USDC
     src_chain: ethereum
     dst_chain: dydx
@@ -101,15 +101,15 @@ routes:
 
   - id: metamask-arbitrum-usdc-deposit-regular
     kind: deposit
-    description: "$10 USDC from Arbitrum Regular Deposit with MetaMask"
+    description: '$10 USDC from Arbitrum Regular Deposit with MetaMask'
     wallet_type: metamask
     wallet_alias: metamask-arbitrum-usdc-deposit-regular
-    wallet_address: "0x4873b5799c4cef57a99A9161c6049fdf7EA03e4F"
+    wallet_address: '0x4873b5799c4cef57a99A9161c6049fdf7EA03e4F'
     wallet_seed: ${SEED_PHRASE_METAMASK_ARBITRUM_USDC_DEPOSIT_REGULAR}
-    dydx_address: "dydx1huk7kwwelk0dq3m4lt8fz6j002k3w65tnzls4g"
+    dydx_address: 'dydx1huk7kwwelk0dq3m4lt8fz6j002k3w65tnzls4g'
     dydx_seed: ${SEED_PHRASE_DYDX_ARBITRUM_USDC_DEPOSIT_REGULAR}
     route_kind: regular
-    amount: "10"
+    amount: '10'
     token: USDC
     src_chain: arbitrum
     dst_chain: dydx
@@ -118,15 +118,15 @@ routes:
 
   - id: metamask-base-usdc-deposit-regular
     kind: deposit
-    description: "$10 USDC from Base Regular Deposit with MetaMask"
+    description: '$10 USDC from Base Regular Deposit with MetaMask'
     wallet_type: metamask
     wallet_alias: metamask-base-usdc-deposit-regular
-    wallet_address: "0x9100F78B4e8B9AEf373744E6E02cCbB9C40b9406"
+    wallet_address: '0x9100F78B4e8B9AEf373744E6E02cCbB9C40b9406'
     wallet_seed: ${SEED_PHRASE_METAMASK_BASE_USDC_DEPOSIT_REGULAR}
-    dydx_address: "dydx1a5955ycr8qytm039pjm5xvd89564smm760yag3"
+    dydx_address: 'dydx1a5955ycr8qytm039pjm5xvd89564smm760yag3'
     dydx_seed: ${SEED_PHRASE_DYDX_BASE_USDC_DEPOSIT_REGULAR}
     route_kind: regular
-    amount: "10"
+    amount: '10'
     token: USDC
     src_chain: base
     dst_chain: dydx
@@ -135,15 +135,15 @@ routes:
 
   - id: metamask-polygon-usdc-deposit-regular
     kind: deposit
-    description: "$10 USDC from Polygon Regular Deposit with MetaMask"
+    description: '$10 USDC from Polygon Regular Deposit with MetaMask'
     wallet_type: metamask
     wallet_alias: metamask-polygon-usdc-deposit-regular
-    wallet_address: "0xf74fE306B0f5Cb081b0D5bbaAcda71Fe3DE3125f"
+    wallet_address: '0xf74fE306B0f5Cb081b0D5bbaAcda71Fe3DE3125f'
     wallet_seed: ${SEED_PHRASE_METAMASK_POLYGON_USDC_DEPOSIT_REGULAR}
-    dydx_address: "dydx1g7dvxqqw6mfr98c8203t09v5fe7ehhpc7ewgxj"
+    dydx_address: 'dydx1g7dvxqqw6mfr98c8203t09v5fe7ehhpc7ewgxj'
     dydx_seed: ${SEED_PHRASE_DYDX_POLYGON_USDC_DEPOSIT_REGULAR}
     route_kind: regular
-    amount: "10"
+    amount: '10'
     token: USDC
     src_chain: polygon
     dst_chain: dydx
@@ -152,15 +152,15 @@ routes:
 
   - id: phantom-solana-usdc-deposit
     kind: deposit
-    description: "$10 USDC from Solana Regular Deposit with Phantom"
+    description: '$10 USDC from Solana Regular Deposit with Phantom'
     wallet_type: phantom
     wallet_alias: phantom-solana-usdc-deposit
-    wallet_address: "B8sygzZ3jFTboo18yB6UYakNZ4DzbEKeyRtkSeuc5w61"
+    wallet_address: 'B8sygzZ3jFTboo18yB6UYakNZ4DzbEKeyRtkSeuc5w61'
     wallet_seed: ${SEED_PHRASE_PHANTOM_SOLANA_USDC_DEPOSIT}
-    dydx_address: "dydx1y7r3nq2f0zlwt2ww4gvm39v000gt6wtwjk6jml"
+    dydx_address: 'dydx1y7r3nq2f0zlwt2ww4gvm39v000gt6wtwjk6jml'
     dydx_seed: ${SEED_PHRASE_DYDX_SOLANA_USDC_DEPOSIT}
     route_kind: regular
-    amount: "10"
+    amount: '10'
     token: USDC
     src_chain: solana
     dst_chain: dydx
@@ -172,15 +172,15 @@ routes:
   # ---------------------------
   - id: metamask-ethereum-usdc-deposit-instant
     kind: deposit
-    description: "$101 USDC from Ethereum Instant Deposit with MetaMask"
+    description: '$101 USDC from Ethereum Instant Deposit with MetaMask'
     wallet_type: metamask
     wallet_alias: metamask-ethereum-usdc-deposit-instant
-    wallet_address: "0x961be253FA06e25e2d99A805A9edb6E0d57169E5"
+    wallet_address: '0x961be253FA06e25e2d99A805A9edb6E0d57169E5'
     wallet_seed: ${SEED_PHRASE_METAMASK_ETHEREUM_USDC_DEPOSIT_INSTANT}
-    dydx_address: "dydx16p59dsr9gpm52wmvhz5ah5fgzryxpv2ftehpav"
+    dydx_address: 'dydx16p59dsr9gpm52wmvhz5ah5fgzryxpv2ftehpav'
     dydx_seed: ${SEED_PHRASE_DYDX_ETHEREUM_USDC_DEPOSIT_INSTANT}
     route_kind: instant
-    amount: "101"
+    amount: '101'
     token: USDC
     src_chain: ethereum
     dst_chain: dydx
@@ -189,15 +189,15 @@ routes:
 
   - id: metamask-arbitrum-usdc-deposit-instant
     kind: deposit
-    description: "$101 USDC from Arbitrum Instant Deposit with MetaMask"
+    description: '$101 USDC from Arbitrum Instant Deposit with MetaMask'
     wallet_type: metamask
     wallet_alias: metamask-arbitrum-usdc-deposit-instant
-    wallet_address: "0xf711FB733f8Ab83FB2b709B723388a6e2491Fc47"
+    wallet_address: '0xf711FB733f8Ab83FB2b709B723388a6e2491Fc47'
     wallet_seed: ${SEED_PHRASE_METAMASK_ARBITRUM_USDC_DEPOSIT_INSTANT}
-    dydx_address: "dydx1e2ekkpsvjrhs5cf4c0368s8ef2d689kv6q0zll"
+    dydx_address: 'dydx1e2ekkpsvjrhs5cf4c0368s8ef2d689kv6q0zll'
     dydx_seed: ${SEED_PHRASE_DYDX_ARBITRUM_USDC_DEPOSIT_INSTANT}
     route_kind: instant
-    amount: "101"
+    amount: '101'
     token: USDC
     src_chain: arbitrum
     dst_chain: dydx
@@ -206,15 +206,15 @@ routes:
 
   - id: metamask-base-usdc-deposit-instant
     kind: deposit
-    description: "$101 USDC from Base Instant Deposit with MetaMask"
+    description: '$101 USDC from Base Instant Deposit with MetaMask'
     wallet_type: metamask
     wallet_alias: metamask-base-usdc-deposit-instant
-    wallet_address: "0x0E81cc4fe5D2a8D9aC1c62E3A75d3DC2Bf9E44c8"
+    wallet_address: '0x0E81cc4fe5D2a8D9aC1c62E3A75d3DC2Bf9E44c8'
     wallet_seed: ${SEED_PHRASE_METAMASK_BASE_USDC_DEPOSIT_INSTANT}
-    dydx_address: "dydx1dpjlremntj0dlh95l2dhgc7njwn8g7jtztspzn"
+    dydx_address: 'dydx1dpjlremntj0dlh95l2dhgc7njwn8g7jtztspzn'
     dydx_seed: ${SEED_PHRASE_DYDX_BASE_USDC_DEPOSIT_INSTANT}
     route_kind: instant
-    amount: "101"
+    amount: '101'
     token: USDC
     src_chain: base
     dst_chain: dydx
@@ -223,15 +223,15 @@ routes:
 
   - id: metamask-polygon-usdc-deposit-instant
     kind: deposit
-    description: "$101 USDC from Polygon Instant Deposit with MetaMask"
+    description: '$101 USDC from Polygon Instant Deposit with MetaMask'
     wallet_type: metamask
     wallet_alias: metamask-polygon-usdc-deposit-instant
-    wallet_address: "0x74fc2a232A9FC37F89A5c20BA0b02B049E9dDf88"
+    wallet_address: '0x74fc2a232A9FC37F89A5c20BA0b02B049E9dDf88'
     wallet_seed: ${SEED_PHRASE_METAMASK_POLYGON_USDC_DEPOSIT_INSTANT}
-    dydx_address: "dydx1v8jadlh7jeg9lg2vsna3v4ml75s43mfjvta8dc"
+    dydx_address: 'dydx1v8jadlh7jeg9lg2vsna3v4ml75s43mfjvta8dc'
     dydx_seed: ${SEED_PHRASE_DYDX_POLYGON_USDC_DEPOSIT_INSTANT}
     route_kind: instant
-    amount: "101"
+    amount: '101'
     token: USDC
     src_chain: polygon
     dst_chain: dydx

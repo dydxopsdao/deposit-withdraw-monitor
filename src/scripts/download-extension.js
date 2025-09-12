@@ -3,7 +3,6 @@ import path from 'path';
 import fs from 'fs';
 import { Extract } from 'unzipper';
 
-
 // Get extension name and ID from command line arguments
 const extensionName = process.argv[2];
 const extensionId = process.argv[3];
@@ -22,10 +21,10 @@ const outputDir = path.join(process.cwd(), 'extensions', extensionName);
 
 async function extractZip(zipPath, extractDir) {
   console.log('📦 Extracting ZIP file...');
-  
+
   // Create extraction directory
   fs.mkdirSync(extractDir, { recursive: true });
-  
+
   // Extract ZIP file
   await new Promise((resolve, reject) => {
     fs.createReadStream(zipPath)
@@ -46,20 +45,20 @@ async function downloadExtension() {
     console.log(`🔄 Downloading extension: ${extensionName} (ID: ${extensionId})`);
     console.log(`📁 Output directory: ${outputDir}`);
     console.log(`🔗 Web Store URL: ${webstoreUrl}`);
-    
+
     const { crxPath, zipPath } = await fetchExtensionZip(webstoreUrl, {
       // one could provide a custom chrome version here
       chromeVersion: '133.0',
-      outputDir: outputDir
+      outputDir: outputDir,
     });
-    
+
     console.log('📦 Files downloaded');
     console.log(`📦 CRX: ${crxPath}`);
     console.log(`🗜️ ZIP: ${zipPath}`);
-    
+
     // Extract the ZIP file
     await extractZip(zipPath, outputDir);
-    
+
     // Clean up the CRX and ZIP files
     console.log('🧹 Cleaning up download files...');
     if (fs.existsSync(crxPath)) {
@@ -70,10 +69,9 @@ async function downloadExtension() {
       fs.unlinkSync(zipPath);
       console.log('✅ ZIP file removed');
     }
-    
+
     console.log(`✅ Extension downloaded and extracted successfully!`);
     console.log(`📁 Extension extracted to: ${outputDir} | 📝 Name: ${extensionName} | 🆔 ID: ${extensionId}`);
-    
   } catch (error) {
     console.error('❌ Error downloading extension:', error.message);
     console.error(`💡 Tip: Check if the extension ID '${extensionId}' is correct and publicly available`);
