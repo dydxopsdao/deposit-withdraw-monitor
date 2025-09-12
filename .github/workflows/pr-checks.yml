@@ -33,12 +33,19 @@ jobs:
         run: |
           ! git grep -nE '\bpage\.pause\(|\bdebugger;' -- '**/*.{ts,tsx,js}' || \
           (echo "Remove page.pause()/debugger"; exit 1)
-      - name: Enforce logger (no console.log outside tests & logger utils)
-        run: |
-          ! git grep -nE '\bconsole\.log\b' -- \
-            ':!**/*.spec.*' ':!**/*test.*' \
-            ':!src/utils/logger/**' \
-          || (echo "Use the logger instead of console.log (tests & src/utils/logger are allowed)"; exit 1)
+      - name: Enforce logger (no console.log outside tests & allowed paths)
+          shell: bash
+          run: |
+            ! git grep -nE '\bconsole\.log\b' -- \
+              ':(glob)**/*.{ts,tsx,js,jsx}' \
+              ':!**/*.spec.*' ':!**/*test.*' \
+              ':!src/utils/logger/**' \
+              ':!global-setup.ts' \
+              ':!playwright.config.ts' \
+              ':!src/scripts/**' \
+              ':!terraform/**/*.tftpl' \
+            || (echo "Use the logger instead of console.log (tests, logger utils, scripts, setup/config, and terraform templates are allowed)"; exit 1)
+
 
   eslint:
     name: ESLint
