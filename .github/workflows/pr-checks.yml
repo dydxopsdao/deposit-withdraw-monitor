@@ -16,46 +16,28 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      # Use local devDep if you add it; otherwise npx will fetch @latest
       - name: Prettier check
         run: npx prettier --check .
 
-  guardrails:
-    name: Guardrails (no .only / pauses / console.log)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Block focused tests
-        run: |
-          ! git grep -nE '\b(it|describe|test)\.only\b|\b(fit|fdescribe)\b' -- '**/*.{ts,tsx,js}' || \
-          (echo "Remove focused tests (.only/fit)"; exit 1)
-      - name: Block Playwright pauses & debugger
-        run: |
-          ! git grep -nE '\bpage\.pause\(|\bdebugger;' -- '**/*.{ts,tsx,js}' || \
-          (echo "Remove page.pause()/debugger"; exit 1)
-      - name: Enforce logger (no console.log outside tests & allowed paths)
-          shell: bash
-          run: |
-            ! git grep -nE '\bconsole\.log\b' -- \
-              ':(glob)**/*.{ts,tsx,js,jsx}' \
-              ':!**/*.spec.*' ':!**/*test.*' \
-              ':!src/utils/logger/**' \
-              ':!global-setup.ts' \
-              ':!playwright.config.ts' \
-              ':!src/scripts/**' \
-              ':!terraform/**/*.tftpl' \
-            || (echo "Use the logger instead of console.log (tests, logger utils, scripts, setup/config, and terraform templates are allowed)"; exit 1)
-
-
   eslint:
-    name: ESLint
+    name: ESLint (enforces guardrails)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 20, cache: npm }
+        with:
+          node-version: 20
+          cache: npm
       - run: npm ci
+      # Fails the job on any lint error (incl. focused tests, page.pause, debugger, disallowed console)
       - run: npm run lint
+      # Optional: inline PR comments (runs only on PRs)
+      - uses: reviewdog/action-eslint@v1
+        if: ${{ github.event_name == 'pull_request' }}
+        with:
+          eslint_flags: . --ext .ts,.tsx,.js
+          reporter: github-pr-review
+          fail_on_error: true
 
   typecheck:
     name: TypeScript typecheck
@@ -63,7 +45,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 20, cache: npm }
+        with:
+          node-version: 20
+          cache: npm
       - run: npm ci
       - run: npx tsc -p tsconfig.json --noEmit
 
