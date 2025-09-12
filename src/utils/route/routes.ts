@@ -1,14 +1,10 @@
 // src/utils/routes.ts
 //
-// Sync loader for routes.yaml so tests can be generated at import time.
-// - Reads ./routes.yaml from project root (process.cwd())
-// - Merges top-level `defaults` into each route (route values override defaults)
-// - Normalises a few fields (wallet_type → lower-case; amount → string)
-// - Expands environment variables in the format ${VAR_NAME}
-// - Expands environment variables in the format ${VAR_NAME}
-//
-// Install dependency: npm i js-yaml @types/js-yaml
-// Install dependency: npm i js-yaml @types/js-yaml
+// Sync loader for routes.yaml so tests can be generated at import time. Reads
+// ./routes.yaml from the project root, merges top-level `defaults` into each
+// route, normalises selected fields (wallet_type → lower-case, amount → string),
+// and expands environment variables in the format ${VAR_NAME}. Install
+// dependency: npm i js-yaml @types/js-yaml
 //
 // Usage:
 //   import { getRoutesSync } from "../utils/routes";
