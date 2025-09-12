@@ -7,16 +7,28 @@ import {
   RouteRequest,
   route,
   Route,
+  messagesDirect,
+  Tx,
+  CosmosTx,
 } from '@skip-go/client';
 
+import { NobleClient, LocalWallet } from '@dydxprotocol/v4-client-js';
 //import { MsgWithdrawFromSubaccount } from '@dydxprotocol/v4-client-js';
 import { MsgWithdrawFromSubaccount } from '@dydxprotocol/v4-proto/src/codegen/dydxprotocol/sending/transfer.js';
 
 import { deriveCosmosAddress, deriveEvmAddress, deriveSvmAddress } from '../signers';
 
-import { assertInteropSecrets, CHAIN_CONFIGS, CHAIN_IDS, SKIP_API_URL, TYPE_URL_MSG_WITHDRAW_FROM_SUBACCOUNT } from './constants';
+import {
+  assertInteropSecrets,
+  CHAIN_CONFIGS,
+  CHAIN_IDS,
+  DEFAULT_TRANSACTION_MEMO,
+  SKIP_API_URL,
+  NOBLE_GAS_MULTIPLIER,
+  TYPE_URL_MSG_WITHDRAW_FROM_SUBACCOUNT,
+} from './constants';
 
-export { configureSkipClient, executeRoute, getBalances, getUsdcRoutes, generateUserAddresses };
+export { configureSkipClient, executeRoute, getBalances, getUsdcRoutes, generateUserAddresses, sweepNobleBalance };
 
 /**
  * Configures the Skip client so that it knows hot to withdraw from dYdX.
@@ -106,7 +118,7 @@ async function getBalances(walletAddress: string, chainIds: string[]): Promise<B
 async function getUsdcRoutes(
   sourceChainId: string,
   destChainId: string,
-  amount: string
+  amount: bigint | string
 ): Promise<{ slow: Route; fast: Route }> {
   const routeOptions: RouteRequest = {
     allowMultiTx: true,
@@ -115,7 +127,7 @@ async function getUsdcRoutes(
     sourceAssetChainId: sourceChainId,
     destAssetDenom: CHAIN_CONFIGS[destChainId].usdcDenom,
     destAssetChainId: destChainId,
-    amountIn: amount,
+    amountIn: amount.toString(),
     smartRelay: true,
     smartSwapOptions: { evmSwaps: true, splitRoutes: true },
     allowUnsafe: false,
@@ -133,11 +145,7 @@ async function getUsdcRoutes(
  * @param dYdXSeed - The dYdX seed to generate the user addresses for the Cosmos chains
  * @returns The user addresses
  */
-async function generateUserAddresses(
-  chainIds: string[],
-  walletSeed: string,
-  dYdXSeed: string
-): Promise<UserAddress[]> {
+async function generateUserAddresses(chainIds: string[], walletSeed: string, dYdXSeed: string): Promise<UserAddress[]> {
   const userAddresses: UserAddress[] = [];
 
   for (const chainId of chainIds) {
@@ -175,4 +183,93 @@ async function generateUserAddresses(
   }
 
   return userAddresses;
+}
+
+async function sweepNobleBalance(dYdXSeed: string, amount: bigint | string) {
+  const dYdXChainId = CHAIN_IDS['dydx'];
+  const dYdXChainConfig = CHAIN_CONFIGS[dYdXChainId];
+  const nobleChainId = CHAIN_IDS['noble'];
+  const nobleChainConfig = CHAIN_CONFIGS[nobleChainId];
+
+  const dYdXAddress = await deriveCosmosAddress(dYdXChainConfig.bech32Prefix, dYdXSeed);
+  const nobleWallet = await LocalWallet.fromMnemonic(dYdXSeed, nobleChainConfig.bech32Prefix);
+  const nobleAddress = nobleWallet.address ?? (await deriveCosmosAddress(nobleChainConfig.bech32Prefix, dYdXSeed));
+
+  // Get the Skip route for the noble -> dYdX transfer
+  const msgDirectResponse = await messagesDirect({
+    sourceAssetDenom: nobleChainConfig.usdcDenom,
+    sourceAssetChainId: nobleChainId,
+    destAssetDenom: dYdXChainConfig.usdcDenom,
+    destAssetChainId: dYdXChainId,
+    chainIdsToAddresses: {
+      [dYdXChainId]: dYdXAddress,
+      [nobleChainId]: nobleAddress,
+    },
+    amountIn: amount.toString(),
+    slippageTolerancePercent: '1',
+  });
+
+  // Get the Cosmos message from the Skip route
+  const msgDirectTx = msgDirectResponse?.txs?.at(0);
+  const cosmosTx = msgDirectTx && isCosmosTx(msgDirectTx) ? msgDirectTx.cosmosTx : null;
+  const msg = cosmosTx?.msgs?.at(0);
+
+  if (msg == null || msg.msgTypeUrl == null) {
+    throw new Error(`No msg found in msgDirectResponse: ${JSON.stringify(msgDirectTx)}`);
+  }
+
+  // Parse the Cosmos message
+  type NobleIbcMsg = {
+    source_port: string;
+    source_channel: string;
+    token: {
+      denom: string;
+      amount: string;
+    };
+    sender: string;
+    receiver: string;
+    timeout_height: any; // This is usually an empty object but Skip may return something here.
+    timeout_timestamp: number;
+  };
+  const parsedMsg = JSON.parse(msg.msg ?? '') as NobleIbcMsg;
+
+  // Create the IBC message from the parsed cosmos message
+  const ibcMsg = {
+    typeUrl: msg.msgTypeUrl, // '/ibc.applications.transfer.v1.MsgTransfer'
+    value: {
+      ...parsedMsg,
+      sourceChannel: parsedMsg.source_channel,
+      sourcePort: parsedMsg.source_port,
+      timeoutHeight: parsedMsg.timeout_height,
+      timeoutTimestamp: parsedMsg.timeout_timestamp,
+    },
+  };
+
+  // Simulate the transaction to get the fee and adjust the amount for the fee
+  const nobleClient = new NobleClient(nobleChainConfig.getRpcEndpoint());
+  await nobleClient.connect(nobleWallet);
+
+  const fee = await nobleClient.simulateTransaction([ibcMsg]);
+
+  const feeAdjustedAmount =
+    parseInt(ibcMsg.value.token.amount, 10) - Math.floor(parseInt(fee.amount[0]!.amount, 10) * NOBLE_GAS_MULTIPLIER);
+
+  ibcMsg.value.token.amount = feeAdjustedAmount.toString();
+
+  if (feeAdjustedAmount <= 0) {
+    throw new Error(
+      `fee to ibc send is greater than amount to be transferred. amount: ${
+        parsedMsg.token.amount
+      } fee: ${JSON.stringify(fee)}, feeAdjustedAmount: ${feeAdjustedAmount}`
+    );
+  }
+
+  // Send the transaction
+  await nobleClient.send([ibcMsg], undefined, `${DEFAULT_TRANSACTION_MEMO} | ${nobleAddress}`);
+}
+
+// --------- HELPER FUNCTIONS ---------
+
+function isCosmosTx(tx: Tx): tx is { cosmosTx: CosmosTx; operationsIndices: number[] } {
+  return 'cosmosTx' in tx;
 }

@@ -1,9 +1,15 @@
 import { logger } from '../logger/logging-utils';
-import { getCosmosSigner, getEvmSigner, getSvmSigner } from '../signers';
+import { deriveCosmosAddress, getCosmosSigner, getEvmSigner, getSvmSigner } from '../signers';
 
-import { CHAIN_CONFIGS, CHAIN_IDS } from './constants';
-import { getUsdcBalance } from './balances';
-import { executeRoute, getUsdcRoutes, generateUserAddresses } from './skip';
+import {
+  CHAIN_CONFIGS,
+  CHAIN_IDS,
+  DYDX_USDC_GAS_BUFFER,
+  NOBLE_USDC_MIN_AUTOSWEEP_AMOUNT,
+  NOBLE_USDC_GAS_BUFFER,
+} from './constants';
+import { getUsdcBalance, newUsdcAmount, depositToSubaccount } from './balances';
+import { executeRoute, getUsdcRoutes, generateUserAddresses, sweepNobleBalance } from './skip';
 
 export { depositMaxUsdc };
 
@@ -38,11 +44,13 @@ async function depositMaxUsdc(
   logger.debug(`wallet balance: ${walletBalance.formattedAmount} USDC`);
 
   if (walletBalance.amount === 0n) {
-    logger.info(`No USDC balance found for ${walletAddress} on ${srcChain} - aborting deposit`);
+    logger.info(`No USDC balance found for ${walletAddress} on ${srcChain} - skipping deposit`);
+    await sweepNobleBalanceIfNeeded(dYdXSeed);
+    await depositToSubaccountIfNeeded(dYdXSeed);
     return;
   }
 
-  const { slow, fast } = await getUsdcRoutes(srcChainId, dYdXChainId, walletBalance.amountStr);
+  const { slow, fast } = await getUsdcRoutes(srcChainId, dYdXChainId, walletBalance.amount);
   const skipRoute = fast ?? slow;
   logger.info(
     `Found skip route: ${skipRoute.requiredChainAddresses.map(c => `${CHAIN_CONFIGS[c].yamlKey}`).join(' -> ')}`
@@ -56,7 +64,11 @@ async function depositMaxUsdc(
       return await getCosmosSigner(CHAIN_CONFIGS[chainId].bech32Prefix, dYdXSeed);
     },
     getEvmSigner: async (chainId: string) => {
-      return await getEvmSigner(CHAIN_CONFIGS[chainId].getRpcEndpoint(), CHAIN_CONFIGS[chainId].derivationPath, walletSeed);
+      return await getEvmSigner(
+        CHAIN_CONFIGS[chainId].getRpcEndpoint(),
+        CHAIN_CONFIGS[chainId].derivationPath,
+        walletSeed
+      );
     },
     getSvmSigner: async () => {
       return await getSvmSigner(CHAIN_CONFIGS.solana.derivationPath, walletSeed);
@@ -65,5 +77,62 @@ async function depositMaxUsdc(
     userAddresses,
   });
 
-  // TODO sweep Noble balance
+  await sweepNobleBalanceIfNeeded(dYdXSeed);
+  await depositToSubaccountIfNeeded(dYdXSeed);
+}
+
+// --------- HELPER FUNCTIONS ---------
+
+/**
+ * Sweeps the Noble balance if it's greater than the minimum amount
+ * @param dYdXSeed - The seed of the account on dYdX
+ */
+async function sweepNobleBalanceIfNeeded(dYdXSeed: string) {
+  const nobleChainId = CHAIN_IDS['noble'];
+  const nobleChainConfig = CHAIN_CONFIGS[nobleChainId];
+  const nobleAddress = await deriveCosmosAddress(nobleChainConfig.bech32Prefix, dYdXSeed);
+  const nobleBalance = await getUsdcBalance(nobleChainId, nobleAddress);
+
+  const minAmount = NOBLE_USDC_MIN_AUTOSWEEP_AMOUNT + NOBLE_USDC_GAS_BUFFER;
+
+  if (nobleBalance.amount < newUsdcAmount(minAmount).amount) {
+    logger.info(
+      `USDC balance ${nobleBalance.formattedAmount} for ${nobleAddress} is less than ${minAmount} - skipping sweep from Noble`
+    );
+    return;
+  }
+
+  const amountToSweep = nobleBalance.amount - newUsdcAmount(NOBLE_USDC_MIN_AUTOSWEEP_AMOUNT).amount;
+  logger.info(
+    `USDC balance ${nobleBalance.formattedAmount} for ${nobleAddress} is greater than ${minAmount} - sweeping ${amountToSweep} from Noble`
+  );
+  await sweepNobleBalance(dYdXSeed, amountToSweep);
+}
+
+/**
+ * Deposits the USDC balance to the subaccount if it's greater than the minimum amount
+ * @param dYdXSeed - The seed of the account on dYdX
+ */
+async function depositToSubaccountIfNeeded(dYdXSeed: string) {
+  const dYdXChainId = CHAIN_IDS['dydx'];
+  const dYdXChainConfig = CHAIN_CONFIGS[dYdXChainId];
+
+  const address = await deriveCosmosAddress(dYdXChainConfig.bech32Prefix, dYdXSeed);
+  const balance = await getUsdcBalance(dYdXChainId, address);
+
+  const minGasBuffer = newUsdcAmount(DYDX_USDC_GAS_BUFFER).amount;
+
+  if (balance.amount < minGasBuffer) {
+    logger.info(
+      `USDC balance ${balance.formattedAmount} for ${address} is less than ${DYDX_USDC_GAS_BUFFER} - skipping deposit to subaccount`
+    );
+    return;
+  }
+
+  logger.info(
+    `USDC balance ${balance.formattedAmount} for ${address} is greater than ${DYDX_USDC_GAS_BUFFER} - depositing to subaccount`
+  );
+
+  const depositAmount = balance.amount - minGasBuffer;
+  await depositToSubaccount(dYdXSeed, depositAmount);
 }

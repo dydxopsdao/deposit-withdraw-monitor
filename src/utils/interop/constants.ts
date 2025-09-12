@@ -89,8 +89,21 @@ export const SKIP_API_URL = 'https://api.skip.money';
 export const INDEXER_API_URL = 'https://indexer.dydx.trade';
 
 // USDC has a assetId of 0 on the dYdX Chain
-export const USDC_ASSET_ID = 0;
-// USDC has 6 decimals
-export const USDC_DECIMALS = 6;
-// Type URL for the MsgWithdrawFromSubaccount message
+export const DYDX_USDC_ASSET_ID = 0;
+// USDC has 6 decimals on dYdX
+export const DYDX_USDC_DECIMALS = 6;
+// dYdX native token has 18 decimals
+export const DYDX_NATIVE_DECIMALS = 18;
+// Leave at least this much in the dYdX account to cover gas fees
+export const DYDX_USDC_GAS_BUFFER = 1.25;
+
+//TODO these we should get from the v4-client-js package, once it's fixed
 export const TYPE_URL_MSG_WITHDRAW_FROM_SUBACCOUNT = '/dydxprotocol.sending.MsgWithdrawFromSubaccount';
+export const DEFAULT_TRANSACTION_MEMO = 'Deposit-Withdraw Monitor: Interop Module';
+
+// Trigger autosweep if the noble balance is greater than this amount
+export const NOBLE_USDC_MIN_AUTOSWEEP_AMOUNT = 0.5;
+// Leave at least this much in the noble account to cover gas fees
+export const NOBLE_USDC_GAS_BUFFER = 0.1;
+// Gas multiplier for the noble client
+export const NOBLE_GAS_MULTIPLIER = 1.6;
