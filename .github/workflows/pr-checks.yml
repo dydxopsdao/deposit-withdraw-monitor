@@ -20,43 +20,43 @@ jobs:
       - name: Prettier check
         run: npx prettier --check .
 
-guardrails:
-  name: Guardrails (no .only / pauses / console.log)
-  runs-on: ubuntu-latest
-  steps:
-    - uses: actions/checkout@v4
-    - name: Block focused tests
-      run: |
-        ! git grep -nE '\b(it|describe|test)\.only\b|\b(fit|fdescribe)\b' -- '**/*.{ts,tsx,js}' || \
-        (echo "Remove focused tests (.only/fit)"; exit 1)
-    - name: Block Playwright pauses & debugger
-      run: |
-        ! git grep -nE '\bpage\.pause\(|\bdebugger;' -- '**/*.{ts,tsx,js}' || \
-        (echo "Remove page.pause()/debugger"; exit 1)
-    - name: Enforce logger (no console.log outside tests)
-      run: |
-        ! git grep -nE '\bconsole\.log\b' -- ':!**/*.spec.*' ':!**/*test.*' || \
-        (echo "Use logger instead of console.log"; exit 1)
+  guardrails:
+    name: Guardrails (no .only / pauses / console.log)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Block focused tests
+        run: |
+          ! git grep -nE '\b(it|describe|test)\.only\b|\b(fit|fdescribe)\b' -- '**/*.{ts,tsx,js}' || \
+          (echo "Remove focused tests (.only/fit)"; exit 1)
+      - name: Block Playwright pauses & debugger
+        run: |
+          ! git grep -nE '\bpage\.pause\(|\bdebugger;' -- '**/*.{ts,tsx,js}' || \
+          (echo "Remove page.pause()/debugger"; exit 1)
+      - name: Enforce logger (no console.log outside tests)
+        run: |
+          ! git grep -nE '\bconsole\.log\b' -- ':!**/*.spec.*' ':!**/*test.*' || \
+          (echo "Use logger instead of console.log"; exit 1)
 
-eslint:
-  name: ESLint
-  runs-on: ubuntu-latest
-  steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-node@v4
-      with: { node-version: 20, cache: npm }
-    - run: npm ci
-    - run: npm run lint -- --max-warnings 0
+  eslint:
+    name: ESLint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm }
+      - run: npm ci
+      - run: npm run lint -- --max-warnings 0
 
-typecheck:
-  name: TypeScript typecheck
-  runs-on: ubuntu-latest
-  steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-node@v4
-      with: { node-version: 20, cache: npm }
-    - run: npm ci
-    - run: npx tsc -p tsconfig.json --noEmit
+  typecheck:
+    name: TypeScript typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm }
+      - run: npm ci
+      - run: npx tsc -p tsconfig.json --noEmit
 
   terraform:
     name: Terraform fmt and validate
