@@ -43,3 +43,4 @@ test-results
 playwright-report
 **/*.zip
 terraform/.terraform
+github/

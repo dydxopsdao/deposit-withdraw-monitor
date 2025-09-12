@@ -2,14 +2,15 @@ import { fetchExtensionZip } from 'chrome-extension-fetch';
 import path from 'path';
 import fs from 'fs';
 import { Extract } from 'unzipper';
+import { logger } from '../utils/logger/logging-utils';
 
 // Get extension name and ID from command line arguments
 const extensionName = process.argv[2];
 const extensionId = process.argv[3];
 
 if (!extensionId || !extensionName) {
-  console.error('❌ Please provide both extension name and ID as arguments');
-  console.error('Usage: node download-extension.js <extension-name> <extension-id>');
+  logger.error('❌ Please provide both extension name and ID as arguments');
+  logger.error('Usage: node download-extension.js <extension-name> <extension-id>');
   process.exit(1);
 }
 
@@ -20,7 +21,7 @@ const webstoreUrl = `https://chrome.google.com/webstore/detail/${extensionName}/
 const outputDir = path.join(process.cwd(), 'extensions', extensionName);
 
 async function extractZip(zipPath, extractDir) {
-  console.log('📦 Extracting ZIP file...');
+  logger.info('📦 Extracting ZIP file...');
 
   // Create extraction directory
   fs.mkdirSync(extractDir, { recursive: true });
@@ -30,11 +31,11 @@ async function extractZip(zipPath, extractDir) {
     fs.createReadStream(zipPath)
       .pipe(Extract({ path: extractDir }))
       .on('close', () => {
-        console.log('✅ ZIP extraction completed');
+        logger.info('✅ ZIP extraction completed');
         resolve();
       })
       .on('error', (err) => {
-        console.error('❌ ZIP extraction failed:', err.message);
+        logger.error('❌ ZIP extraction failed:', err.message);
         reject(err);
       });
   });
@@ -42,9 +43,9 @@ async function extractZip(zipPath, extractDir) {
 
 async function downloadExtension() {
   try {
-    console.log(`🔄 Downloading extension: ${extensionName} (ID: ${extensionId})`);
-    console.log(`📁 Output directory: ${outputDir}`);
-    console.log(`🔗 Web Store URL: ${webstoreUrl}`);
+    logger.info(`🔄 Downloading extension: ${extensionName} (ID: ${extensionId})`);
+    logger.info(`📁 Output directory: ${outputDir}`);
+    logger.info(`🔗 Web Store URL: ${webstoreUrl}`);
 
     const { crxPath, zipPath } = await fetchExtensionZip(webstoreUrl, {
       // one could provide a custom chrome version here
@@ -52,29 +53,29 @@ async function downloadExtension() {
       outputDir: outputDir,
     });
 
-    console.log('📦 Files downloaded');
-    console.log(`📦 CRX: ${crxPath}`);
-    console.log(`🗜️ ZIP: ${zipPath}`);
+    logger.info('📦 Files downloaded');
+    logger.info(`📦 CRX: ${crxPath}`);
+    logger.info(`🗜️ ZIP: ${zipPath}`);
 
     // Extract the ZIP file
     await extractZip(zipPath, outputDir);
 
     // Clean up the CRX and ZIP files
-    console.log('🧹 Cleaning up download files...');
+    logger.info('🧹 Cleaning up download files...');
     if (fs.existsSync(crxPath)) {
       fs.unlinkSync(crxPath);
-      console.log('✅ CRX file removed');
+      logger.info('✅ CRX file removed');
     }
     if (fs.existsSync(zipPath)) {
       fs.unlinkSync(zipPath);
-      console.log('✅ ZIP file removed');
+      logger.info('✅ ZIP file removed');
     }
 
-    console.log(`✅ Extension downloaded and extracted successfully!`);
-    console.log(`📁 Extension extracted to: ${outputDir} | 📝 Name: ${extensionName} | 🆔 ID: ${extensionId}`);
+    logger.info(`✅ Extension downloaded and extracted successfully!`);
+    logger.info(`📁 Extension extracted to: ${outputDir} | 📝 Name: ${extensionName} | 🆔 ID: ${extensionId}`);
   } catch (error) {
-    console.error('❌ Error downloading extension:', error.message);
-    console.error(`💡 Tip: Check if the extension ID '${extensionId}' is correct and publicly available`);
+    logger.error('❌ Error downloading extension:', error.message);
+    logger.error(`💡 Tip: Check if the extension ID '${extensionId}' is correct and publicly available`);
     process.exit(1);
   }
 }
