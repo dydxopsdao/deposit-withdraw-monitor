@@ -65,7 +65,7 @@ resource "aws_ecs_task_definition" "this" {
         {
           name  = "DD_SOURCE"
           value = var.datadog_source
-        },        
+        },
         {
           name  = "SEED_PHRASES_SECRET_ARN"
           value = aws_secretsmanager_secret.secrets["seed_phrases"].arn

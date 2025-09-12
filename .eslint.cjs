@@ -3,12 +3,7 @@ module.exports = {
   env: { es2022: true, node: true },
   parser: '@typescript-eslint/parser',
   plugins: ['@typescript-eslint', 'playwright'],
-  extends: [
-    'eslint:recommended',
-    'plugin:@typescript-eslint/recommended',
-    'plugin:playwright/recommended',
-    'prettier',
-  ],
+  extends: ['eslint:recommended', 'plugin:@typescript-eslint/recommended', 'plugin:playwright/recommended', 'prettier'],
   rules: {
     // ban focused tests
     'playwright/no-focused-tests': 'error',
@@ -26,8 +21,10 @@ module.exports = {
     // allow console in tests
     { files: ['**/*.spec.{ts,tsx,js}', '**/*test.{ts,tsx,js}'], rules: { 'no-console': 'off' } },
     // allow console in these repo-specific files
-    { files: ['global-setup.ts', 'playwright.config.ts', 'src/scripts/**/*.{ts,js}', 'src/utils/logger/**/*.{ts,js}'],
-      rules: { 'no-console': 'off' } },
+    {
+      files: ['global-setup.ts', 'playwright.config.ts', 'src/scripts/**/*.{ts,js}', 'src/utils/logger/**/*.{ts,js}'],
+      rules: { 'no-console': 'off' },
+    },
   ],
   ignorePatterns: ['node_modules/', 'dist/', 'build/', 'coverage/', 'playwright-report/', 'traces/', 'out/'],
 };

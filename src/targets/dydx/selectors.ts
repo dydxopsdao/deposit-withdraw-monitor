@@ -61,20 +61,20 @@ export const dydxSelectors = {
       .filter({ hasText: chain }); // substring match (no regex)
   }) as Selector,
 
-  transferInProgress: (p) => dydxSelectors.fundsDialog(p).getByText(/ in progress/i),
-  depositDoneTitle: (p) =>
+  transferInProgress: (p: Page) => dydxSelectors.fundsDialog(p).getByText(/ in progress/i),
+  depositDoneTitle: (p: Page) =>
     dydxSelectors
       .fundsDialog(p)
       .getByText(/^deposit completed$/i)
       .first(),
-  depositDoneCta: (p) => dydxSelectors.fundsDialog(p).getByRole('button', { name: /start trading/i }),
+  depositDoneCta: (p: Page) => dydxSelectors.fundsDialog(p).getByRole('button', { name: /start trading/i }),
 
-  withdrawDoneLine: (p) =>
+  withdrawDoneLine: (p: Page) =>
     dydxSelectors
       .fundsDialog(p)
       .getByText(/your withdrawal.*is now available\./i)
       .first(),
-  transferTxLinks: (p) =>
+  transferTxLinks: (p: Page) =>
     dydxSelectors.fundsDialog(p).locator('a[href*="/txs/"], a[href*="/tx/"], a[href*="/transaction/"]'),
 
   /* withdraw */

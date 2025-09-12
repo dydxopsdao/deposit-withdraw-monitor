@@ -29,9 +29,7 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      # Fails the job on any lint error (incl. focused tests, page.pause, debugger, disallowed console)
       - run: npm run lint
-      # Optional: inline PR comments (runs only on PRs)
       - uses: reviewdog/action-eslint@v1
         if: ${{ github.event_name == 'pull_request' }}
         with:
@@ -49,7 +47,9 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - run: npx tsc -p tsconfig.json --noEmit
+      - name: tsc --noEmit
+        if: ${{ hashFiles('tsconfig.json') != '' }}
+        run: npx tsc -p tsconfig.json --noEmit
 
   terraform:
     name: Terraform fmt and validate
