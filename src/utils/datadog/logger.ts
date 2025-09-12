@@ -17,7 +17,7 @@ const DD_DRY_RUN = process.env.DD_DRY_RUN === "1";
 const DD_VERBOSE = process.env.DD_VERBOSE === "1";
 
 // Report configuration
-const REPORTS_CLOUDFRONT_URL = process.env.REPORTS_CLOUDFRONT_URL || "https://d15e662yct7lwz.cloudfront.net";
+const REPORTS_CLOUDFRONT_URL = process.env.REPORTS_CLOUDFRONT_URL;
 const UPLOAD_TIMESTAMP = process.env.UPLOAD_TIMESTAMP; // Set by entrypoint.sh
 const LOGS_URL = `https://http-intake.logs.${DD_SITE}/api/v2/logs`;
 

@@ -13,11 +13,8 @@ export UPLOAD_TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
 echo "Upload timestamp set to: $UPLOAD_TIMESTAMP"
 
 # Execute the command passed to the script
-#echo "Running Playwright tests..."
-#"$@"
-
-echo "Running Playwright tests with UPLOAD_TIMESTAMP=$UPLOAD_TIMESTAMP..."
-env UPLOAD_TIMESTAMP="$UPLOAD_TIMESTAMP" "$@"
+echo "Running Playwright tests..."
+"$@"
 
 # Capture the exit code of the tests
 TEST_EXIT_CODE=$?
