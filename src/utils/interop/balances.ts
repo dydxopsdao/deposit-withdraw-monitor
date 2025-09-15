@@ -192,6 +192,7 @@ async function waitForTxToBeIncludedInBlock(
     logger.debug(`Tx ${txHash} not found in block, waiting for ${pollMs}ms`);
     await new Promise(resolve => setTimeout(resolve, pollMs));
   }
+
   throw new Error(`Tx ${txHash} not found in block after ${maxPolls * pollMs}ms`);
 }
 
@@ -210,7 +211,7 @@ async function waitForIndexerToCatchUp(targetBlock: Long, pollMs = 500, maxPolls
       logger.debug(
         `Indexer is at ${indexerHeightNumber}, target block is ${targetBlock}, catching up complete`
       );
-      break;
+      return;
     }
 
     logger.debug(
@@ -218,5 +219,6 @@ async function waitForIndexerToCatchUp(targetBlock: Long, pollMs = 500, maxPolls
     );
     await new Promise(resolve => setTimeout(resolve, pollMs));
   }
+
   throw new Error(`Indexer has not caught up after ${maxPolls * pollMs}ms`);
 }
