@@ -99,7 +99,7 @@ async function getSecretFromAWS(secretArn: string): Promise<string> {
 
     return response.SecretString;
   } catch (error) {
-    logger.error(`❌ Failed to load secret from AWS Secrets Manager:`, error);
+    logger.error(`❌ Failed to load secret from AWS Secrets Manager:`, error as Error);
     throw error;
   }
 }
