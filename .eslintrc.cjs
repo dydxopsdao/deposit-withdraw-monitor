@@ -15,11 +15,7 @@ module.exports = {
   overrides: [
     // Tests (only under src/)
     {
-      files: [
-        'src/tests/**/*.{ts,tsx,js}',
-        'src/**/*.spec.{ts,tsx,js}',
-        'src/**/*test.{ts,tsx,js}',
-      ],
+      files: ['src/tests/**/*.{ts,tsx,js}', 'src/**/*.spec.{ts,tsx,js}', 'src/**/*test.{ts,tsx,js}'],
       extends: ['plugin:playwright/recommended'],
       rules: {
         'no-restricted-properties': ['error', { object: 'page', property: 'pause', message: 'Remove page.pause()' }],

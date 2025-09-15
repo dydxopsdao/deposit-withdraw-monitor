@@ -124,7 +124,7 @@ for (const route of withdrawRoutes) {
             ========================= */
           logger.success('Withdraw flow complete', { route_id: route.id, explorerUrlsAll, txHashesAll });
           await dd.routeResult({ passed: true, txHash, explorerUrlsAll, txHashesAll });
-        } catch (e: unknown) {  
+        } catch (e: unknown) {
           /* =========================
             TEST FAILED
             ========================= */

@@ -8,9 +8,7 @@ import { logger } from '../../../utils/logger/logging-utils';
 import { phantomSelectors as s } from './selectors';
 import { TEST_TIMEOUTS } from '../../../config/timeouts';
 
-export async function launchContextWithExtension(
-  userDataDir: string,
-): Promise<BrowserContext> {
+export async function launchContextWithExtension(userDataDir: string): Promise<BrowserContext> {
   assertPhantomSecrets();
 
   const context = await chromium.launchPersistentContext(userDataDir, {
@@ -109,7 +107,8 @@ export async function unlockPhantomWallet(context: BrowserContext, maxRetries = 
       logger.debug(`Unlock attempt ${attempt}/${maxRetries} failed: ${(err as Error)?.message ?? err}`);
       try {
         await page?.close();
-      } catch { // Swallow the error
+      } catch {
+        // Swallow the error
       }
       if (attempt < maxRetries) {
         logger.debug(`Retrying in ${retryDelay}ms…`);
@@ -154,7 +153,8 @@ export async function handlePhantomPopup(context: BrowserContext) {
     logger.warning(`Phantom popup handling had issues: ${(e as Error)?.message ?? e}`);
     try {
       await ph.close();
-    } catch { // Swallow the error
+    } catch {
+      // Swallow the error
     }
   }
 }

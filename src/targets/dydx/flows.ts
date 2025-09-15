@@ -225,7 +225,8 @@ export async function connectWallet(page: Page, context: BrowserContext, wallet:
   // 7.1 ) Second Confirm if needed
   try {
     await handleWalletPopup(context, wallet);
-  } catch { // Swallow the error
+  } catch {
+    // Swallow the error
   }
 
   // 8) Assert the dApp now shows a connected state
@@ -457,7 +458,8 @@ export async function withdraw(
   try {
     await expect(dydxSelectors.fundsDialog(page)).toBeVisible({ timeout: TEST_TIMEOUTS.DEFAULT });
     await dydxSelectors.closeDialogButton(page).click();
-  } catch { // Swallow the error
+  } catch {
+    // Swallow the error
   }
   // Open the withdraw dialog
   await dydxSelectors.withdrawButton(page).click();

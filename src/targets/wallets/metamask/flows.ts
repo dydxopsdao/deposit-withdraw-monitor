@@ -157,7 +157,8 @@ export async function conditionallyUnlockMetamask(context: BrowserContext) {
         timeout: TEST_TIMEOUTS.POPUP_TIMEOUT,
       });
       logger.info(`MetaMask page appeared: ${unlockPage.url()}`);
-    } catch { // Swallow the error
+    } catch {
+      // Swallow the error
       logger.warning('MetaMask unlock page did not appear within the timeout. Continuing...');
       return; // Exit if no page is found or appears
     }
@@ -171,7 +172,8 @@ export async function conditionallyUnlockMetamask(context: BrowserContext) {
       await unlockPage.fill(s.unlock.pw, WALLET_PASSWORD, { timeout: TEST_TIMEOUTS.DEFAULT });
       await unlockPage.click(s.unlock.pwSubmit);
       logger.info('MetaMask unlocked successfully');
-    } catch { // Swallow the error
+    } catch {
+      // Swallow the error
       logger.info(`Wallet unlock not required or failed`);
     }
   }
@@ -214,7 +216,8 @@ export async function handleMetamaskPopup(context: BrowserContext) {
     logger.warning(`MetaMask popup handling had issues: ${(e as Error)?.message ?? e}`);
     try {
       await mm.close();
-    } catch { // Swallow the error
+    } catch {
+      // Swallow the error
     }
   }
 }
