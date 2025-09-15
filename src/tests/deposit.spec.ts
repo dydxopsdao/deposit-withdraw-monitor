@@ -8,13 +8,13 @@
 // Logging: ConsoleLogger at milestones + TestRunLogger for comprehensive Datadog logs.
 // Telemetry (Datadog): Single log per test run with v4-web funnel steps:
 //   - NavigateDialog, DepositInitiated, DepositSubmitted, DepositFinalized
-//   - Step timings, test outcome, transaction details, rebalance status
+//   - Step timings, test outcome, transaction details
 // Rebalance: never fails the test.
 
 import { test, expect } from "../fixtures";
 import { logger } from "../utils/logger/logging-utils";
 import { getRoutesSync, type Route, type WalletType } from "../utils/route/routes";
-import { datadog } from "../utils/datadog";
+import { datadog, FunnelSteps } from "../utils/datadog";
 import { openApp, connectWallet, deposit, submitDeposit } from "../targets/dydx/flows";
 import { dydxSelectors } from "../targets/dydx/selectors";
 import { TEST_TIMEOUTS } from "../config/timeouts";
@@ -57,8 +57,6 @@ for (const route of depositRoutes) {
       let txHash: string | undefined;
       let explorerUrl: string | undefined;
       let passed = false;
-      let rebalanceAttempted = false;
-      let rebalanceSuccess = false;
 
       logger.info(`Starting test: (${route.id})`, {
         route_id: route.id,
@@ -75,7 +73,7 @@ for (const route of depositRoutes) {
 
       try {
           // NavigateDialog: Open app and connect wallet to reach deposit dialog
-          testRunLogger.startStep("NavigateDialog");
+          testRunLogger.startStep(FunnelSteps.NavigateDialog);
           await test.step("Open app", async () => {
             await openApp(page, context, {
               waitUntil: "domcontentloaded",
@@ -88,25 +86,25 @@ for (const route of depositRoutes) {
           await test.step(`Connect wallet (${route.wallet_type})`, async () => {
             await connectWallet(page, context, route.wallet_type);
           });
-          testRunLogger.completeStep("NavigateDialog");
+          testRunLogger.completeStep(FunnelSteps.NavigateDialog);
 
           // DepositInitiated: User fills deposit dialog and initiates deposit
-          testRunLogger.startStep("DepositInitiated");
+          testRunLogger.startStep(FunnelSteps.DepositInitiated);
           await test.step("Deposit Dialog Input", async () => {
             await deposit(page, context, route.amount, route.src_chain, route.token, route.wallet_type);
           });
-          testRunLogger.completeStep("DepositInitiated");
+          testRunLogger.completeStep(FunnelSteps.DepositInitiated);
 
           // DepositSubmitted: Transaction submitted to blockchain
-          testRunLogger.startStep("DepositSubmitted");
+          testRunLogger.startStep(FunnelSteps.DepositSubmitted);
           await test.step("Submit deposit", async () => {
             logger.info("Submitting deposit");
             return await submitDeposit(page, context, route.wallet_type);
           });
-          testRunLogger.completeStep("DepositSubmitted");
+          testRunLogger.completeStep(FunnelSteps.DepositSubmitted);
 
           // DepositFinalized: Transaction confirmed on-chain
-          testRunLogger.startStep("DepositFinalized");
+          testRunLogger.startStep(FunnelSteps.DepositFinalized);
           await test.step("Wait for finality", async () => {
             logger.info("Waiting for finality");
             const res = await waitForFinality(page);
@@ -115,12 +113,19 @@ for (const route of depositRoutes) {
             expect(res.ok).toBeTruthy();
             passed = true;
           });
-          testRunLogger.completeStep("DepositFinalized");
+          testRunLogger.completeStep(FunnelSteps.DepositFinalized);
 
           logger.success("Deposit flow complete", { route_id: route.id, txHash, explorerUrl });
+          
+          // Emit comprehensive test run log for successful tests
+          await testRunLogger.logTestResult({
+            status: "passed",
+            txHash,
+            explorerUrl,
+          });
+          
           // TODO: Consider closing the entire context here to avoid cross-test leakage when running multiple routes.
         } catch (e: any) {
-          passed = false;
           logger.error("Deposit failed", e, { route_id: route.id, txHash, explorerUrl });
           
           // Emit comprehensive test run log for failed tests
@@ -129,8 +134,6 @@ for (const route of depositRoutes) {
             error: e,
             txHash,
             explorerUrl,
-            rebalanceAttempted,
-            rebalanceSuccess,
           });
           
           throw e;
@@ -138,27 +141,13 @@ for (const route of depositRoutes) {
         // -------- Always attempt to rebalance — must not fail the test -------
         await test.step("Rebalance (teardown)", async () => {
           try {
-            rebalanceAttempted = true;
             // Assume your rebalance returns optional balances; OK if it returns void
             const result = await rebalanceNow(route, { reason: "post_test_teardown", last_tx: txHash, passed });
-            rebalanceSuccess = true;
           } catch (e: any) {
-            rebalanceSuccess = false;
             logger.warning("Rebalance failed", { route_id: route.id, error: { message: e?.message } });
             // swallow — do not rethrow
           }
         });
-
-        // Emit comprehensive test run log for successful tests
-        if (passed) {
-          await testRunLogger.logTestResult({
-            status: "passed",
-            txHash,
-            explorerUrl,
-            rebalanceAttempted,
-            rebalanceSuccess,
-          });
-        }
       }
     });
   });
