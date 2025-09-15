@@ -13,7 +13,7 @@ type FinalityResult = {
 };
 
 const DEFAULT_FINALITY_TIMEOUT =
-  (TEST_TIMEOUTS as any)?.FINALITY ?? (TEST_TIMEOUTS as any)?.NETWORK ?? (TEST_TIMEOUTS as any)?.TEST ?? 10 * 60_000; // fallback 10m
+  TEST_TIMEOUTS.FINALITY ?? TEST_TIMEOUTS.NAVIGATION ?? TEST_TIMEOUTS.TEST ?? 10 * 60_000; // fallback 10m
 
 export async function waitForFinality(
   page: Page,

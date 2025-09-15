@@ -100,7 +100,6 @@ export async function openApp(
     maxRetries = 3,
     retryDelayMs = 1_000,
     bringToFront = true,
-    waitFor,
     afterNavigate,
   } = opts;
 
@@ -226,7 +225,8 @@ export async function connectWallet(page: Page, context: BrowserContext, wallet:
   // 7.1 ) Second Confirm if needed
   try {
     await handleWalletPopup(context, wallet);
-  } catch (error) {}
+  } catch { // Swallow the error
+  }
 
   // 8) Assert the dApp now shows a connected state
   const acctBtn = dydxSelectors.accountMenuButton(page, wallet).or(dydxSelectors.accountMenuButtonLoose(page));
@@ -258,24 +258,6 @@ async function handleWalletPopup(context: BrowserContext, wallet: WalletType) {
   } else {
     await handlePhantomPopup(context);
     logger.info('Phantom wallet popup handled');
-  }
-}
-
-// Click a locator if it’s visible; log what happened.
-async function clickIfVisible(locator: Locator, label: string, timeout: number): Promise<boolean> {
-  // TODO: Replace manual wait/visibility check with expect to capture screenshots on failure.
-  // TODO: Avoid duplicate first() calls by storing the locator.
-  await locator
-    .first()
-    .waitFor({ state: 'visible', timeout })
-    .catch(() => {});
-  if (await locator.first().isVisible()) {
-    logger.info(`Clicking: ${label}`);
-    await locator.first().click();
-    return true;
-  } else {
-    logger.debug(`"${label}" not visible — skipping`);
-    return false;
   }
 }
 
@@ -322,7 +304,6 @@ async function isPickerOpen(page: Page) {
  * Deposit funds to the dApp.
  */
 const T = TEST_TIMEOUTS.ELEMENT ?? 30_000;
-const re = (txt: string) => new RegExp(`\\b${txt.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
 
 /** High-level flow */
 export async function deposit(
@@ -476,7 +457,8 @@ export async function withdraw(
   try {
     await expect(dydxSelectors.fundsDialog(page)).toBeVisible({ timeout: TEST_TIMEOUTS.DEFAULT });
     await dydxSelectors.closeDialogButton(page).click();
-  } catch (error) {}
+  } catch { // Swallow the error
+  }
   // Open the withdraw dialog
   await dydxSelectors.withdrawButton(page).click();
   //await clickAnyWithdraw(page);
@@ -539,7 +521,7 @@ export async function selectTokenWithdraw(page: Page, token: string, chain: stri
   }
 }
 
-export async function submitWithdraw(page: Page, context: BrowserContext, wallet: WalletType): Promise<void> {
+export async function submitWithdraw(page: Page): Promise<void> {
   const btn = dydxSelectors.withdrawFundsButton(page);
 
   // Make sure the dialog is present and the button is on-screen

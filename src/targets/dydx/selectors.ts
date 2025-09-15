@@ -2,7 +2,7 @@
 import type { Page, Locator } from '@playwright/test';
 import type { WalletType } from '../../utils/route/routes';
 
-type Selector = (p: Page, ...args: any[]) => Locator;
+type Selector = (p: Page, ...args: unknown[]) => Locator;
 
 const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const DYDX_ADDRESS_RE = /dydx1[a-z0-9]+(?:\u2026|\.\.\.)[a-z0-9]+/i;

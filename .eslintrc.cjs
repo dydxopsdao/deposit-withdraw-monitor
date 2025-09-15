@@ -1,30 +1,51 @@
+// .eslintrc.cjs
 module.exports = {
   root: true,
   env: { es2022: true, node: true },
   parser: '@typescript-eslint/parser',
   plugins: ['@typescript-eslint', 'playwright'],
-  extends: ['eslint:recommended', 'plugin:@typescript-eslint/recommended', 'plugin:playwright/recommended', 'prettier'],
+  extends: ['eslint:recommended', 'plugin:@typescript-eslint/recommended', 'prettier'],
+  ignorePatterns: ['node_modules/', 'dist/', 'build/', 'coverage/', 'playwright-report/', 'traces/', 'extensions/'],
+
   rules: {
-    // ban focused tests
-    'playwright/no-focused-tests': 'error',
-    // ban debugger
     'no-debugger': 'error',
-    // ban page.pause()
-    'no-restricted-properties': ['error', { object: 'page', property: 'pause', message: 'Remove page.pause()' }],
-    // prefer logger over console.* (allow warn/error)
     'no-console': ['error', { allow: ['warn', 'error'] }],
-    // useful TS hygiene
-    '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
-    '@typescript-eslint/consistent-type-imports': ['warn', { prefer: 'type-imports' }],
   },
+
   overrides: [
-    // allow console in tests
-    { files: ['**/*.spec.{ts,tsx,js}', '**/*test.{ts,tsx,js}'], rules: { 'no-console': 'off' } },
-    // allow console in these repo-specific files
+    // Tests (only under src/)
     {
-      files: ['global-setup.ts', 'playwright.config.ts', 'src/scripts/**/*.{ts,js}', 'src/utils/logger/**/*.{ts,js}'],
+      files: [
+        'src/tests/**/*.{ts,tsx,js}',
+        'src/**/*.spec.{ts,tsx,js}',
+        'src/**/*test.{ts,tsx,js}',
+      ],
+      extends: ['plugin:playwright/recommended'],
+      rules: {
+        'no-restricted-properties': ['error', { object: 'page', property: 'pause', message: 'Remove page.pause()' }],
+        // relax ergonomics in tests
+        'playwright/no-skipped-test': 'off',
+        'playwright/valid-title': 'off',
+        'playwright/expect-expect': 'off',
+        'playwright/no-conditional-in-test': 'off',
+        '@typescript-eslint/no-explicit-any': 'off',
+        '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      },
+    },
+
+    // Allow console in logger utils (still under src/)
+    {
+      files: ['src/utils/logger/**/*.{ts,tsx,js}'],
       rules: { 'no-console': 'off' },
     },
+
+    // Datadog util: relax noisy TS rules
+    {
+      files: ['src/utils/datadog/**/*.{ts,tsx}'],
+      rules: {
+        '@typescript-eslint/no-explicit-any': 'off',
+        '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      },
+    },
   ],
-  ignorePatterns: ['node_modules/', 'dist/', 'build/', 'coverage/', 'playwright-report/', 'traces/', 'out/'],
 };

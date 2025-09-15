@@ -33,7 +33,7 @@ jobs:
       - uses: reviewdog/action-eslint@v1
         if: ${{ github.event_name == 'pull_request' }}
         with:
-          eslint_flags: . --ext .ts,.tsx,.js
+          eslint_flags: src --ext .ts,.tsx,.js
           reporter: github-pr-review
           fail_on_error: true
 

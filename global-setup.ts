@@ -1,14 +1,15 @@
 import { loadSecretsFromAWS } from './src/utils/helpers/secrets.js';
+import { logger } from './src/utils/logger/logging-utils.js';
 
 /**
  * Playwright global setup function
  * This runs once before all tests begin
  */
 export default async function globalSetup() {
-  console.log('Running global setup...');
+  logger.info('Running global setup...');
 
   // Load secrets from AWS Secrets Manager
   await loadSecretsFromAWS();
 
-  console.log('Global setup completed');
+  logger.info('Global setup completed');
 }

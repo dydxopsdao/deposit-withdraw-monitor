@@ -10,7 +10,6 @@ import { TEST_TIMEOUTS } from '../../../config/timeouts';
 
 export async function launchContextWithExtension(
   userDataDir: string,
-  headless = !!process.env.CI,
 ): Promise<BrowserContext> {
   assertPhantomSecrets();
 
@@ -94,7 +93,7 @@ export async function setupWallet(context: BrowserContext, seedPhrase: string) {
 export async function unlockPhantomWallet(context: BrowserContext, maxRetries = 3, retryDelay = 1000) {
   logger.step('Unlocking Phantom wallet');
 
-  let page: any = null;
+  let page: Page | null = null;
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       page = await openPhantomUrl(context, s.urls.unlock, 'domcontentloaded');
@@ -106,11 +105,12 @@ export async function unlockPhantomWallet(context: BrowserContext, maxRetries = 
       await page.close().catch(() => {});
       logger.info('Phantom unlocked');
       return;
-    } catch (err: any) {
-      logger.debug(`Unlock attempt ${attempt}/${maxRetries} failed: ${err?.message ?? err}`);
+    } catch (err: unknown) {
+      logger.debug(`Unlock attempt ${attempt}/${maxRetries} failed: ${(err as Error)?.message ?? err}`);
       try {
         await page?.close();
-      } catch {}
+      } catch { // Swallow the error
+      }
       if (attempt < maxRetries) {
         logger.debug(`Retrying in ${retryDelay}ms…`);
         await new Promise((r) => setTimeout(r, retryDelay));
@@ -150,11 +150,12 @@ export async function handlePhantomPopup(context: BrowserContext) {
 
     await ph.close().catch(() => {});
     logger.info('Phantom popup handled');
-  } catch (e: any) {
-    logger.warning(`Phantom popup handling had issues: ${e?.message ?? e}`);
+  } catch (e: unknown) {
+    logger.warning(`Phantom popup handling had issues: ${(e as Error)?.message ?? e}`);
     try {
       await ph.close();
-    } catch {}
+    } catch { // Swallow the error
+    }
   }
 }
 

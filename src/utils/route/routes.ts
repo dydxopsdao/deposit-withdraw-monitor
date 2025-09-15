@@ -50,7 +50,7 @@ const ROUTES_FILE = path.resolve(process.cwd(), 'routes.yaml');
 // Custom implicit type for environment variable substitution with `js-yaml`
 const envVarType = new jsYaml.Type('!env-var', {
   kind: 'scalar',
-  resolve: (data: any) => typeof data === 'string' && data.includes('${'),
+  resolve: (data: string) => typeof data === 'string' && data.includes('${'),
   construct: (data: string) => {
     return data.replace(/\${([^}]+)}/g, (_, varName) => {
       const value = process.env[varName];
@@ -105,7 +105,7 @@ export function getRoutesSync(): Route[] {
     };
 
     const missing = [...requiredCommon, ...requiredByKind[m.kind]].filter((k) => {
-      const v = (m as any)[k];
+      const v = (m as Route)[k];
       return v === undefined || v === null || String(v).trim() === '';
     });
     if (missing.length > 0) {

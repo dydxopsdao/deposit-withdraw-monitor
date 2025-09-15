@@ -8,7 +8,7 @@ export const serializeError = (err: unknown) => {
       message: err.message,
       stack: err.stack,
     };
-    const anyErr = err as any;
+    const anyErr = err as Error & { code?: string; cause?: unknown };
     if (anyErr.code) out.code = anyErr.code;
     if (anyErr.cause) out.cause = serializeError(anyErr.cause);
     return out;
@@ -46,7 +46,7 @@ export const safeStringify = (value: unknown, redactions = DEFAULT_REDACT, space
     return false;
   };
 
-  const replacer = (key: string, val: any) => {
+  const replacer = (key: string, val: unknown) => {
     if (shouldRedact(key)) return '[REDACTED]';
     if (typeof val === 'bigint') return val.toString();
     if (val instanceof ArrayBuffer) {

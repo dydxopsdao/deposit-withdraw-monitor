@@ -43,7 +43,6 @@ if (depositRoutes.length === 0) {
 // ---- Per-route test definitions -------------------------------------------
 for (const route of depositRoutes) {
   const title = `deposit: ${route.id} — ${route.wallet_type} — ${route.src_chain}→${route.dst_chain} — $${route.amount} — ${route.token}`;
-  const timestamp = new Date().toISOString();
 
   // Create a describe block for each route to isolate the test.use() scope
   test.describe(`Route: ${route.id}`, () => {
@@ -54,7 +53,7 @@ for (const route of depositRoutes) {
       testInfo.setTimeout(TEST_TIMEOUTS.TEST);
     });
 
-    test(title, async ({ page, context }, testInfo) => {
+    test(title, async ({ page, context }) => {
       // Datadog context (keeps tags consistent, sends metrics/logs)
       const dd = createTelemetryContext({
         route: {

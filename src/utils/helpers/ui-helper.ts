@@ -42,9 +42,9 @@ export async function clickAnyButton(
         clickedThisLoop = true;
         // Small gap for the next step (e.g. Next → Connect)
         await page.waitForTimeout(250).catch(() => {});
-      } catch (e: any) {
+      } catch (e: unknown) {
         // Button may disappear due to instant navigation/close — ignore and continue
-        logger.debug(`${contextLabel}: click failed for "${re.source}" (${e?.message ?? e})`);
+        logger.debug(`${contextLabel}: click failed for "${re.source}" ${(e as Error)?.message ?? e}`);
         // TODO: Add a fallback click via bounding box if standard click fails.
       }
       if (clicks >= maxClicks) break;

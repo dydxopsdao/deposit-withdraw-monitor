@@ -51,7 +51,7 @@ for (const route of withdrawRoutes) {
       testInfo.setTimeout(TEST_TIMEOUTS.TEST);
     });
 
-    test(title, async ({ page, context }, testInfo) => {
+    test(title, async ({ page, context }) => {
       // Datadog context (keeps tags consistent, sends metrics/logs)
       const dd = createTelemetryContext({
         route: {
@@ -70,7 +70,6 @@ for (const route of withdrawRoutes) {
       });
 
       let txHash: string | undefined;
-      let explorerUrl: string | undefined;
       let explorerUrlsAll: string[] = [];
       let txHashesAll: (string | undefined)[] = [];
       let passed = false;
@@ -80,7 +79,7 @@ for (const route of withdrawRoutes) {
         wallet_type: route.wallet_type,
         wallet_alias: route.wallet_alias,
         wallet_address: route.wallet_address,
-        dydx_address: (route as any).dydx_address,
+        dydx_address: (route as Route).dydx_address,
         route_kind: route.route_kind,
         amount: route.amount,
         src_chain: route.src_chain,
@@ -107,7 +106,7 @@ for (const route of withdrawRoutes) {
             await withdraw(page, context, String(route.amount), route.dst_chain, route.token, route.wallet_type);
           });
           await test.step('Submit withdraw', async () => {
-            return await submitWithdraw(page, context, route.wallet_type);
+            return await submitWithdraw(page);
           });
 
           await test.step('Wait for finality', async () => {
@@ -115,7 +114,6 @@ for (const route of withdrawRoutes) {
             const res = await waitForFinality(page);
             logger.info('Finality result', { res });
             txHash = res.txHash;
-            explorerUrl = res.explorerUrl;
             explorerUrlsAll = res.explorerUrlsAll ?? [];
             txHashesAll = res.txHashesAll ?? [];
             expect(res.ok).toBeTruthy();
@@ -126,12 +124,12 @@ for (const route of withdrawRoutes) {
             ========================= */
           logger.success('Withdraw flow complete', { route_id: route.id, explorerUrlsAll, txHashesAll });
           await dd.routeResult({ passed: true, txHash, explorerUrlsAll, txHashesAll });
-        } catch (e: any) {
+        } catch (e: unknown) {  
           /* =========================
             TEST FAILED
             ========================= */
-          logger.error('Submit/finality failed', e, { route_id: route.id, explorerUrlsAll, txHashesAll });
-          await dd.routeResult({ passed: false, error: e, explorerUrlsAll, txHashesAll });
+          logger.error('Submit/finality failed', e as Error, { route_id: route.id, explorerUrlsAll, txHashesAll });
+          await dd.routeResult({ passed: false, error: e as Error, explorerUrlsAll, txHashesAll });
           throw e;
         }
       } finally {
@@ -147,9 +145,9 @@ for (const route of withdrawRoutes) {
               balancesBefore,
               balancesAfter,
             });
-          } catch (e: any) {
-            logger.warning('Rebalance failed', { route_id: route.id, error: { message: e?.message } });
-            await dd.rebalanceResult({ passed: false, error: e });
+          } catch (e: unknown) {
+            logger.warning('Rebalance failed', { route_id: route.id, error: { message: (e as Error)?.message } });
+            await dd.rebalanceResult({ passed: false, error: e as Error });
           }
         });
       }
