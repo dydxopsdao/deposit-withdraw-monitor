@@ -99,6 +99,8 @@ export const DYDX_USDC_GAS_BUFFER = 1.25;
 
 //TODO these we should get from the v4-client-js package, once it's fixed
 export const TYPE_URL_MSG_WITHDRAW_FROM_SUBACCOUNT = '/dydxprotocol.sending.MsgWithdrawFromSubaccount';
+
+// Default memo to include in all transactions for the interop module
 export const DEFAULT_TRANSACTION_MEMO = 'Deposit-Withdraw Monitor: Interop Module';
 
 // Trigger autosweep if the noble balance is greater than this amount

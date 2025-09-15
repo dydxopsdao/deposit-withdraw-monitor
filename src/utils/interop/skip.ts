@@ -185,6 +185,18 @@ async function generateUserAddresses(chainIds: string[], walletSeed: string, dYd
   return userAddresses;
 }
 
+/**
+ * Sweeps the noble balance to the dYdX account. 
+ *
+ * This function will:
+ * - Get the message direct transaction for the noble -> dYdX transfer
+ * - Parse the message direct transaction to get the IBC message
+ * - Simulate the transaction to get the fee and adjust the amount for the fee
+ * - Send the transaction
+ *
+ * @param dYdXSeed - The seed of the account on dYdX
+ * @param amount - The amount to sweep
+ */
 async function sweepNobleBalance(dYdXSeed: string, amount: bigint | string) {
   const dYdXChainId = CHAIN_IDS['dydx'];
   const dYdXChainConfig = CHAIN_CONFIGS[dYdXChainId];

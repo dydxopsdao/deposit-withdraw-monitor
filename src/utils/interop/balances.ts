@@ -169,8 +169,13 @@ async function depositToSubaccount(dYdXSeed: string, amount: bigint | string) {
 
 // --------- HELPER FUNCTIONS ---------
 
-async function waitForTxToBeIncludedInBlock(rpcEndpoint: string, txHash: string): Promise<Long> {
-  while (true) {
+async function waitForTxToBeIncludedInBlock(
+  rpcEndpoint: string,
+  txHash: string,
+  pollMs = 500,
+  maxPolls = 30
+): Promise<Long> {
+  for (let i = 0; i < maxPolls; i++) {
     const response = await fetch(`${rpcEndpoint}/tx?hash=0x${txHash}`, {
       headers: {
         'Content-Type': 'application/json',
@@ -184,13 +189,14 @@ async function waitForTxToBeIncludedInBlock(rpcEndpoint: string, txHash: string)
       return Long.fromValue(responseData?.result?.height ?? '0');
     }
 
-    logger.debug(`Tx ${txHash} not found in block, waiting for 500ms`);
-    await new Promise(resolve => setTimeout(resolve, 500));
+    logger.debug(`Tx ${txHash} not found in block, waiting for ${pollMs}ms`);
+    await new Promise(resolve => setTimeout(resolve, pollMs));
   }
+  throw new Error(`Tx ${txHash} not found in block after ${maxPolls * pollMs}ms`);
 }
 
-async function waitForIndexerToCatchUp(etaBlockNumber: Long): Promise<void> {
-  while (true) {
+async function waitForIndexerToCatchUp(targetBlock: Long, pollMs = 500, maxPolls = 30): Promise<void> {
+  for (let i = 0; i < maxPolls; i++) {
     const indexerHeightResponse = await fetch(`${INDEXER_API_URL}/v4/height`, {
       headers: {
         'Content-Type': 'application/json',
@@ -200,12 +206,17 @@ async function waitForIndexerToCatchUp(etaBlockNumber: Long): Promise<void> {
     const indexerHeight = await indexerHeightResponse.json();
     const indexerHeightNumber = Long.fromValue(indexerHeight.height);
 
-    if (indexerHeightNumber.greaterThanOrEqual(etaBlockNumber)) {
-      logger.debug(`Indexer is at ${indexerHeightNumber}, target block number is ${etaBlockNumber}, catching up complete`);
+    if (indexerHeightNumber.greaterThanOrEqual(targetBlock)) {
+      logger.debug(
+        `Indexer is at ${indexerHeightNumber}, target block is ${targetBlock}, catching up complete`
+      );
       break;
     }
 
-    logger.debug(`Indexer is at ${indexerHeightNumber}, target block number is ${etaBlockNumber}, waiting for 500ms`);
-    await new Promise(resolve => setTimeout(resolve, 500));
+    logger.debug(
+      `Indexer is at ${indexerHeightNumber}, target block is ${targetBlock}, waiting for ${pollMs}ms`
+    );
+    await new Promise(resolve => setTimeout(resolve, pollMs));
   }
+  throw new Error(`Indexer has not caught up after ${maxPolls * pollMs}ms`);
 }
