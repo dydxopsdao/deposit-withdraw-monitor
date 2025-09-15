@@ -1,0 +1,94 @@
+name: PR checks
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: pr-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: true
+
+jobs:
+  prettier:
+    name: Prettier format check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - name: Prettier check
+        run: npx prettier --check . --ignore-unknown
+
+  eslint:
+    name: ESLint (guardrails via reviewdog)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      # Let reviewdog run eslint and comment on the PR; it will also fail the job.
+      - uses: reviewdog/action-eslint@v1
+        if: ${{ github.event_name == 'pull_request' }}
+        with:
+          eslint_flags: src --ext .ts,.tsx,.js --max-warnings 0
+          reporter: github-pr-review
+          fail_on_error: true
+
+  typecheck:
+    name: TypeScript typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - name: tsc --noEmit
+        if: ${{ hashFiles('tsconfig.json') != '' }}
+        run: npx tsc -p tsconfig.json --noEmit --pretty false
+
+  terraform:
+    name: Terraform fmt and validate
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terraform
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip if no terraform
+        id: tfskip
+        run: |
+          if ! ls *.tf >/dev/null 2>&1; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: hashicorp/setup-terraform@v3
+        if: ${{ steps.tfskip.outputs.skip != 'true' }}
+        with:
+          terraform_version: 1.6.6
+      - name: Terraform fmt (check)
+        if: ${{ steps.tfskip.outputs.skip != 'true' }}
+        run: terraform fmt -check -recursive
+      - name: Terraform init (no backend)
+        if: ${{ steps.tfskip.outputs.skip != 'true' }}
+        run: terraform init -backend=false
+      - name: Terraform validate
+        if: ${{ steps.tfskip.outputs.skip != 'true' }}
+        run: terraform validate

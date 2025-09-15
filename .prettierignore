@@ -1,0 +1,11 @@
+# .prettierignore
+node_modules
+extensions
+user-data
+playwright-report
+src/playwright-report
+test-results
+playwright-report
+**/*.zip
+terraform/.terraform
+.github/

@@ -7,8 +7,8 @@ resource "aws_iam_openid_connect_provider" "github" {
   # GitHub OIDC thumbprint
   # See: https://github.blog/changelog/2023-06-27-github-actions-update-on-oidc-integration-with-aws/
   thumbprint_list = [
-    "6938fd4d98bab03faadb97b34396831e3780aea1",  # old
-    "1c58a3a8518e8759bf075b76b750d4f2df264fcd"   # newer
+    "6938fd4d98bab03faadb97b34396831e3780aea1", # old
+    "1c58a3a8518e8759bf075b76b750d4f2df264fcd"  # newer
   ]
 }
 
@@ -27,7 +27,7 @@ resource "aws_iam_role" "github_actions" {
         Action = "sts:AssumeRoleWithWebIdentity"
         Condition = {
           StringLike = {
-            "token.actions.githubusercontent.com:sub": "repo:${var.github_org}/${var.github_repo}:*"
+            "token.actions.githubusercontent.com:sub" : "repo:${var.github_org}/${var.github_repo}:*"
           }
         }
       }

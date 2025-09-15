@@ -60,7 +60,7 @@ resource "aws_iam_role_policy_attachment" "lambda_basic_auth_execution" {
 resource "aws_iam_role_policy" "lambda_basic_auth_logs" {
   name = "deposit-withdraw-monitor-lambda-auth-logs"
   role = aws_iam_role.lambda_basic_auth.id
-  
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -81,7 +81,7 @@ resource "aws_iam_role_policy" "lambda_basic_auth_logs" {
 resource "aws_iam_role_policy" "lambda_basic_auth_s3_read" {
   name = "deposit-withdraw-monitor-lambda-auth-s3-read"
   role = aws_iam_role.lambda_basic_auth.id
-  
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [

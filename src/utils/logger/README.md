@@ -2,26 +2,26 @@
 
 Small console logger with timestamped, human-readable output and optional metadata/error details.
 
-* File: `utils/logger/logging-utils.ts`
-* Formatter: `utils/logger/formatters.ts`
-* Types: `utils/logger/types.ts`
+- File: `utils/logger/logging-utils.ts`
+- Formatter: `utils/logger/formatters.ts`
+- Types: `utils/logger/types.ts`
 
 ---
 
 ## Features
 
-* **Pretty output**: `[ISO_TIMESTAMP] [LEVEL] Message`
-* **Safe metadata serialisation**: BigInt → string; ArrayBuffer/TypedArrays/Set/Map handled; circular refs safe
-* **Error aware**: Serialises `{ name, message, stack, code?, cause? }`
-* **Secret redaction**: Keys like `password`, `seed`, `privateKey`, `apiKey`, `authorization`, `token`, etc. are redacted
-  *(exact, case-sensitive by default — see “Optional improvement” below)*
+- **Pretty output**: `[ISO_TIMESTAMP] [LEVEL] Message`
+- **Safe metadata serialisation**: BigInt → string; ArrayBuffer/TypedArrays/Set/Map handled; circular refs safe
+- **Error aware**: Serialises `{ name, message, stack, code?, cause? }`
+- **Secret redaction**: Keys like `password`, `seed`, `privateKey`, `apiKey`, `authorization`, `token`, etc. are redacted
+  _(exact, case-sensitive by default — see “Optional improvement” below)_
 
 ---
 
 ## Install / Import
 
 ```ts
-import { logger } from "../utils/logger/logging-utils"; // adjust path
+import { logger } from '../utils/logger/logging-utils'; // adjust path
 ```
 
 ---
@@ -29,13 +29,13 @@ import { logger } from "../utils/logger/logging-utils"; // adjust path
 ## Quick start
 
 ```ts
-logger.debug("Fetching balances");
-logger.info("Starting test run");
-logger.step("Connect wallet");
-logger.success("Wallet connected");
-logger.warning("Balance is low", { balance: 0.01 });
+logger.debug('Fetching balances');
+logger.info('Starting test run');
+logger.step('Connect wallet');
+logger.success('Wallet connected');
+logger.warning('Balance is low', { balance: 0.01 });
 
-logger.error("Failed to connect", new Error("Timeout"), { retries: 3 });
+logger.error('Failed to connect', new Error('Timeout'), { retries: 3 });
 ```
 
 ### Example output
@@ -58,27 +58,27 @@ Metadata: {
 
 `formatters.pretty` uses `safeStringify` which:
 
-* **BigInt** → string
-* **ArrayBuffer** → hex string
-* **TypedArrays** → plain arrays
-* **Set/Map** → arrays / objects
-* **Error in metadata** → serialised error object
-* **Circular references** → `"[Circular]"`
-* **Secrets** → redacted as `"[REDACTED]"` when a metadata key matches the redaction set *(exact, case-sensitive)*
+- **BigInt** → string
+- **ArrayBuffer** → hex string
+- **TypedArrays** → plain arrays
+- **Set/Map** → arrays / objects
+- **Error in metadata** → serialised error object
+- **Circular references** → `"[Circular]"`
+- **Secrets** → redacted as `"[REDACTED]"` when a metadata key matches the redaction set _(exact, case-sensitive)_
 
 Extend the redaction list when needed:
 
 ```ts
-import { safeStringify } from "../utils/logger/formatters";
+import { safeStringify } from '../utils/logger/formatters';
 
-const EXTRA_REDACTIONS = new Set(["sessionId", "csrf", "x-api-token"]);
+const EXTRA_REDACTIONS = new Set(['sessionId', 'csrf', 'x-api-token']);
 const json = safeStringify(obj, EXTRA_REDACTIONS, 2);
 ```
 
 ### Concrete serialisation example
 
 ```ts
-logger.info("Serialized metadata", {
+logger.info('Serialized metadata', {
   amount: 123n,
   raw: new Uint8Array([1, 2, 3]),
 });
@@ -98,17 +98,17 @@ Metadata: {
 ## Using in Playwright tests
 
 ```ts
-import { test, expect } from "@playwright/test";
-import { logger } from "../utils/logger/logging-utils";
+import { test, expect } from '@playwright/test';
+import { logger } from '../utils/logger/logging-utils';
 
-test("Connect MetaMask", async ({ page }) => {
-  logger.step("Opening app", { url: "https://example.test" });
-  await page.goto("https://example.test");
+test('Connect MetaMask', async ({ page }) => {
+  logger.step('Opening app', { url: 'https://example.test' });
+  await page.goto('https://example.test');
 
-  logger.info("Click connect button", { selector: "[data-testid=connect]" });
-  await page.getByTestId("connect").click();
+  logger.info('Click connect button', { selector: '[data-testid=connect]' });
+  await page.getByTestId('connect').click();
 
-  logger.success("Connected");
+  logger.success('Connected');
 });
 ```
 
@@ -116,18 +116,18 @@ test("Connect MetaMask", async ({ page }) => {
 
 ## Best practices
 
-* **Use `step`** for high-level milestones in E2E flows.
-* **Attach metadata** for context (ids, amounts, selectors). Keep it small.
-* **Pass real `Error` objects** to `logger.error` to include message + stack.
-* Avoid logging whole pages/responses; log the essentials.
+- **Use `step`** for high-level milestones in E2E flows.
+- **Attach metadata** for context (ids, amounts, selectors). Keep it small.
+- **Pass real `Error` objects** to `logger.error` to include message + stack.
+- Avoid logging whole pages/responses; log the essentials.
 
 ---
 
 ## Notes
 
-* **Alias**: `logger.warn` calls `logger.warning`.
-* **Output**: Pretty console format by default; there’s no JSON log mode or level filtering yet (kept simple on purpose).
-* **Zero deps**: Uses the platform console.
+- **Alias**: `logger.warn` calls `logger.warning`.
+- **Output**: Pretty console format by default; there’s no JSON log mode or level filtering yet (kept simple on purpose).
+- **Zero deps**: Uses the platform console.
 
 ---
 
@@ -146,7 +146,7 @@ logger.error(message: string, error?: Error, metadata?: LogMetadata): void;
 **Types**
 
 ```ts
-export type LogLevel = "debug" | "info" | "step" | "success" | "warning" | "error";
+export type LogLevel = 'debug' | 'info' | 'step' | 'success' | 'warning' | 'error';
 
 export interface LogMetadata {
   [key: string]: unknown;
@@ -165,7 +165,7 @@ export interface LogEntry {
 
 ## Troubleshooting
 
-* Seeing `"[Circular]"`? You passed a cyclic object; that’s expected.
-* Secret not redacted? Ensure your key name exactly matches the default set or pass your own extended set to `safeStringify`.
+- Seeing `"[Circular]"`? You passed a cyclic object; that’s expected.
+- Secret not redacted? Ensure your key name exactly matches the default set or pass your own extended set to `safeStringify`.
 
 ---

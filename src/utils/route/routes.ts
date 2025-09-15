@@ -10,14 +10,14 @@
 //   import { getRoutesSync } from "../utils/routes";
 //   const all = getRoutesSync();
 
-import fs from "fs";
-import path from "path";
-import jsYaml from "js-yaml";
-import { logger } from "../logger/logging-utils";
+import fs from 'fs';
+import path from 'path';
+import jsYaml from 'js-yaml';
+import { logger } from '../logger/logging-utils';
 
-export type WalletType = "metamask" | "phantom";
-export type RouteKind = "deposit" | "withdraw";
-export type DepositRouteKind = "regular" | "instant";
+export type WalletType = 'metamask' | 'phantom';
+export type RouteKind = 'deposit' | 'withdraw';
+export type DepositRouteKind = 'regular' | 'instant';
 
 export interface Route {
   id: string;
@@ -45,12 +45,12 @@ interface RoutesYaml {
   routes: Array<Partial<Route> & { id: string; kind: RouteKind }>;
 }
 
-const ROUTES_FILE = path.resolve(process.cwd(), "routes.yaml");
+const ROUTES_FILE = path.resolve(process.cwd(), 'routes.yaml');
 
 // Custom implicit type for environment variable substitution with `js-yaml`
 const envVarType = new jsYaml.Type('!env-var', {
   kind: 'scalar',
-  resolve: (data: any) => typeof data === 'string' && data.includes('${'),
+  resolve: (data: string) => typeof data === 'string' && data.includes('${'),
   construct: (data: string) => {
     return data.replace(/\${([^}]+)}/g, (_, varName) => {
       const value = process.env[varName];
@@ -62,11 +62,11 @@ const envVarType = new jsYaml.Type('!env-var', {
 
 // Custom schema with our implicit type
 const envVarSchema = jsYaml.DEFAULT_SCHEMA.extend({
-  implicit: [envVarType]
+  implicit: [envVarType],
 });
 
 export function getRoutesSync(): Route[] {
-  const raw = fs.readFileSync(ROUTES_FILE, "utf8");
+  const raw = fs.readFileSync(ROUTES_FILE, 'utf8');
   const doc = jsYaml.load(raw, { schema: envVarSchema }) as RoutesYaml;
 
   if (!doc || !Array.isArray(doc.routes)) {
@@ -84,35 +84,33 @@ export function getRoutesSync(): Route[] {
     if (m.amount !== undefined) m.amount = String(m.amount);
 
     // enabled/paused defaulting (if not provided at either level)
-    if (typeof m.enabled === "undefined") m.enabled = true;
-    if (typeof m.paused === "undefined") m.paused = false;
+    if (typeof m.enabled === 'undefined') m.enabled = true;
+    if (typeof m.paused === 'undefined') m.paused = false;
 
     // Validate required fields by kind (deposit vs withdraw) and surface a friendly error early.
     const requiredCommon: Array<keyof Route> = [
-      "wallet_type",
-      "wallet_alias",
-      "wallet_address",
-      "wallet_seed",
-      "dydx_address",
-      "dydx_seed",
-      "amount",
-      "src_chain",
-      "dst_chain",
+      'wallet_type',
+      'wallet_alias',
+      'wallet_address',
+      'wallet_seed',
+      'dydx_address',
+      'dydx_seed',
+      'amount',
+      'src_chain',
+      'dst_chain',
     ];
     const requiredByKind: Record<RouteKind, Array<keyof Route>> = {
-      deposit: ["token", "route_kind"],
+      deposit: ['token', 'route_kind'],
       withdraw: [],
     };
 
     const missing = [...requiredCommon, ...requiredByKind[m.kind]].filter((k) => {
-      const v = (m as any)[k];
-      return v === undefined || v === null || String(v).trim() === "";
+      const v = (m as Route)[k];
+      return v === undefined || v === null || String(v).trim() === '';
     });
     if (missing.length > 0) {
-      const list = missing.join(", ");
-      throw new Error(
-        `Invalid route '${m.id}' (${m.kind}): missing required field(s): ${list}`
-      );
+      const list = missing.join(', ');
+      throw new Error(`Invalid route '${m.id}' (${m.kind}): missing required field(s): ${list}`);
     }
     return m;
   });
@@ -123,11 +121,9 @@ export function getRoutesSync(): Route[] {
     for (const r of merged) counts.set(r.id, (counts.get(r.id) || 0) + 1);
     const dups = Array.from(counts.entries()).filter(([, c]) => c > 1);
     if (dups.length) {
-      const mode = String(process.env.ROUTE_ID_DUPLICATE_MODE || "").toLowerCase();
-      const msg = `Duplicate route id(s) in routes.yaml: ${dups
-        .map(([id, c]) => `${id} (x${c})`)
-        .join(", ")}`;
-      if (mode === "warn" || mode === "warning" || mode === "ignore") {
+      const mode = String(process.env.ROUTE_ID_DUPLICATE_MODE || '').toLowerCase();
+      const msg = `Duplicate route id(s) in routes.yaml: ${dups.map(([id, c]) => `${id} (x${c})`).join(', ')}`;
+      if (mode === 'warn' || mode === 'warning' || mode === 'ignore') {
         logger.warning(msg);
       } else {
         throw new Error(msg);

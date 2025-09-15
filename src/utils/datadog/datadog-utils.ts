@@ -5,51 +5,44 @@
 // - Low-cardinality, consistent tags
 // - Logs only on route failures; rebalancer logs always
 
-import os from "os";
-import { logger } from "../logger/logging-utils";
-import { TEST_TIMEOUTS } from "../../config/timeouts";
+import os from 'os';
+import { logger } from '../logger/logging-utils';
+import { TEST_TIMEOUTS } from '../../config/timeouts';
 
 // ----- Config (keep defaults tiny) ------------------------------------------
-const DD_API_KEY = process.env.DD_API_KEY || process.env.DATADOG_API_KEY || "";
-const DD_SITE = process.env.DD_SITE || "ap1.datadoghq.com"; // we use ap1
-const DD_SERVICE = process.env.DD_SERVICE || "dos-synth";
-const DD_SOURCE = process.env.DD_SOURCE || "playwright";
+const DD_API_KEY = process.env.DD_API_KEY || process.env.DATADOG_API_KEY || '';
+const DD_SITE = process.env.DD_SITE || 'ap1.datadoghq.com'; // we use ap1
+const DD_SERVICE = process.env.DD_SERVICE || 'dos-synth';
+const DD_SOURCE = process.env.DD_SOURCE || 'playwright';
 const HOSTNAME = os.hostname();
-const DD_DRY_RUN = process.env.DD_DRY_RUN === "1";
-const DD_VERBOSE = process.env.DD_VERBOSE === "1"; // extra logs about requests/results
+const DD_DRY_RUN = process.env.DD_DRY_RUN === '1';
+const DD_VERBOSE = process.env.DD_VERBOSE === '1'; // extra logs about requests/results
 
 // Metric names
-const METRIC_ROUTE_RESULT = process.env.DD_METRIC_ROUTE_RESULT || "synth.route.result";
-const METRIC_REBALANCE_RESULT = process.env.DD_METRIC_REBALANCE_RESULT || "synth.rebalance.result";
-const METRIC_WALLET_BALANCE = process.env.DD_METRIC_WALLET_BALANCE || "synth.wallet.balance";
+const METRIC_ROUTE_RESULT = process.env.DD_METRIC_ROUTE_RESULT || 'synth.route.result';
+const METRIC_REBALANCE_RESULT = process.env.DD_METRIC_REBALANCE_RESULT || 'synth.rebalance.result';
+const METRIC_WALLET_BALANCE = process.env.DD_METRIC_WALLET_BALANCE || 'synth.wallet.balance';
 
 // Endpoints
 const METRICS_URL = `https://api.${DD_SITE}/api/v1/series?api_key=${encodeURIComponent(DD_API_KEY)}`;
 const LOGS_URL = `https://http-intake.logs.${DD_SITE}/api/v2/logs`;
 
 // ----- Types ----------------------------------------------------------------
-export type WalletType = "metamask" | "phantom";
-export type Operation = "deposit" | "withdraw" | "rebalance";
+export type WalletType = 'metamask' | 'phantom';
+export type Operation = 'deposit' | 'withdraw' | 'rebalance';
 
 // Single source of truth for error stages
-export const ERROR_STAGES = [
-  "setup",
-  "pre_submit",
-  "submit",
-  "finality",
-  "submit_or_finality",
-  "rebalance",
-] as const;
-export type ErrorStage = typeof ERROR_STAGES[number];
+export const ERROR_STAGES = ['setup', 'pre_submit', 'submit', 'finality', 'submit_or_finality', 'rebalance'] as const;
+export type ErrorStage = (typeof ERROR_STAGES)[number];
 
 export interface RouteSummary {
   id: string;
-  kind: "deposit" | "withdraw";
+  kind: 'deposit' | 'withdraw';
   wallet_type: WalletType;
   wallet_alias?: string;
   wallet_address: string;
   dydx_address: string;
-  route_kind?: "regular" | "instant";
+  route_kind?: 'regular' | 'instant';
   amount: string;
   src_chain: string;
   dst_chain: string;
@@ -66,9 +59,9 @@ type BalanceMap =
 
 export function createTelemetryContext(cfg: {
   route: RouteSummary;
-  wallet?: WalletType;         // defaults to route.wallet_type
-  operation?: Operation;       // for route tests, set to deposit|withdraw
-  extraTags?: string[];        // optional static tags
+  wallet?: WalletType; // defaults to route.wallet_type
+  operation?: Operation; // for route tests, set to deposit|withdraw
+  extraTags?: string[]; // optional static tags
 }) {
   const route = cfg.route;
   const wallet = cfg.wallet ?? route.wallet_type;
@@ -96,20 +89,20 @@ export function createTelemetryContext(cfg: {
             route: routeSummaryForLog(route),
             tx_hash: args.txHash,
             explorer_url: args.explorerUrl,
-            error_stage: args.errorStage ?? "submit_or_finality",
+            error_stage: args.errorStage ?? 'submit_or_finality',
             error: toErrorLike(args.error),
           },
-          tags
+          tags,
         );
       } else if (DD_VERBOSE) {
-        logger.info("DD: route success metric sent", { metric: METRIC_ROUTE_RESULT, tags });
+        logger.info('DD: route success metric sent', { metric: METRIC_ROUTE_RESULT, tags });
       }
     },
 
     // Optional explicit route log (use if you want success logs occasionally)
     async routeLog(
-      event: "deposit.ok" | "deposit.error" | "withdraw.ok" | "withdraw.error",
-      payload?: Record<string, unknown>
+      event: 'deposit.ok' | 'deposit.error' | 'withdraw.ok' | 'withdraw.error',
+      payload?: Record<string, unknown>,
     ) {
       const tags = baseTags;
       await sendRouteLog(event, { route: routeSummaryForLog(route), ...(payload || {}) }, tags);
@@ -122,9 +115,9 @@ export function createTelemetryContext(cfg: {
       balancesAfter?: BalanceMap;
       error?: ErrorLike;
     }) {
-      const tags = withOperation(baseTags, "rebalance");
+      const tags = withOperation(baseTags, 'rebalance');
       await sendRebalanceResultMetric(args.passed, tags);
-      const event = args.passed ? "rebalance.ok" : "rebalance.error";
+      const event = args.passed ? 'rebalance.ok' : 'rebalance.error';
       const payload: Record<string, unknown> = {
         route_id: route.id,
         wallet_alias: route.wallet_alias,
@@ -137,7 +130,9 @@ export function createTelemetryContext(cfg: {
 
     // Wallet balance gauges (emit one per token/chain)
     async walletBalance(p: { alias: string; token: string; chain: string; amount: number }) {
-      const tags = normalizeTags([`wallet_alias:${p.alias}`, `token:${p.token}`, `chain:${p.chain}`].concat(staticTags));
+      const tags = normalizeTags(
+        [`wallet_alias:${p.alias}`, `token:${p.token}`, `chain:${p.chain}`].concat(staticTags),
+      );
       await sendGauge(METRIC_WALLET_BALANCE, p.amount, tags);
     },
   };
@@ -160,7 +155,7 @@ function makeRouteTags(route: RouteSummary, wallet: WalletType, operation: Opera
 
 function withOperation(tags: string[], operation: Operation): string[] {
   // replace or append operation:<...>
-  const rest = tags.filter((t) => !t.startsWith("operation:"));
+  const rest = tags.filter((t) => !t.startsWith('operation:'));
   return rest.concat(`operation:${operation}`);
 }
 
@@ -180,30 +175,32 @@ async function sendGauge(metric: string, value: number, tags: string[]) {
     series: [
       {
         metric,
-        type: "gauge",
+        type: 'gauge',
         points: [[now, value]],
         tags,
-        resources: [{ name: DD_SERVICE, type: "service" }],
+        resources: [{ name: DD_SERVICE, type: 'service' }],
       },
     ],
   };
   if (DD_DRY_RUN) {
-    logger.info("DD (dry-run) metric", { metric, value, tags });
+    logger.info('DD (dry-run) metric', { metric, value, tags });
     return;
   }
   const size = byteLen(body);
-  if (DD_VERBOSE) logger.debug("DD: sending metric", { metric, value, tags, bytes: size });
-  await postJSON(METRICS_URL, body, { "Content-Type": "application/json" }, { kind: "metric", metric });
+  if (DD_VERBOSE) logger.debug('DD: sending metric', { metric, value, tags, bytes: size });
+  await postJSON(METRICS_URL, body, { 'Content-Type': 'application/json' }, { kind: 'metric', metric });
 }
 
 async function sendRouteLog(event: string, payload: Record<string, unknown>, tags: string[]) {
   if (!enabled()) return;
 
-  const ddtags = normalizeTags(tags).concat([`service:${DD_SERVICE}`]).join(",");
+  const ddtags = normalizeTags(tags)
+    .concat([`service:${DD_SERVICE}`])
+    .join(',');
   const items = [
     {
       message: `[${event}] ${summarize(payload)}`,
-      status: payload && (payload as any).error ? "error" : "info",
+      status: payload && (payload as any).error ? 'error' : 'info',
       ddtags,
       ddsource: DD_SOURCE,
       service: DD_SERVICE,
@@ -213,19 +210,19 @@ async function sendRouteLog(event: string, payload: Record<string, unknown>, tag
   ];
 
   if (DD_DRY_RUN) {
-    logger.info("DD (dry-run) log", { event, tags, preview: summarize(payload) });
+    logger.info('DD (dry-run) log', { event, tags, preview: summarize(payload) });
     return;
   }
   const size = byteLen(items);
-  if (DD_VERBOSE) logger.debug("DD: sending log", { event, tags, bytes: size });
+  if (DD_VERBOSE) logger.debug('DD: sending log', { event, tags, bytes: size });
   await postJSON(
     LOGS_URL,
     items,
     {
-      "Content-Type": "application/json",
-      "DD-API-KEY": DD_API_KEY,
+      'Content-Type': 'application/json',
+      'DD-API-KEY': DD_API_KEY,
     },
-    { kind: "log", event }
+    { kind: 'log', event },
   );
 }
 
@@ -236,14 +233,17 @@ function enabled(): boolean {
   const ok = Boolean(DD_API_KEY);
   if (!ok && !warnedDisabled) {
     warnedDisabled = true;
-    logger.warning("Datadog disabled (missing DD_API_KEY). Telemetry will be a no-op.");
+    logger.warning('Datadog disabled (missing DD_API_KEY). Telemetry will be a no-op.');
   }
   return ok;
 }
 
 function normalizeTags(tags: Array<string | null | undefined>): string[] {
   // TODO: Enforce a whitelist/length cap for tag values to avoid high-cardinality explosions.
-  return (tags || []).map(String).map((s) => s.trim()).filter(Boolean);
+  return (tags || [])
+    .map(String)
+    .map((s) => s.trim())
+    .filter(Boolean);
 }
 
 // Summarize the route for logs (keeps payload compact & stable)
@@ -264,41 +264,41 @@ function routeSummaryForLog(route: RouteSummary) {
 function summarize(obj: Record<string, unknown>): string {
   try {
     const keys = Object.keys(obj || {});
-    if (!keys.length) return "";
+    if (!keys.length) return '';
     const preview: Record<string, unknown> = {};
     for (const k of keys.slice(0, 6)) {
       const v = (obj as any)[k];
-      preview[k] = typeof v === "string" ? v.slice(0, 160) : v;
+      preview[k] = typeof v === 'string' ? v.slice(0, 160) : v;
     }
     return JSON.stringify(preview);
   } catch {
-    return "";
+    return '';
   }
 }
 
 function sanitizeAttrs(obj: Record<string, unknown>): Record<string, unknown> {
   // Basic redaction – keep it here to avoid coupling
   const REDACT_KEYS = new Set([
-    "password",
-    "passphrase",
-    "secret",
-    "seed",
-    "mnemonic",
-    "privateKey",
-    "token",
-    "authorization",
-    "apiKey",
-    "api_key",
-    "accessToken",
-    "refreshToken",
+    'password',
+    'passphrase',
+    'secret',
+    'seed',
+    'mnemonic',
+    'privateKey',
+    'token',
+    'authorization',
+    'apiKey',
+    'api_key',
+    'accessToken',
+    'refreshToken',
   ]);
   const out: any = Array.isArray(obj) ? [] : {};
   for (const [k, v] of Object.entries(obj || {})) {
     if (REDACT_KEYS.has(k)) {
-      out[k] = "[REDACTED]";
+      out[k] = '[REDACTED]';
       continue;
     }
-    if (v && typeof v === "object") {
+    if (v && typeof v === 'object') {
       out[k] = sanitizeAttrs(v as any);
       continue;
     }
@@ -309,7 +309,7 @@ function sanitizeAttrs(obj: Record<string, unknown>): Record<string, unknown> {
 
 function toErrorLike(e: ErrorLike): ErrorLike {
   if (!e) return undefined;
-  if (typeof e === "object" && ("message" in e || "name" in e || "stack" in e)) {
+  if (typeof e === 'object' && ('message' in e || 'name' in e || 'stack' in e)) {
     const stack = (e as any).stack ? String((e as any).stack).slice(0, 4000) : undefined;
     return { name: (e as any).name, message: (e as any).message, stack, code: (e as any).code };
   }
@@ -318,7 +318,7 @@ function toErrorLike(e: ErrorLike): ErrorLike {
 
 function byteLen(body: unknown): number {
   try {
-    return Buffer.byteLength(JSON.stringify(body), "utf8");
+    return Buffer.byteLength(JSON.stringify(body), 'utf8');
   } catch {
     return 0;
   }
@@ -328,7 +328,7 @@ async function postJSON(
   url: string,
   body: unknown,
   headers: Record<string, string>,
-  meta: { kind: "metric"; metric: string } | { kind: "log"; event: string }
+  meta: { kind: 'metric'; metric: string } | { kind: 'log'; event: string },
 ) {
   // TODO: Allow configurable timeout and add retry/backoff for transient network failures.
   const ctl = new AbortController();
@@ -336,12 +336,13 @@ async function postJSON(
   const started = Date.now();
   try {
     const res = await fetch(url, {
-      method: "POST",
+      method: 'POST',
       headers,
       body: JSON.stringify(body),
       signal: ctl.signal,
     }).catch((err) => {
-      if (DD_VERBOSE) logger.warning("DD: fetch error", { target: url, kind: meta.kind, error: String(err?.message || err) });
+      if (DD_VERBOSE)
+        logger.warning('DD: fetch error', { target: url, kind: meta.kind, error: String(err?.message || err) });
       // swallow
       return undefined as any;
     });
@@ -349,11 +350,11 @@ async function postJSON(
     const elapsed = Date.now() - started;
 
     if (!res) return;
-    if (!("ok" in res)) return; // defensive for odd runtimes
+    if (!('ok' in res)) return; // defensive for odd runtimes
 
     if (!res.ok) {
       const text = await safeReadText(res);
-      logger.warning("DD: non-2xx response", {
+      logger.warning('DD: non-2xx response', {
         target: url,
         kind: meta.kind,
         code: res.status,
@@ -364,7 +365,7 @@ async function postJSON(
     }
 
     if (DD_VERBOSE) {
-      logger.debug("DD: sent successfully", {
+      logger.debug('DD: sent successfully', {
         kind: meta.kind,
         code: res.status,
         elapsed_ms: elapsed,

@@ -7,7 +7,9 @@
     "download-phantom": "node src/scripts/download-extension.js phantom bfnaelmomeimhlpmgjnjophhpkkoljpa",
     "download-metamask": "node src/scripts/download-extension.js metamask nkbihfbeogaeaoehlefnkodbefgpgknn",
     "download-extensions": "npm run download-phantom && npm run download-metamask",
-    "validate:routes": "tsx src/scripts/validate-routes.ts"
+    "validate:routes": "tsx src/scripts/validate-routes.ts",
+    "lint": "eslint src --ext .ts,.tsx,.js --max-warnings 0",
+    "lint:fix": "eslint src --ext .ts,.tsx,.js --fix"
   },
   "repository": {
     "type": "git",
@@ -34,6 +36,13 @@
   },
   "devDependencies": {
     "@types/node": "^24.0.3",
-    "tsx": "^4.19.1"
+    "@typescript-eslint/eslint-plugin": "^8.43.0",
+    "@typescript-eslint/parser": "^8.43.0",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.2",
+    "eslint-plugin-playwright": "^2.2.2",
+    "prettier": "^3.6.2",
+    "tsx": "^4.19.1",
+    "typescript": "^5.9.2"
   }
 }

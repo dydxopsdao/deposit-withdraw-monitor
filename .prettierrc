@@ -6,23 +6,10 @@
   "singleQuote": true,
   "quoteProps": "as-needed",
   "jsxSingleQuote": false,
-  "trailingComma": "es5",
+  "trailingComma": "all",
   "bracketSpacing": true,
   "bracketSameLine": false,
-  "arrowParens": "avoid",
-  "endOfLine": "lf",
-  "overrides": [
-    {
-      "files": "*.ts",
-      "options": {
-        "parser": "typescript"
-      }
-    },
-    {
-      "files": "*.tsx",
-      "options": {
-        "parser": "typescript"
-      }
-    }
-  ]
+  "arrowParens": "always",
+  "proseWrap": "preserve",
+  "endOfLine": "lf"
 }

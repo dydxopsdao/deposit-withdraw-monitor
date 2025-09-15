@@ -1,10 +1,4 @@
-export type LogLevel =
-  | "debug"
-  | "info"
-  | "step"
-  | "success"
-  | "warning"
-  | "error";
+export type LogLevel = 'debug' | 'info' | 'step' | 'success' | 'warning' | 'error';
 
 export interface LogMetadata {
   [key: string]: unknown;

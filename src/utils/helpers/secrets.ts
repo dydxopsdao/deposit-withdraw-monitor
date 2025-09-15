@@ -20,7 +20,7 @@ async function loadSeedPhrases(): Promise<void> {
 
   // Skip if no AWS secrets configured
   if (!secretArn) {
-    logger.info("No AWS Secrets Manager secrets configured, skipping seed phrases load");
+    logger.info('No AWS Secrets Manager secrets configured, skipping seed phrases load');
     return;
   }
 
@@ -45,7 +45,7 @@ async function loadWalletPassword(): Promise<void> {
 
   // Skip if no AWS secrets configured
   if (!secretArn) {
-    logger.info("No AWS Secrets Manager wallet password secret configured, skipping wallet password load");
+    logger.info('No AWS Secrets Manager wallet password secret configured, skipping wallet password load');
     return;
   }
 
@@ -65,7 +65,7 @@ async function loadDatadogApiKey(): Promise<void> {
 
   // Skip if no AWS secrets configured
   if (!secretArn) {
-    logger.info("No AWS Secrets Manager Datadog API key secret configured, skipping Datadog API key load");
+    logger.info('No AWS Secrets Manager Datadog API key secret configured, skipping Datadog API key load');
     return;
   }
 
@@ -84,11 +84,11 @@ async function getSecretFromAWS(secretArn: string): Promise<string> {
   try {
     const client = new SecretsManagerClient({
       // TODO: Provide a sensible region default or allow override per secret.
-      region: process.env.AWS_REGION
+      region: process.env.AWS_REGION,
     });
 
     const command = new GetSecretValueCommand({
-      SecretId: secretArn
+      SecretId: secretArn,
     });
 
     const response = await client.send(command);
@@ -99,7 +99,7 @@ async function getSecretFromAWS(secretArn: string): Promise<string> {
 
     return response.SecretString;
   } catch (error) {
-    logger.error(`❌ Failed to load secret from AWS Secrets Manager:`, error);
+    logger.error(`❌ Failed to load secret from AWS Secrets Manager:`, error as Error);
     throw error;
   }
 }
