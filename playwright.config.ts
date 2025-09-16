@@ -1,10 +1,11 @@
 import { defineConfig, devices } from "@playwright/test";
 import dotenv from "dotenv";
 import { TEST_TIMEOUTS } from "./src/config/timeouts";
+import { logger } from "./src/utils/logger/logging-utils";
 
 const envFile = process.env.CI ? ".env" : ".env.local";
 dotenv.config({ path: envFile });
-console.log(`> Loaded environment from ${envFile}`);
+logger.info(`> Loaded environment from ${envFile}`);
 
 /**
  * Read environment variables from file.
