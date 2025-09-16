@@ -1,5 +1,5 @@
 import { BrowserContext, Page } from "@playwright/test";
-import { logger } from "../logger/logging-utils";
+import { logger } from "../../logger/logging-utils";
 import { TEST_TIMEOUTS } from "../../config/timeouts";
 
 const t = TEST_TIMEOUTS;
