@@ -11,8 +11,6 @@ export async function isVisible(
   try {
     logger.info("Checking if locator is visible", { locator });
     logger.info("Timeout", { timeout });
-    logger.info("Checking if locator is visible", { locator });
-    logger.info("Timeout", { timeout });
     await expect(locator).toBeVisible({ timeout });
     return true;
   } catch {
