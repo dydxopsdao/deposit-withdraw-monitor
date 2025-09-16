@@ -14,7 +14,7 @@
 import { test, expect } from "../fixtures";
 import { logger } from "../utils/logger/logging-utils";
 import { getRoutesSync, type Route, type WalletType } from "../utils/route/routes";
-import { datadog, FunnelSteps } from "../utils/datadog";
+import { datadog, DepositFunnelSteps } from "../utils/datadog";
 import { openApp, connectWallet, deposit, submitDeposit } from "../targets/dydx/flows";
 import { dydxSelectors } from "../targets/dydx/selectors";
 import { TEST_TIMEOUTS } from "../config/timeouts";
@@ -52,7 +52,7 @@ for (const route of depositRoutes) {
     });
 
     test(title, async ({ page, context }, testInfo) => {
-      const testRunLogger = datadog.createTestRunLogger(route);
+      const testRunLogger = datadog.createDepositLogger(route);
 
       let txHash: string | undefined;
       let explorerUrl: string | undefined;
@@ -73,7 +73,7 @@ for (const route of depositRoutes) {
 
       try {
           // NavigateDialog: Open app and connect wallet to reach deposit dialog
-          testRunLogger.startStep(FunnelSteps.NavigateDialog);
+          testRunLogger.startStep(DepositFunnelSteps.NavigateDialog);
           await test.step("Open app", async () => {
             await openApp(page, context, {
               waitUntil: "domcontentloaded",
@@ -86,25 +86,25 @@ for (const route of depositRoutes) {
           await test.step(`Connect wallet (${route.wallet_type})`, async () => {
             await connectWallet(page, context, route.wallet_type);
           });
-          testRunLogger.completeStep(FunnelSteps.NavigateDialog);
+          testRunLogger.completeStep(DepositFunnelSteps.NavigateDialog);
 
           // DepositInitiated: User fills deposit dialog and initiates deposit
-          testRunLogger.startStep(FunnelSteps.DepositInitiated);
+          testRunLogger.startStep(DepositFunnelSteps.DepositInitiated);
           await test.step("Deposit Dialog Input", async () => {
             await deposit(page, context, route.amount, route.src_chain, route.token, route.wallet_type);
           });
-          testRunLogger.completeStep(FunnelSteps.DepositInitiated);
+          testRunLogger.completeStep(DepositFunnelSteps.DepositInitiated);
 
           // DepositSubmitted: Transaction submitted to blockchain
-          testRunLogger.startStep(FunnelSteps.DepositSubmitted);
+          testRunLogger.startStep(DepositFunnelSteps.DepositSubmitted);
           await test.step("Submit deposit", async () => {
             logger.info("Submitting deposit");
             return await submitDeposit(page, context, route.wallet_type);
           });
-          testRunLogger.completeStep(FunnelSteps.DepositSubmitted);
+          testRunLogger.completeStep(DepositFunnelSteps.DepositSubmitted);
 
           // DepositFinalized: Transaction confirmed on-chain
-          testRunLogger.startStep(FunnelSteps.DepositFinalized);
+          testRunLogger.startStep(DepositFunnelSteps.DepositFinalized);
           await test.step("Wait for finality", async () => {
             logger.info("Waiting for finality");
             const res = await waitForFinality(page);
@@ -113,7 +113,7 @@ for (const route of depositRoutes) {
             expect(res.ok).toBeTruthy();
             passed = true;
           });
-          testRunLogger.completeStep(FunnelSteps.DepositFinalized);
+          testRunLogger.completeStep(DepositFunnelSteps.DepositFinalized);
 
           logger.success("Deposit flow complete", { route_id: route.id, txHash, explorerUrl });
           

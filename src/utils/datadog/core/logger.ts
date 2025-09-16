@@ -1,11 +1,12 @@
-// src/utils/datadog/logger.ts
-// Datadog logger with namespace pattern for comprehensive test run logging
+// src/utils/datadog/core/logger.ts
+// Generic flow-agnostic test run logger for comprehensive datadog logging
 // Emits one comprehensive log at test completion with funnel analysis
 
-import { logger as consoleLogger } from "../logger/logging-utils";
-import { Route } from "../route/routes";
-import { TEST_TIMEOUTS } from "../../config/timeouts";
+import { logger as consoleLogger } from "../../logger/logging-utils";
+import { Route } from "../../route/routes";
+import { TEST_TIMEOUTS } from "../../../config/timeouts";
 import { hostname } from "os";
+import { BaseTestRunLog, BaseFlowConfig, FlowStepData, TestResult } from './types';
 
 // Datadog configuration
 const DD_API_KEY = process.env.DD_API_KEY;
@@ -20,80 +21,27 @@ const REPORTS_CLOUDFRONT_URL = process.env.REPORTS_CLOUDFRONT_URL;
 const UPLOAD_TIMESTAMP = process.env.UPLOAD_TIMESTAMP; // Set by entrypoint.sh
 const LOGS_URL = `https://http-intake.logs.${DD_SITE}/api/v2/logs`;
 
-// v4-web-aligned funnel steps
-export const FunnelSteps = {
-  NavigateDialog: "NavigateDialog",
-  DepositInitiated: "DepositInitiated",
-  DepositSubmitted: "DepositSubmitted",
-  DepositFinalized: "DepositFinalized",
-} as const;
-
-export type FunnelStep = (typeof FunnelSteps)[keyof typeof FunnelSteps];
-export const allSteps: FunnelStep[] = Object.values(FunnelSteps);
-
-export interface TestRunLog {
-  // Core identification
-  timestamp: string;
-  test_id: string;
-  route_id: string;
-  
-  // Test outcome
-  test_status: "passed" | "failed";
-  duration_ms: number;
-  
-  // Funnel analysis
-  steps_completed: FunnelStep[];
-  failure_step?: FunnelStep;
-  error?: {
-    message: string;
-    name?: string;
-    stack?: string;
-  };
-  
-  // Step performance
-  step_timings: Partial<Record<FunnelStep, number>>;
-  
-  // Route details (available from route object)
-  wallet_type: "metamask" | "phantom";
-  src_chain: string;
-  dst_chain: string;
-  token: string;
-  amount: string;
-  route_kind: "regular" | "instant";
-  
-  // Transaction details (for successful flows only)
-  tx_hash?: string;
-  explorer_url?: string;
-  
-  // Playwright report URLs
-  report_url?: string;
-}
-
-export interface TestResult {
-  status: "passed" | "failed";
-  error?: Error;
-  txHash?: string;
-  explorerUrl?: string;
-}
-
-class TestRunLogger {
+export class FlowTestRunLogger<TStep extends string, TLog extends BaseTestRunLog> {
   private readonly startTime: number;
   private readonly testId: string;
   private readonly route: Route;
-  private completedSteps: FunnelStep[] = [];
-  private stepStartTimes: Record<FunnelStep, number> = {} as any;
-  private stepTimings: Record<FunnelStep, number> = {} as any;
-  private currentStep?: FunnelStep;
+  private readonly config: BaseFlowConfig<TStep, TLog>;
+  private completedSteps: TStep[] = [];
+  private stepStartTimes: Record<TStep, number> = {} as any;
+  private stepTimings: Record<TStep, number> = {} as any;
+  private currentStep?: TStep;
 
-  constructor(route: Route, testId?: string) {
+  constructor(config: BaseFlowConfig<TStep, TLog>, route: Route, testId?: string) {
+    this.config = config;
     this.route = route;
     this.testId = testId || this.generateTestId();
     this.startTime = Date.now();
     
     if (DD_VERBOSE) {
-      consoleLogger.debug("TestRunLogger initialized", { 
+      consoleLogger.debug(`${config.flowName} TestRunLogger initialized`, { 
         test_id: this.testId, 
-        route_id: route.id 
+        route_id: route.id,
+        flow: config.flowName
       });
     }
   }
@@ -101,14 +49,15 @@ class TestRunLogger {
   /**
    * Mark the start of a funnel step
    */
-  startStep(step: FunnelStep): void {
+  startStep(step: TStep): void {
     this.currentStep = step;
     this.stepStartTimes[step] = Date.now();
     
     if (DD_VERBOSE) {
-      consoleLogger.debug(`Started funnel step: ${step}`, { 
+      consoleLogger.debug(`Started ${this.config.flowName} funnel step: ${step}`, { 
         test_id: this.testId,
-        step 
+        step,
+        flow: this.config.flowName
       });
     }
   }
@@ -116,10 +65,11 @@ class TestRunLogger {
   /**
    * Mark a funnel step as completed successfully
    */
-  completeStep(step: FunnelStep): void {
+  completeStep(step: TStep): void {
     if (!this.stepStartTimes[step]) {
       consoleLogger.warning(`Step ${step} completed but never started`, { 
-        test_id: this.testId 
+        test_id: this.testId,
+        flow: this.config.flowName
       });
       this.stepStartTimes[step] = this.startTime; // fallback
     }
@@ -128,10 +78,11 @@ class TestRunLogger {
     this.stepTimings[step] = Date.now() - this.stepStartTimes[step];
     
     if (DD_VERBOSE) {
-      consoleLogger.debug(`Completed funnel step: ${step}`, { 
+      consoleLogger.debug(`Completed ${this.config.flowName} funnel step: ${step}`, { 
         test_id: this.testId,
         step,
-        duration_ms: this.stepTimings[step]
+        duration_ms: this.stepTimings[step],
+        flow: this.config.flowName
       });
     }
   }
@@ -142,19 +93,14 @@ class TestRunLogger {
   async logTestResult(result: TestResult): Promise<void> {
     const totalDuration = Date.now() - this.startTime;
     
-    const log: TestRunLog = {
+    // Create base log structure
+    const baseLog: BaseTestRunLog = {
       timestamp: new Date().toISOString(),
       test_id: this.testId,
       route_id: this.route.id,
       
       test_status: result.status,
       duration_ms: totalDuration,
-      
-      steps_completed: [...this.completedSteps],
-      failure_step: result.status === "failed" ? this.getFailureStep() : undefined,
-      error: result.error ? this.serializeError(result.error) : undefined,
-      
-      step_timings: { ...this.stepTimings },
       
       // Route details
       wallet_type: this.route.wallet_type,
@@ -174,27 +120,38 @@ class TestRunLogger {
       report_url: this.generateReportUrl(),
     };
 
+    // Create flow-specific step data
+    const stepData: FlowStepData<TStep> = {
+      steps_completed: [...this.completedSteps],
+      failure_step: result.status === "failed" ? this.getFailureStep() : undefined,
+      error: result.error ? this.serializeError(result.error) : undefined,
+      step_timings: { ...this.stepTimings },
+    };
+
+    // Use flow config to create the final log interface
+    const log = this.config.createLogInterface(baseLog, stepData);
+
     await this.sendLogToDatadog(log);
   }
 
   /**
    * Determine which step failed based on completed steps
    */
-  private getFailureStep(): FunnelStep | undefined {
+  private getFailureStep(): TStep | undefined {
     // If we have a current step that wasn't completed, that's the failure point
     if (this.currentStep && !this.completedSteps.includes(this.currentStep)) {
       return this.currentStep;
     }
     
     // Otherwise, find the first step that wasn't completed
-    for (const step of allSteps) {
+    for (const step of this.config.allSteps) {
       if (!this.completedSteps.includes(step)) {
         return step;
       }
     }
     
-    // If all steps were completed but test still failed, it's a finality issue
-    return FunnelSteps.DepositFinalized;
+    // If all steps were completed but test still failed, it's the final step (finality issue)
+    return this.config.allSteps[this.config.allSteps.length - 1];
   }
 
   /**
@@ -236,9 +193,9 @@ class TestRunLogger {
   /**
    * Send log to Datadog via HTTP API
    */
-  private async sendLogToDatadog(log: TestRunLog): Promise<void> {
+  private async sendLogToDatadog(log: TLog): Promise<void> {
     if (DD_DRY_RUN) {
-      consoleLogger.info("DD (dry-run) test run log", log as any);
+      consoleLogger.info(`DD (dry-run) ${this.config.flowName} test run log`, log as any);
       return;
     }
 
@@ -252,11 +209,11 @@ class TestRunLogger {
 
     // Show what we're sending if verbose
     if (DD_VERBOSE) {
-      consoleLogger.info("DD log to datadog", log as any);
+      consoleLogger.info(`DD log to datadog (${this.config.flowName})`, log as any);
     }
 
     const ddLogItem = {
-      message: `[synthetic_test_run] ${log.test_status.toUpperCase()}: ${log.route_id}`,
+      message: `[synthetic_test_run] ${log.test_status.toUpperCase()}: ${log.route_id} (${this.config.flowName})`,
       status: log.test_status === "failed" ? "error" : "info",
       ddtags: this.buildTags(log).join(","),
       ddsource: DD_SOURCE,
@@ -268,7 +225,7 @@ class TestRunLogger {
     try {
       await this.postToDatadog([ddLogItem]);
     } catch (error) {
-      consoleLogger.warning("Failed to send test run log to Datadog", {
+      consoleLogger.warning(`Failed to send ${this.config.flowName} test run log to Datadog`, {
         test_id: log.test_id,
         error: error instanceof Error ? error.message : String(error)
       });
@@ -279,8 +236,8 @@ class TestRunLogger {
   /**
    * Build Datadog tags for filtering and grouping
    */
-  private buildTags(log: TestRunLog): string[] {
-    return [
+  private buildTags(log: TLog): string[] {
+    const baseTags = [
       `service:${DD_SERVICE}`,
       `test_status:${log.test_status}`,
       `route_id:${log.route_id}`,
@@ -289,8 +246,15 @@ class TestRunLogger {
       `dst_chain:${log.dst_chain}`,
       `token:${log.token}`,
       `route_kind:${log.route_kind}`,
-      log.failure_step ? `failure_step:${log.failure_step}` : null,
-    ].filter(Boolean) as string[];
+      `flow:${this.config.flowName}`,
+    ];
+
+    // Add failure step tag if present
+    if ('failure_step' in log && log.failure_step) {
+      baseTags.push(`failure_step:${log.failure_step}`);
+    }
+
+    return baseTags.filter(Boolean) as string[];
   }
 
   /**
@@ -325,11 +289,3 @@ class TestRunLogger {
     }
   }
 }
-
-// Namespace export
-export const datadog = {
-  /**
-   * Create a new test run logger for tracking funnel steps and comprehensive test logging
-   */
-  createTestRunLogger: (route: Route, testId?: string) => new TestRunLogger(route, testId),
-};
