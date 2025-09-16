@@ -3,6 +3,7 @@
 
 import { FlowTestRunLogger } from './core/logger';
 import { depositFlowConfig } from './flows/deposit';
+import { withdrawFlowConfig } from './flows/withdraw';
 import { Route } from '../route/routes';
 
 // Namespace export with flow-specific factory functions
@@ -12,6 +13,12 @@ export const datadog = {
    */
   createDepositLogger: (route: Route, testId?: string) => 
     new FlowTestRunLogger(depositFlowConfig, route, testId),
+    
+  /**
+   * Create a new withdraw test run logger for tracking funnel steps and comprehensive test logging
+   */
+  createWithdrawLogger: (route: Route, testId?: string) => 
+    new FlowTestRunLogger(withdrawFlowConfig, route, testId),
 };
 
 // Re-export deposit flow-specific types and constants for backward compatibility and convenience
@@ -21,6 +28,14 @@ export {
   type DepositTestRunLog,
   allDepositSteps 
 } from './flows/deposit';
+
+// Re-export withdraw flow-specific types and constants
+export { 
+  WithdrawFunnelSteps, 
+  type WithdrawFunnelStep, 
+  type WithdrawTestRunLog,
+  allWithdrawSteps 
+} from './flows/withdraw';
 
 // Re-export core types for advanced usage
 export type { BaseTestRunLog, TestResult } from './core/types';
