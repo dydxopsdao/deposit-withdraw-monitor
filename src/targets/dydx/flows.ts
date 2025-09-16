@@ -9,7 +9,8 @@ import { TEST_TIMEOUTS } from "../../config/timeouts";
 import { handleMetamaskPopup, conditionallyUnlockMetamask } from "../wallets/metamask/flows";
 import { handlePhantomPopup as handlePhantomPopup } from "../wallets/phantom/flows";
 import { dydxSelectors } from "./selectors";
-import { isVisible } from "../../utils/helpers/ui-helper";
+import { isVisible, preferSecondCandidate, clickWithFallback } from "../../utils/helpers/ui-helper";
+import { retry, RetryError } from "../../utils/retry";
 
 //#region openApp
 /**
@@ -111,82 +112,60 @@ export async function openApp(
     afterNavigate,
   } = opts;
 
-  // Build the target URL from base + path unless an absolute URL was provided.
-  const targetUrl = url ?? new URL(path ?? "", DAPP_URL).toString();
-  logger.step(`Navigating to app: ${targetUrl}`);
-
-  let lastError: unknown;
-
-  // Retry loop: we intentionally catch errors, log context, back off, and retry
-  // TODO: Extract this retry/backoff block into a shared helper to keep navigation logic DRY.
-  // a bounded number of times before surfacing the final error.
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    const attemptNo = attempt + 1;
-
+    // Build the target URL from base + path unless an absolute URL was provided.
+    const targetUrl = url ?? new URL(path ?? "", DAPP_URL).toString();
+    logger.step(`Navigating to app: ${targetUrl}`);
+  
     try {
-      // On retries, wait with exponential backoff: 1x, 2x, 4x…
-      if (attempt > 0) {
-        const delay = retryDelayMs * Math.pow(2, attempt - 1);
-        logger.info(`Retry ${attempt} of ${maxRetries} → waiting ${delay}ms`);
-        await page.waitForTimeout(delay);
-      }
-
-      // Navigate and bring the tab forward (wallet popups often assume focus).
-      await page.goto(targetUrl, { waitUntil });
-      if (bringToFront) await page.bringToFront();
-
-      // UI readiness gates: wait until the *real* controls we need are visible.
-      //TODO Handle concurrent runs with connected vs not.
-      /* if (waitFor) {
-        const list = Array.isArray(waitFor) ? waitFor : [waitFor];
-        logger.info(`Waiting for ${list.length} selector(s) to be visible`);
-        for (const item of list) {
-          if (typeof item === "string") {
-            // For strings use CSS / text / `role=` selector engines.
-            logger.debug(`waitForSelector: ${item}`);
-            await page.waitForSelector(item, {
-              state: "visible",
-              timeout: TEST_TIMEOUTS.ELEMENT,
-            });
+      await retry(
+        async (attemptNo) => {
+          // Navigate and bring the tab forward (wallet popups often assume focus).
+          await page.goto(targetUrl, { waitUntil });
+          if (bringToFront) await page.bringToFront();
+          //TODO build a helper function to wait for the UI to be ready  
+          if (attemptNo > 1) {
+            logger.success(`Navigated to dYdX on attempt ${attemptNo}: ${targetUrl}`);
           } else {
-            // For factories, resolve to a Locator and wait for visibility.
-            const loc = item(page);
-            logger.debug(`waitFor locator(factory)`);
-            await loc.first().waitFor({
-              state: "visible",
-              timeout: TEST_TIMEOUTS.ELEMENT,
-            });
+            logger.success(`Navigated to dYdX: ${targetUrl}`);
           }
+  
+          // Post-nav hook: last chance to tidy up (cookie/region banners, etc).
+          if (afterNavigate) {
+            await afterNavigate(page);
+          }
+  
+          return page; // success for this attempt
+        },
+        {
+          retries: maxRetries,
+          baseDelayMs: retryDelayMs,
+          jitterRatio: 0.2,
+          onAttemptFailure: (attemptNo, err) => {
+            const total = maxRetries + 1;
+            const remaining = maxRetries - (attemptNo - 1);
+            const msg = (err as Error)?.message ?? String(err);
+            logger.warning(
+              `Navigation attempt ${attemptNo}/${total} failed for ${targetUrl} (${remaining} retries left): ${msg}`
+            );
+          },
         }
-      } */
-
-      // Post-nav hook: last chance to tidy up (cookie/region banners, etc).
-      if (afterNavigate) {
-        await afterNavigate(page);
+      );
+  
+      return page;
+    } catch (e) {
+      if (e instanceof RetryError) {
+        const lastMsg =
+          (e.lastError as Error)?.message ?? (typeof e.lastError === "string" ? e.lastError : "Unknown error");
+        logger.error(
+          `Failed to navigate after ${e.attempts} attempts: ${targetUrl} (last error: ${lastMsg})`,
+          (e.lastError as Error) ?? e
+        );
+        throw (e.lastError as Error) ?? e;
       }
-
-      logger.success(
-        `Navigated to dYdX: ${targetUrl}${attempt > 0 ? ` on attempt ${attemptNo}` : ""}`
-      );
-      return page; // ✅ success
-    } catch (err) {
-      // Keep the last error so we can rethrow it after all retries are exhausted.
-      lastError = err;
-      logger.warning(
-        `Navigation attempt ${attemptNo} failed for ${targetUrl}: ${(err as Error)?.message}`
-      );
-      // TODO: Optionally capture details to be used on the final error.
-      // Loop continues unless we hit the max retries; then we break below.
+      logger.error(`Failed to navigate to ${targetUrl}`, e as Error);
+      throw e;
     }
   }
-
-  // All attempts failed → surface the final error with context.
-  logger.error(
-    `Failed to navigate after ${maxRetries + 1} attempts: ${targetUrl}`,
-    lastError as Error
-  );
-  throw lastError;
-}
 //#endregion
 
 //#region connectWallet
@@ -215,16 +194,16 @@ export async function connectWallet(
   wallet: WalletType
 ): Promise<Page> {
   logger.step(`Connecting wallet: ${wallet}`);
-  
   // TODO: Emit metrics or structured logs for each connection attempt to aid debugging in CI.
   //TODO add hahndling of the warning / disconnect
   // TODO: If stale wallet popups are open from previous runs, close them proactively.
   // 1) If already connected, short-circuit (account/user menu present)
-  if (await isVisible(dydxSelectors.accountMenuButton(page, wallet))) {
+  if (await isVisible(dydxSelectors.accountMenuButton(page, wallet), { timeout: TEST_TIMEOUTS.DELAY })) {
     logger.info("Wallet appears already connected (account menu visible)");
     return page;
   }
   // 2) Open the wallet picker if needed
+  logger.info("Opening wallet picker");
   await openWalletPicker(page);
   
   // 3) Choose provider and trigger the request from within the dApp
@@ -328,23 +307,38 @@ async function sendRequest(page: Page, locator: Locator) {
  */
 export async function openWalletPicker(page: Page, retries = 2) {
   // If already open, we're done
-  if (await isPickerOpen(page)) return;
-  // TODO: Consider adding logging for each retry attempt for better traceability.
-  // TODO: Add a short jitter between retries to reduce sync collisions.
-
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    // 1) wait for button, then click
-    await expect(dydxSelectors.connectWalletBtn(page)).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
-    await dydxSelectors.connectWalletBtn(page).click();
-
-    // 2) confirm picker appeared
-    if (await isPickerOpen(page)) return;
-
-    // optional small wait before next try
-    if (attempt < retries) await page.waitForTimeout(500);
+  if (await isPickerOpen(page)) {
+    logger.info("Wallet picker already open");
+    return;
   }
+  logger.info("Wallet picker not open, opening");
 
-  throw new Error("Wallet picker did not appear after clicking Connect wallet.");
+  const connectBtn = dydxSelectors.connectWalletBtn(page);
+
+  try {
+    await retry(
+      async (_attemptNo) => {
+        await expect(connectBtn).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
+        logger.info("Connect wallet button visible, clicking");
+        await connectBtn.click();
+        logger.info("Connect wallet button clicked");
+        if (await isPickerOpen(page)) return;
+        throw new Error("Picker not open yet");
+      },
+      {
+        retries,
+        baseDelayMs: TEST_TIMEOUTS.POLL,
+        jitterRatio: 0.2,
+        onAttemptFailure: (attemptNo) => {
+          logger.info(
+            `Connect wallet click did not open picker (attempt ${attemptNo}/${retries + 1})`
+          );
+        },
+      }
+    );
+  } catch {
+    throw new Error("Wallet picker did not appear after clicking Connect wallet.");
+  }
 }
 
 /** Picker is "open" if any wallet option is visible */
@@ -425,32 +419,8 @@ export async function selectTokenDeposit(page: Page, token: string, chain: strin
   await expect(candidates.first()).toBeVisible({ timeout: TEST_TIMEOUTS.ACTION });
 
   // For a short window, if a second appears, prefer it
-  let target = candidates.first();
-  const deadline = Date.now() + TEST_TIMEOUTS.ACTION;
-  while (Date.now() < deadline) {
-    if ((await candidates.count()) >= 2) {
-      target = candidates.nth(1);
-      break;
-    }
-    await page.waitForTimeout(TEST_TIMEOUTS.POLL);
-  }
-
-  // Make sure we can click it
-  await target.evaluate(el => el.scrollIntoView({ block: "center" })).catch(() => {});
-  await expect(target).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
-  await expect(target).toBeEnabled({ timeout: TEST_TIMEOUTS.ELEMENT });
-
-  // Click with a safe fallback if something overlays briefly
-  try {
-    await target.click({ timeout: TEST_TIMEOUTS.ELEMENT });
-  } catch {
-    const box = await target.boundingBox();
-    if (box) {
-      await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-    } else {
-      await target.click({ force: true });
-    }
-  }
+  const target = await preferSecondCandidate(candidates, TEST_TIMEOUTS.ACTION);
+  await clickWithFallback(page, target, { label: "token/chain candidate" });
   // TODO: Extract this click-with-fallback pattern into a shared helper (DRY).
 }
 
@@ -516,7 +486,7 @@ export async function submitDeposit(page: Page, context: BrowserContext, wallet:
   // Wait until it’s actually enabled (handles disabled/aria-disabled)
   await expect(btn).toBeEnabled({ timeout: TEST_TIMEOUTS.ELEMENT });
   // Click for real
-  await btn.click();
+  await clickWithFallback(page, btn, { label: "Deposit funds" });
   logger.info("Deposit funds button clicked");
 
   // Add / Approve Network
@@ -525,7 +495,6 @@ export async function submitDeposit(page: Page, context: BrowserContext, wallet:
   // TODO handle alert for network costs
   //Here just to approve spending cap
   await handleWalletPopup(context, wallet);
-
 
 }
 //#endregion
@@ -596,35 +565,12 @@ export async function selectTokenWithdraw(page: Page, token: string, chain: stri
   const candidates = dydxSelectors.chainPickerRow(page, chain);
   logger.debug("Withdraw chain picker candidates", { count: await candidates.count() });
   // Wait up to 5s for at least one match
-  await expect(candidates.first()).toBeVisible({ timeout: 5_000 });
+  await expect(candidates.first()).toBeVisible({ timeout: TEST_TIMEOUTS.DEFAULT });
 
-  // For up to 5s, if a second appears, prefer it
-  let target = candidates.first();
-  const deadline = Date.now() + 5_000;
-  while (Date.now() < deadline) {
-    if ((await candidates.count()) >= 2) {
-      target = candidates.nth(1);
-      break;
-    }
-    await page.waitForTimeout(TEST_TIMEOUTS.POLL);
-  }
+     // For up to 5s, if a second appears, prefer it
+  const target = await preferSecondCandidate(candidates, TEST_TIMEOUTS.DEFAULT);
+  await clickWithFallback(page, target, { label: "chain candidate" });
 
-  // Make sure we can click it
-  await target.evaluate(el => el.scrollIntoView({ block: "center" })).catch(() => {});
-  await expect(target).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
-  await expect(target).toBeEnabled({ timeout: TEST_TIMEOUTS.ELEMENT });
-
-  // Click with a safe fallback if something overlays briefly
-  try {
-    await target.click({ timeout: TEST_TIMEOUTS.ELEMENT });
-  } catch {
-    const box = await target.boundingBox();
-    if (box) {
-      await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-    } else {
-      await target.click({ force: true });
-    }
-  }
 }
 
 
