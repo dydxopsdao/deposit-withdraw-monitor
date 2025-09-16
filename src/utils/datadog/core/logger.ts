@@ -108,9 +108,6 @@ export class FlowTestRunLogger<TStep extends string, TLog extends BaseTestRunLog
       dst_chain: this.route.dst_chain,
       token: this.route.token,
       amount: this.route.amount,
-      route_kind: this.route.route_kind || (() => {
-        throw new Error(`Route ${this.route.id} is missing required route_kind field`);
-      })(),
 
       // Transaction details
       tx_hash: result.txHash,
@@ -129,7 +126,7 @@ export class FlowTestRunLogger<TStep extends string, TLog extends BaseTestRunLog
     };
 
     // Use flow config to create the final log interface
-    const log = this.config.createLogInterface(baseLog, stepData);
+    const log = this.config.createLogInterface(baseLog, stepData, this.route);
 
     await this.sendLogToDatadog(log);
   }
@@ -245,9 +242,13 @@ export class FlowTestRunLogger<TStep extends string, TLog extends BaseTestRunLog
       `src_chain:${log.src_chain}`,
       `dst_chain:${log.dst_chain}`,
       `token:${log.token}`,
-      `route_kind:${log.route_kind}`,
       `flow:${this.config.flowName}`,
     ];
+
+    // Add route_kind if present (deposit-only)
+    if ((log as any).route_kind) {
+      baseTags.push(`route_kind:${(log as any).route_kind}`);
+    }
 
     // Add failure step tag if present
     if ('failure_step' in log && log.failure_step) {

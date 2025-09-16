@@ -2,6 +2,7 @@
 // Deposit flow specific configuration for datadog logging
 
 import { BaseTestRunLog, BaseFlowConfig, FlowStepData } from '../core/types';
+import type { Route } from "../../route/routes";
 
 // v4-web-aligned funnel steps for deposit flow
 export const DepositFunnelSteps = {
@@ -11,10 +12,11 @@ export const DepositFunnelSteps = {
   DepositFinalized: "DepositFinalized",
 } as const;
 
-export type DepositFunnelStep = (typeof DepositFunnelSteps)[keyof typeof DepositFunnelSteps];
-export const allDepositSteps: DepositFunnelStep[] = Object.values(DepositFunnelSteps);
+type DepositFunnelStep = (typeof DepositFunnelSteps)[keyof typeof DepositFunnelSteps];
+const allDepositSteps: DepositFunnelStep[] = Object.values(DepositFunnelSteps);
 
-export interface DepositTestRunLog extends BaseTestRunLog {
+interface DepositTestRunLog extends BaseTestRunLog {
+  route_kind: "regular" | "instant";
   // Funnel analysis specific to deposit
   steps_completed: DepositFunnelStep[];
   failure_step?: DepositFunnelStep;
@@ -32,8 +34,9 @@ export const depositFlowConfig: BaseFlowConfig<DepositFunnelStep, DepositTestRun
   flowName: "deposit",
   steps: DepositFunnelSteps,
   allSteps: allDepositSteps,
-  createLogInterface: (base: BaseTestRunLog, stepData: FlowStepData<DepositFunnelStep>): DepositTestRunLog => ({
+  createLogInterface: (base: BaseTestRunLog, stepData: FlowStepData<DepositFunnelStep>, route: Route): DepositTestRunLog => ({
     ...base,
     ...stepData,
+    route_kind: route.route_kind || (() => { throw new Error(`Route ${route.id} is missing required route_kind field`); })(),
   }),
 };

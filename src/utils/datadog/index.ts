@@ -2,8 +2,8 @@
 // Main export for Datadog utilities with modular flow pattern
 
 import { FlowTestRunLogger } from './core/logger';
-import { depositFlowConfig } from './flows/deposit';
-import { withdrawFlowConfig } from './flows/withdraw';
+import { depositFlowConfig, DepositFunnelSteps } from './flows/deposit';
+import { withdrawFlowConfig, WithdrawFunnelSteps } from './flows/withdraw';
 import { Route } from '../route/routes';
 
 // Namespace export with flow-specific factory functions
@@ -21,25 +21,6 @@ export const datadog = {
     new FlowTestRunLogger(withdrawFlowConfig, route, testId),
 };
 
-// Re-export deposit flow-specific types and constants for backward compatibility and convenience
-export { 
-  DepositFunnelSteps, 
-  type DepositFunnelStep, 
-  type DepositTestRunLog,
-  allDepositSteps 
-} from './flows/deposit';
-
-// Re-export withdraw flow-specific types and constants
-export { 
-  WithdrawFunnelSteps, 
-  type WithdrawFunnelStep, 
-  type WithdrawTestRunLog,
-  allWithdrawSteps 
-} from './flows/withdraw';
-
-// Re-export core types for advanced usage
-export type { BaseTestRunLog, TestResult } from './core/types';
-
-// Backward compatibility exports (deprecated - use DepositFunnelSteps instead)
-export { DepositFunnelSteps as FunnelSteps } from './flows/deposit';
-export type { DepositFunnelStep as FunnelStep } from './flows/deposit';
+// Minimal re-exports used by tests
+export { DepositFunnelSteps };
+export { WithdrawFunnelSteps };
