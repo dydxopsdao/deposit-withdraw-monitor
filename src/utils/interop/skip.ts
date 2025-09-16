@@ -257,24 +257,31 @@ async function sweepNobleBalance(dYdXSeed: string, amount: bigint | string) {
     },
   };
 
-  // Simulate the transaction to get the fee and adjust the amount for the fee
-  const nobleClient = new NobleClient(nobleChainConfig.getRpcEndpoint());
-  await nobleClient.connect(nobleWallet);
+// Simulate the transaction to get the fee and adjust the amount for the fee
+const nobleClient = new NobleClient(nobleChainConfig.getRpcEndpoint());
+await nobleClient.connect(nobleWallet);
 
-  const fee = await nobleClient.simulateTransaction([ibcMsg]);
+const fee = await nobleClient.simulateTransaction([ibcMsg]);
 
-  const feeAdjustedAmount =
-    parseInt(ibcMsg.value.token.amount, 10) - Math.floor(parseInt(fee.amount[0]!.amount, 10) * NOBLE_GAS_MULTIPLIER);
+const amtIn = BigInt(ibcMsg.value.token.amount);
+const feeAmt = BigInt(fee.amount[0]!.amount);
 
-  ibcMsg.value.token.amount = feeAdjustedAmount.toString();
+// Scale multiplier to avoid floating point precision
+const MULTIPLIER_SCALE = 100n;
+const multiplierScaled = BigInt(Math.round(NOBLE_GAS_MULTIPLIER * Number(MULTIPLIER_SCALE)));
+const feeAdj = (feeAmt * multiplierScaled) / MULTIPLIER_SCALE;
 
-  if (feeAdjustedAmount <= 0) {
-    throw new Error(
-      `fee to ibc send is greater than amount to be transferred. amount: ${
-        parsedMsg.token.amount
-      } fee: ${JSON.stringify(fee)}, feeAdjustedAmount: ${feeAdjustedAmount}`
-    );
-  }
+const feeAdjustedAmount = amtIn - feeAdj;
+
+ibcMsg.value.token.amount = feeAdjustedAmount.toString();
+
+if (feeAdjustedAmount <= 0n) {
+  throw new Error(
+    `fee to ibc send is greater than amount to be transferred. amount: ${
+      parsedMsg.token.amount
+    } fee: ${JSON.stringify(fee)}, feeAdjustedAmount: ${feeAdjustedAmount.toString()}`
+  );
+}
 
   // Send the transaction
   await nobleClient.send([ibcMsg], undefined, `${DEFAULT_TRANSACTION_MEMO} | ${nobleAddress}`);
