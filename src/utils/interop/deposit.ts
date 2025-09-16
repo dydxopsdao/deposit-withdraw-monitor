@@ -93,18 +93,20 @@ async function sweepNobleBalanceIfNeeded(dYdXSeed: string) {
   const nobleAddress = await deriveCosmosAddress(nobleChainConfig.bech32Prefix, dYdXSeed);
   const nobleBalance = await getUsdcBalance(nobleChainId, nobleAddress);
 
-  const minAmount = NOBLE_USDC_MIN_AUTOSWEEP_AMOUNT + NOBLE_USDC_GAS_BUFFER;
+  const gasBuffer = newUsdcAmount(NOBLE_USDC_GAS_BUFFER).amount;
+  const minSweep = newUsdcAmount(NOBLE_USDC_MIN_AUTOSWEEP_AMOUNT).amount;
+  const sweepThreshold = gasBuffer + minSweep;
 
-  if (nobleBalance.amount < newUsdcAmount(minAmount).amount) {
+  if (nobleBalance.amount < sweepThreshold) {
     logger.info(
-      `USDC balance ${nobleBalance.formattedAmount} for ${nobleAddress} is less than ${minAmount} - skipping sweep from Noble`
+      `USDC balance ${nobleBalance.formattedAmount} for ${nobleAddress} is less than ${NOBLE_USDC_MIN_AUTOSWEEP_AMOUNT + NOBLE_USDC_GAS_BUFFER} - skipping sweep from Noble`
     );
     return;
   }
 
-  const amountToSweep = nobleBalance.amount - newUsdcAmount(NOBLE_USDC_MIN_AUTOSWEEP_AMOUNT).amount;
+  const amountToSweep = nobleBalance.amount - gasBuffer; // leave gas buffer
   logger.info(
-    `USDC balance ${nobleBalance.formattedAmount} for ${nobleAddress} is greater than ${minAmount} - sweeping ${amountToSweep} from Noble`
+    `USDC balance ${nobleBalance.formattedAmount} for ${nobleAddress} is >= ${NOBLE_USDC_MIN_AUTOSWEEP_AMOUNT + NOBLE_USDC_GAS_BUFFER} - sweeping ${amountToSweep} from Noble`
   );
   await sweepNobleBalance(dYdXSeed, amountToSweep);
 }
