@@ -10,7 +10,7 @@ export { getEvmSigner, deriveEvmAddress };
  * @param mnemonic - The BIP39 mnemonic phrase
  * @returns A Viem WalletClient compatible with Skip API
  */
-function getEvmSigner(rpcEndpoint: string, derivationPath: string, mnemonic: string): WalletClient {
+function getEvmSigner(rpcEndpoint: string, derivationPath: `m/44'/60'/${string}`, mnemonic: string): WalletClient {
   // Convert mnemonic directly to Viem account with derivation path
   const account = getAccount(derivationPath, mnemonic);
 
@@ -27,7 +27,7 @@ function getEvmSigner(rpcEndpoint: string, derivationPath: string, mnemonic: str
  * @param mnemonic - The BIP39 mnemonic phrase
  * @returns The derived address
  */
-function deriveEvmAddress(derivationPath: string, mnemonic: string): string {
+function deriveEvmAddress(derivationPath: `m/44'/60'/${string}`, mnemonic: string): string {
   const account = getAccount(derivationPath, mnemonic);
   return account.address;
 }
@@ -40,10 +40,6 @@ function deriveEvmAddress(derivationPath: string, mnemonic: string): string {
  * @param mnemonic - The BIP39 mnemonic phrase
  * @returns The account
  */
-function getAccount(derivationPath: string, mnemonic: string): Account {
-  const pathParts = derivationPath.split('/');
-  const addressIndex = parseInt(pathParts[4] || '0');
-  const changeIndex = parseInt(pathParts[3] || '0');
-
-  return mnemonicToAccount(mnemonic, { addressIndex, changeIndex });
+function getAccount(derivationPath: `m/44'/60'/${string}`, mnemonic: string): Account {
+  return mnemonicToAccount(mnemonic, { path: derivationPath });
 }

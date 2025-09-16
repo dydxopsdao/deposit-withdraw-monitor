@@ -11,7 +11,7 @@ export { getSvmSigner, deriveSvmAddress };
  * @param mnemonic - The BIP39 mnemonic phrase
  * @returns A Solana Adapter compatible with Skip API
  */
-function getSvmSigner(derivationPath: string, mnemonic: string): Adapter {
+function getSvmSigner(derivationPath: `m/44'/501'/${string}`, mnemonic: string): Adapter {
   if (!bip39.validateMnemonic(mnemonic)) {
     throw new Error('Invalid mnemonic phrase');
   }
@@ -51,7 +51,7 @@ function getSvmSigner(derivationPath: string, mnemonic: string): Adapter {
  * @param mnemonic - The BIP39 mnemonic phrase
  * @returns The derived address in base58 format
  */
-function deriveSvmAddress(derivationPath: string, mnemonic: string): string {
+function deriveSvmAddress(derivationPath: `m/44'/501'/${string}`, mnemonic: string): string {
   if (!bip39.validateMnemonic(mnemonic)) {
     throw new Error('Invalid mnemonic phrase');
   }
@@ -68,7 +68,7 @@ function deriveSvmAddress(derivationPath: string, mnemonic: string): string {
  * @param mnemonic - The BIP39 mnemonic phrase
  * @returns The derived keypair
  */
-function keypairFromMnemonic(derivationPath: string, mnemonic: string): Keypair {
+function keypairFromMnemonic(derivationPath: `m/44'/501'/${string}`, mnemonic: string): Keypair {
   const seed = bip39.mnemonicToSeedSync(mnemonic);
   const derived = derivePath(derivationPath, seed.toString('hex'));
   return Keypair.fromSeed(derived.key);
