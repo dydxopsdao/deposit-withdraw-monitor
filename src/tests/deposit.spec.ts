@@ -5,18 +5,16 @@
 //   - ROUTE_ID=<id>
 //   - WALLET=metamask|phantom
 //
-// Logging: ConsoleLogger at milestones.
-// Error handling: separates "pre_submit" vs "submit_or_finality".
-// Telemetry (Datadog):
-//   - route result metric (1/0) once per test
-//   - route failure log with error_stage
-//   - rebalance result metric + log (with balances when provided)
+// Logging: ConsoleLogger at milestones + TestRunLogger for comprehensive Datadog logs.
+// Telemetry (Datadog): Single log per test run with v4-web funnel steps:
+//   - NavigateDialog, DepositInitiated, DepositSubmitted, DepositFinalized
+//   - Step timings, test outcome, transaction details
 // Rebalance: never fails the test.
 
 import { test, expect } from "../fixtures";
 import { logger } from "../logger/logging-utils";
-import { getRoutesSync, type Route, type WalletType } from "../utils/routes";
-import { createTelemetryContext } from "../utils/datadog/datadog-utils";
+import { getRoutesSync, type Route, type WalletType } from "../utils/routes
+import { datadog, DepositFunnelSteps } from "../utils/datadog";
 import { openApp, connectWallet, deposit, submitDeposit } from "../targets/dydx/flows";
 import { dydxSelectors } from "../targets/dydx/selectors";
 import { TEST_TIMEOUTS } from "../config/timeouts";
@@ -54,23 +52,7 @@ for (const route of depositRoutes) {
     });
 
     test(title, async ({ page, context }, testInfo) => {
-      // Datadog context (keeps tags consistent, sends metrics/logs)
-      const dd = createTelemetryContext({
-        route: {
-          id: route.id,
-          kind: "deposit",
-          wallet_type: route.wallet_type,
-          wallet_alias: route.wallet_alias,
-          wallet_address: route.wallet_address,
-          dydx_address: route.dydx_address,
-          route_kind: route.route_kind as any, // regular|instant
-          amount: String(route.amount),
-          src_chain: route.src_chain,
-          dst_chain: route.dst_chain,
-          token: route.token,
-        },
-        operation: "deposit",
-      });
+      const testRunLogger = datadog.createDepositLogger(route);
 
       let txHash: string | undefined;
       let explorerUrl: string | undefined;
@@ -90,6 +72,8 @@ for (const route of depositRoutes) {
       });
 
       try {
+          // NavigateDialog: Open app and connect wallet to reach deposit dialog
+          testRunLogger.startStep(DepositFunnelSteps.NavigateDialog);
           await test.step("Open app", async () => {
             await openApp(page, context, {
               waitUntil: "domcontentloaded",
@@ -102,15 +86,25 @@ for (const route of depositRoutes) {
           await test.step(`Connect wallet (${route.wallet_type})`, async () => {
             await connectWallet(page, context, route.wallet_type);
           });
+          testRunLogger.completeStep(DepositFunnelSteps.NavigateDialog);
+
+          // DepositInitiated: User fills deposit dialog and initiates deposit
+          testRunLogger.startStep(DepositFunnelSteps.DepositInitiated);
           await test.step("Deposit Dialog Input", async () => {
             await deposit(page, context, route.amount, route.src_chain, route.token, route.wallet_type);
           });
+          testRunLogger.completeStep(DepositFunnelSteps.DepositInitiated);
 
+          // DepositSubmitted: Transaction submitted to blockchain
+          testRunLogger.startStep(DepositFunnelSteps.DepositSubmitted);
           await test.step("Submit deposit", async () => {
             logger.info("Submitting deposit");
             return await submitDeposit(page, context, route.wallet_type);
           });
+          testRunLogger.completeStep(DepositFunnelSteps.DepositSubmitted);
 
+          // DepositFinalized: Transaction confirmed on-chain
+          testRunLogger.startStep(DepositFunnelSteps.DepositFinalized);
           await test.step("Wait for finality", async () => {
             logger.info("Waiting for finality");
             const res = await waitForFinality(page);
@@ -119,40 +113,38 @@ for (const route of depositRoutes) {
             expect(res.ok).toBeTruthy();
             passed = true;
           });
+          testRunLogger.completeStep(DepositFunnelSteps.DepositFinalized);
 
           logger.success("Deposit flow complete", { route_id: route.id, txHash, explorerUrl });
-          /* =========================
-              TEST PASSED - SEND DATADOG METRICS and LOGS
-          ========================= */
-          await dd.routeResult({ passed: true, txHash, explorerUrl });
-        } catch (e: any) {
-
-          /* =========================
-              TEST FAILED - SEND DATADOG METRICS and LOGS
-          ========================= */
-          logger.error("Deposit failed", e, { route_id: route.id, txHash, explorerUrl });
-          // Datadog: failure metric + failure log at deposit stage
-          await dd.routeResult({ passed: false, error: e, txHash, explorerUrl });
-          throw e;
           
+          // Emit comprehensive test run log for successful tests
+          await testRunLogger.logTestResult({
+            status: "passed",
+            txHash,
+            explorerUrl,
+          });
+          
+          // TODO: Consider closing the entire context here to avoid cross-test leakage when running multiple routes.
+        } catch (e: any) {
+          logger.error("Deposit failed", e, { route_id: route.id, txHash, explorerUrl });
+          
+          // Emit comprehensive test run log for failed tests
+          await testRunLogger.logTestResult({
+            status: "failed",
+            error: e,
+            txHash,
+            explorerUrl,
+          });
+          
+          throw e;
       } finally {
         // -------- Always attempt to rebalance — must not fail the test -------
         await test.step("Rebalance (teardown)", async () => {
           try {
             // Assume your rebalance returns optional balances; OK if it returns void
             const result = await rebalanceNow(route, { reason: "post_test_teardown", last_tx: txHash, passed });
-            const balancesBefore = (result as any)?.balancesBefore;
-            const balancesAfter = (result as any)?.balancesAfter;
-
-            await dd.rebalanceResult({
-              passed: true,
-              balancesBefore,
-              balancesAfter,
-            });
           } catch (e: any) {
             logger.warning("Rebalance failed", { route_id: route.id, error: { message: e?.message } });
-            // Datadog: rebalance failure metric + error log
-            await dd.rebalanceResult({ passed: false, error: e });
             // swallow — do not rethrow
           }
         });

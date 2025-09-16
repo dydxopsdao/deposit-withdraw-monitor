@@ -17,7 +17,7 @@ routes:
     src_chain: dydx
     dst_chain: ethereum
     cadence_min: 30
-    enabled: true
+    enabled: false
 
   - id: metamask-polygon-usdc-withdrawal
     kind: withdraw
