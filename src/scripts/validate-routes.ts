@@ -29,7 +29,7 @@ async function main() {
     process.env.ROUTE_ID_DUPLICATE_MODE = 'throw';
 
     // Dynamic import to avoid ESM/CommonJS quirks in various runners
-    const { getRoutesSync } = await import('../utils');
+    const { getRoutesSync } = await import('../utils/routes');
     const routes = getRoutesSync();
     // Basic additional sanity: at least one route
     if (!routes || !Array.isArray(routes)) throw new Error('Loader did not return routes array');
