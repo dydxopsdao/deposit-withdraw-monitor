@@ -1,4 +1,4 @@
-import { logger } from '../logger/logging-utils';
+import { logger } from '../../utils/logger/logging-utils';
 import { deriveCosmosAddress, getCosmosSigner, getEvmSigner, getSvmSigner } from '../signers';
 
 import {

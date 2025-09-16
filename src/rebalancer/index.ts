@@ -1,6 +1,6 @@
-import { Route } from '../route/routes';
-import interop, { CHAIN_IDS } from '../interop';
-import { BalanceMap } from '../datadog/datadog-utils';
+import { Route } from '../utils/route/routes';
+import interop, { CHAIN_IDS } from './interop';
+import { BalanceMap } from '../utils/datadog/datadog-utils';
 
 export { rebalanceNow };
 

@@ -1,4 +1,4 @@
-import { logger } from '../logger/logging-utils';
+import { logger } from '../../utils/logger/logging-utils';
 import { getCosmosSigner, getEvmSigner, getSvmSigner } from '../signers';
 
 import { CHAIN_CONFIGS, CHAIN_IDS, DYDX_USDC_ASSET_ID, TYPE_URL_MSG_WITHDRAW_FROM_SUBACCOUNT } from './constants';

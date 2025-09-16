@@ -7,7 +7,7 @@ dotenv.config({ path: envFile });
 console.log(`> Loaded environment from ${envFile}`);
 
 import { getRoutesSync } from '../utils/route/routes';
-import interop, { CHAIN_IDS } from '../utils/interop';
+import interop, { CHAIN_IDS } from '../rebalancer/interop';
 
 async function main(): Promise<void> {
   interop.configureSkipClient();

@@ -21,7 +21,7 @@ import { openApp, connectWallet, deposit, submitDeposit } from "../targets/dydx/
 import { dydxSelectors } from "../targets/dydx/selectors";
 import { TEST_TIMEOUTS } from "../config/timeouts";
 import { waitForFinality } from "../utils/finality/finality";
-import { rebalanceNow } from "../utils/helpers/rebalance";
+import { rebalanceNow } from "../rebalancer";
 
 // ---- Route discovery (sync so tests can be defined at import time) ----------
 const onlyRouteId = process.env.ROUTE_ID?.trim();
