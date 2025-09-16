@@ -5,6 +5,8 @@
 import fs from 'fs';
 import path from 'path';
 
+import { logger } from '../utils/logger/logging-utils';
+
 // Prime env vars found in routes.yaml so the loader's env substitution doesn't fail in CI
 function primeEnvFromYaml(filePath: string) {
   const raw = fs.readFileSync(filePath, 'utf8');
@@ -31,12 +33,12 @@ async function main() {
     const routes = getRoutesSync();
     // Basic additional sanity: at least one route
     if (!routes || !Array.isArray(routes)) throw new Error('Loader did not return routes array');
-    console.log(`routes.yaml OK (${routes.length} routes)`);
+    logger.info(`routes.yaml OK (${routes.length} routes)`);
   } catch (e: any) {
-    console.error('❌ routes.yaml validation failed:', e?.message || e);
+    const error = e instanceof Error ? e : new Error(String(e?.message ?? e));
+    logger.error('❌ routes.yaml validation failed', error);
     process.exit(1);
   }
 }
 
 main();
-

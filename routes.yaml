@@ -17,7 +17,7 @@ routes:
     src_chain: dydx
     dst_chain: ethereum
     cadence_min: 30
-    enabled: true
+    enabled: false
 
   - id: metamask-polygon-usdc-withdrawal
     kind: withdraw
@@ -97,7 +97,7 @@ routes:
     src_chain: ethereum
     dst_chain: dydx
     cadence_min: 30
-    enabled: false
+    enabled: true
 
   - id: metamask-arbitrum-usdc-deposit-regular
     kind: deposit

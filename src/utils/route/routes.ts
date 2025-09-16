@@ -65,6 +65,11 @@ const envVarSchema = jsYaml.DEFAULT_SCHEMA.extend({
   implicit: [envVarType]
 });
 
+/**
+ * Loads `routes.yaml`, merges defaults, and normalises key fields.
+ * Also validates required fields and warns or throws on duplicate ids.
+ * @returns Fully merged list of runnable routes.
+ */
 export function getRoutesSync(): Route[] {
   const raw = fs.readFileSync(ROUTES_FILE, "utf8");
   const doc = jsYaml.load(raw, { schema: envVarSchema }) as RoutesYaml;

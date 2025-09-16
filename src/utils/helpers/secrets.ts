@@ -2,7 +2,8 @@ import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-sec
 import { logger } from '../logger/logging-utils';
 
 /**
- * Loads secrets from AWS Secrets Manager and populates process.env
+ * Loads secrets from AWS Secrets Manager and populates process.env.
+ * @returns Promise that resolves after all configured secrets are loaded.
  */
 export async function loadSecretsFromAWS(): Promise<void> {
   // TODO: Cache secrets in-memory between calls to avoid repeated AWS roundtrips.

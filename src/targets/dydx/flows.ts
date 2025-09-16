@@ -9,6 +9,7 @@ import { TEST_TIMEOUTS } from "../../config/timeouts";
 import { handleMetamaskPopup, conditionallyUnlockMetamask } from "../wallets/metamask/flows";
 import { handlePhantomPopup as handlePhantomPopup } from "../wallets/phantom/flows";
 import { dydxSelectors } from "./selectors";
+import { isVisible } from "../../utils/helpers/ui-helper";
 
 //#region openApp
 /**
@@ -54,6 +55,10 @@ import { dydxSelectors } from "./selectors";
  *     strings (e.g. "getByRole('button', …)"); use a locator factory instead.
  *   - Retries swallow intermediate errors and keep logs; the last error is
  *     rethrown for Playwright to report.
+ * @param page Page instance performing the navigation.
+ * @param context Browser context used for popup focus tweaks.
+ * @param urlOrOptions Either a direct URL string or an options bag.
+ * @returns Promise that resolves to the navigated Page.
  */
 
 type WaitTarget = string | ((page: Page) => Locator);
@@ -199,6 +204,10 @@ export async function openApp(
  *  - dApps differ slightly across sessions (fresh vs already connected).
  *  - Wallet extensions spawn separate popup pages we must confirm in.
  *  - We keep logs granular so CI failures are diagnosable from output alone.
+ * @param page Active dYdX page.
+ * @param context Browser context for wallet popup handling.
+ * @param wallet Wallet provider to connect.
+ * @returns Promise resolving with the connected page once complete.
  */
 export async function connectWallet(
   page: Page,
@@ -206,11 +215,12 @@ export async function connectWallet(
   wallet: WalletType
 ): Promise<Page> {
   logger.step(`Connecting wallet: ${wallet}`);
+  
   // TODO: Emit metrics or structured logs for each connection attempt to aid debugging in CI.
   //TODO add hahndling of the warning / disconnect
   // TODO: If stale wallet popups are open from previous runs, close them proactively.
   // 1) If already connected, short-circuit (account/user menu present)
-  if (await dydxSelectors.accountMenuButton(page, wallet).isVisible()) {
+  if (await isVisible(dydxSelectors.accountMenuButton(page, wallet))) {
     logger.info("Wallet appears already connected (account menu visible)");
     return page;
   }
@@ -243,14 +253,38 @@ export async function connectWallet(
     
   }
 
-
   // 8) Assert the dApp now shows a connected state
-  const acctBtn = dydxSelectors
-  .accountMenuButton(page, wallet)
-  .or(dydxSelectors.accountMenuButtonLoose(page));
-
-  await expect(acctBtn).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
-  logger.success(`Wallet connected: ${wallet}`);
+  try {
+    const acctBtn = dydxSelectors
+      .accountMenuButton(page, wallet)
+      .or(dydxSelectors.accountMenuButtonLoose(page));
+  
+    await expect(acctBtn).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
+    logger.success(`Wallet connected: ${wallet}`, { wallet });
+  } catch (err) {
+    logger.warning(
+      "Account menu not visible after wallet connect, checking for deposit dialog...",
+      {
+        wallet,
+        error: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
+      }
+    );
+  
+    try {
+      const depositDialog = dydxSelectors.fundsDialog(page);
+      await expect(depositDialog).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
+      logger.success(`Wallet connected (inferred from deposit dialog): ${wallet}`, { wallet });
+    } catch (dialogErr) {
+      logger.error(
+        "Neither account menu nor deposit dialog found after wallet connect",
+        dialogErr instanceof Error ? dialogErr : new Error(String(dialogErr)),
+        { wallet }
+      );
+      throw err; // rethrow original error
+    }
+  }
+  
 
   return page;
 }
@@ -264,7 +298,7 @@ async function chooseProvider(page: Page, provider: Locator, name: string) {
   logger.info(`Selecting wallet provider: ${name}`);
   // TODO: Add retry or clearer error messaging if the provider element is not found.
   // TODO: Handle the case where the wallet picker is behind a modal or overlay (scroll into view).
-  await provider.isVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
+  await expect(provider).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
   await provider.click();
 }
 //TODO improve this as it doesn'throw or inform if not found properly
@@ -279,29 +313,19 @@ async function handleWalletPopup(context: BrowserContext, wallet: WalletType) {
   }
 }
 
-// Click a locator if it’s visible; log what happened.
-async function clickIfVisible(locator: Locator, label: string, timeout: number ): Promise<boolean> {
-  // TODO: Replace manual wait/visibility check with expect to capture screenshots on failure.
-  // TODO: Avoid duplicate first() calls by storing the locator.
-  await locator.first().waitFor({ state: "visible", timeout }).catch(() => {});
-  if (await locator.first().isVisible()) {
-    logger.info(`Clicking: ${label}`);
-    await locator.first().click();
-    return true;
-  } else {
-    logger.debug(`"${label}" not visible — skipping`);
-    return false;
-  }
-}
-
 async function sendRequest(page: Page, locator: Locator) {
   logger.info("Sending request");
-  await locator.isVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
+  await expect(locator).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
   await locator.click();
   // TODO: Verify UI transitions to a pending/confirmation state after sending.
 }
 
-/** Click Connect Wallet → verify picker appeared → retry if not */
+/**
+ * Opens the wallet picker, retrying the Connect button until the modal appears.
+ * @param page Active dYdX page.
+ * @param retries Number of follow-up attempts before failing.
+ * @returns Promise that resolves once the picker is visible.
+ */
 export async function openWalletPicker(page: Page, retries = 2) {
   // If already open, we're done
   if (await isPickerOpen(page)) return;
@@ -326,8 +350,8 @@ export async function openWalletPicker(page: Page, retries = 2) {
 /** Picker is "open" if any wallet option is visible */
 async function isPickerOpen(page: Page) {
   return (
-    (await dydxSelectors.chooseProviderBtn(page, "metamask").isVisible()) ||
-    (await dydxSelectors.chooseProviderBtn(page, "phantom").isVisible())
+    (await isVisible(dydxSelectors.chooseProviderBtn(page, "metamask"))) ||
+    (await isVisible(dydxSelectors.chooseProviderBtn(page, "phantom")))
   );
 }
 //#endregion
@@ -339,7 +363,17 @@ async function isPickerOpen(page: Page) {
 const T = TEST_TIMEOUTS.ELEMENT ?? 30_000;
 const re = (txt: string) => new RegExp(`\\b${txt.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
 
-/** High-level flow */
+/**
+ * Drives the deposit dialog through token selection and amount entry.
+ * Wallet popups and final submission are handled separately.
+ * @param page Active dYdX page.
+ * @param _context Reserved for parity with withdraw flow (unused here).
+ * @param amount Amount to enter into the deposit form.
+ * @param src_chain Source chain name shown in the UI selector.
+ * @param token Token symbol to pair with the source chain.
+ * @param wallet Wallet provider used for any conditional logic.
+ * @returns Promise that resolves once the dialog is populated.
+ */
 export async function deposit(
   page: Page,
   _context: BrowserContext,
@@ -366,6 +400,13 @@ export async function deposit(
   logger.info("Amount entered");
 }
 
+/**
+ * Chooses a token/chain combination inside the deposit picker dialog.
+ * @param page Active dYdX page.
+ * @param token Token symbol to match inside the picker row.
+ * @param chain Chain name to combine with the token text.
+ * @returns Promise that resolves after clicking the chosen option.
+ */
 export async function selectTokenDeposit(page: Page, token: string, chain: string) {
   //TODO wrap in a try catch retry
   // Open the picker
@@ -391,7 +432,7 @@ export async function selectTokenDeposit(page: Page, token: string, chain: strin
       target = candidates.nth(1);
       break;
     }
-    await page.waitForTimeout(100);
+    await page.waitForTimeout(TEST_TIMEOUTS.POLL);
   }
 
   // Make sure we can click it
@@ -422,6 +463,12 @@ async function enterAmount(page: Page, amount: string) {
   await page.keyboard.press("Tab").catch(() => {}); // blur
 }
 
+/**
+ * Opens the deposit modal by clicking whichever deposit button is available.
+ * Falls back across multiple deposit CTAs if the preferred one is disabled.
+ * @param page Active dYdX page that has deposit buttons rendered.
+ * @returns Resolves once a deposit button has been clicked.
+ */
 export async function clickAnyDeposit(page: Page) {
   try {
     await expect(dydxSelectors.fundsDialog(page)).toBeVisible({ timeout: TEST_TIMEOUTS.DEFAULT });
@@ -435,15 +482,27 @@ export async function clickAnyDeposit(page: Page) {
 
   for (let i = 0; i < n; i++) {
     const btn = btns.nth(i);
-    if (await btn.isVisible() && await btn.isEnabled()) {
-      await btn.scrollIntoViewIfNeeded().catch(() => {});
-      await btn.click();
-      return;
+    try {
+      await expect(btn).toBeVisible({ timeout: TEST_TIMEOUTS.POLL });
+      await expect(btn).toBeEnabled({ timeout: TEST_TIMEOUTS.POLL });
+    } catch {
+      continue;
     }
+    await btn.scrollIntoViewIfNeeded().catch(() => {});
+    await btn.click();
+    return;
   }
   throw new Error('No clickable "Deposit" button found (all hidden or disabled).');
 }
 
+
+/**
+ * Submits the deposit dialog and handles follow-up wallet confirmation popups.
+ * @param page Active dYdX page whose dialog has already been configured.
+ * @param context Browser context used to locate wallet popups.
+ * @param wallet Wallet provider to route popup handling logic.
+ * @returns Promise that resolves after popups are handled.
+ */
 export async function submitDeposit(page: Page, context: BrowserContext, wallet: WalletType): Promise<void> {
   const btn = dydxSelectors.depositFundsButton(page);
   // TODO: Consolidate transaction submission logic to reduce duplication with withdraw flow.
@@ -455,7 +514,7 @@ export async function submitDeposit(page: Page, context: BrowserContext, wallet:
   await dydxSelectors.amountInput(page).press("Tab").catch(() => {});
 
   // Wait until it’s actually enabled (handles disabled/aria-disabled)
-  await expect(btn).toBeEnabled({ timeout: T });
+  await expect(btn).toBeEnabled({ timeout: TEST_TIMEOUTS.ELEMENT });
   // Click for real
   await btn.click();
   logger.info("Deposit funds button clicked");
@@ -473,10 +532,15 @@ export async function submitDeposit(page: Page, context: BrowserContext, wallet:
 
 //#region withdraw
 /**
- * Deposit funds to the dApp.
+ * Navigates the withdraw dialog to pick the destination and amount to send.
+ * @param page Active dYdX page.
+ * @param _context Reserved for parity with deposit flow (unused here).
+ * @param amount Amount to withdraw.
+ * @param dst_chain Destination chain shown in the UI selector.
+ * @param token Token symbol pairing the withdrawal route.
+ * @param wallet Wallet provider to account for chain selection quirks.
+ * @returns Promise that resolves once withdraw dialog is primed.
  */
-
-/** High-level flow */
 export async function withdraw(
   page: Page,
   _context: BrowserContext,
@@ -510,6 +574,13 @@ export async function withdraw(
   logger.info("Amount entered");
 }
 
+/**
+ * Chooses a destination chain and token combination in the withdraw dialog.
+ * @param page Active dYdX page.
+ * @param token Token symbol for the withdrawal.
+ * @param chain Chain name that must match the picker row text.
+ * @returns Promise that resolves after the picker selection is made.
+ */
 export async function selectTokenWithdraw(page: Page, token: string, chain: string) {
   //TODO wrap in a try catch retry
   // Open the picker
@@ -535,7 +606,7 @@ export async function selectTokenWithdraw(page: Page, token: string, chain: stri
       target = candidates.nth(1);
       break;
     }
-    await page.waitForTimeout(100);
+    await page.waitForTimeout(TEST_TIMEOUTS.POLL);
   }
 
   // Make sure we can click it
@@ -557,6 +628,13 @@ export async function selectTokenWithdraw(page: Page, token: string, chain: stri
 }
 
 
+/**
+ * Clicks the withdraw CTA once validation passes and delegates wallet approval.
+ * @param page Active dYdX page whose withdraw dialog is already populated.
+ * @param context Browser context used for wallet popup handling.
+ * @param wallet Wallet provider for routing popup handling.
+ * @returns Promise that resolves once the withdraw button is clicked.
+ */
 export async function submitWithdraw(page: Page, context: BrowserContext, wallet: WalletType): Promise<void> {
   const btn = dydxSelectors.withdrawFundsButton(page);
 

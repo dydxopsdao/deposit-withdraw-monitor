@@ -14,6 +14,7 @@ jobs:
   build-and-push:
     name: Build and Push to ECR
     runs-on: ubuntu-latest
+# TODO: Should probably run on a specific ubuntu version
     
     permissions:
       id-token: write # Required for OIDC authentication

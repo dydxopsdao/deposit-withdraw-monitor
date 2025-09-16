@@ -16,6 +16,15 @@ function safeUrl(p: Page): string {
   try { return p.url(); } catch { return "(unavailable)"; }
 }
 
+/**
+ * Polls an extension/browser context for a page whose URL matches a pattern.
+ * @param context Browser context to inspect for open or newly created pages.
+ * @param urlPattern String or RegExp to match against each page url.
+ * @param maxRetries How many polling rounds to perform before giving up.
+ * @param retryDelayMs Wait between retries while watching for popup events.
+ * @param waitForState Load state to wait for when a match is found.
+ * @returns The matching page or null when it never appears.
+ */
 export async function findPageWithUrl(
   context: BrowserContext,
   urlPattern: string | RegExp,

@@ -5,18 +5,16 @@
 //   - ROUTE_ID=<id>
 //   - WALLET=metamask|phantom
 //
-// Logging: ConsoleLogger at milestones.
-// Error handling: separates "pre_submit" vs "submit_or_finality".
-// Telemetry (Datadog):
-//   - route result metric (1/0) once per test
-//   - route failure log with error_stage
-//   - rebalance result metric + log (with balances when provided)
+// Logging: ConsoleLogger at milestones + TestRunLogger for comprehensive Datadog logs.
+// Telemetry (Datadog): Single log per test run with v4-web funnel steps:
+//   - NavigateDialog, WithdrawInitiated, WithdrawSubmitted, WithdrawFinalized
+//   - Step timings, test outcome, transaction details
 // Rebalance: never fails the test.
 
 import { test, expect } from "../fixtures";
 import { logger } from "../utils/logger/logging-utils";
 import { getRoutesSync, type Route, type WalletType } from "../utils/route/routes";
-import { createTelemetryContext} from "../utils/datadog/datadog-utils";
+import { datadog, WithdrawFunnelSteps } from "../utils/datadog";
 import { openApp, connectWallet, withdraw, submitWithdraw } from "../targets/dydx/flows";
 import { dydxSelectors } from "../targets/dydx/selectors";
 import { TEST_TIMEOUTS } from "../config/timeouts";
@@ -51,22 +49,7 @@ for (const route of withdrawRoutes) {
     });
 
     test(title, async ({ page, context }, testInfo) => {    
-      // Datadog context (keeps tags consistent, sends metrics/logs)
-      const dd = createTelemetryContext({
-        route: {
-          id: route.id,
-          kind: "withdraw",
-          wallet_type: route.wallet_type,
-          wallet_alias: route.wallet_alias,
-          wallet_address: route.wallet_address,
-          dydx_address: (route as any).dydx_address,
-          amount: String(route.amount),
-          src_chain: route.src_chain,
-          dst_chain: route.dst_chain,
-          token: route.token,
-        },
-        operation: "withdraw",
-      });
+      const testRunLogger = datadog.createWithdrawLogger(route);
 
       let txHash: string | undefined;
       let explorerUrl: string | undefined;
@@ -89,6 +72,8 @@ for (const route of withdrawRoutes) {
 
       try {
         try {
+          // NavigateDialog: Open app and connect wallet to reach withdraw dialog
+          testRunLogger.startStep(WithdrawFunnelSteps.NavigateDialog);
           await test.step("Open app", async () => {
             await openApp(page, context, {
               waitUntil: "domcontentloaded",
@@ -101,14 +86,25 @@ for (const route of withdrawRoutes) {
           await test.step(`Connect wallet (${route.wallet_type})`, async () => {
             await connectWallet(page, context, route.wallet_type);
           });
+          testRunLogger.completeStep(WithdrawFunnelSteps.NavigateDialog);
 
-          await test.step("Withdraw", async () => {
+          // WithdrawInitiated: User fills withdraw dialog and initiates a withdrawal
+          testRunLogger.startStep(WithdrawFunnelSteps.WithdrawInitiated);
+          await test.step("Withdraw Dialog Input", async () => {
             await withdraw(page, context, String(route.amount), route.dst_chain, route.token, route.wallet_type);
           });
+          testRunLogger.completeStep(WithdrawFunnelSteps.WithdrawInitiated);
+
+          // WithdrawSubmitted: Transaction submitted to blockchain
+          testRunLogger.startStep(WithdrawFunnelSteps.WithdrawSubmitted);
           await test.step("Submit withdraw", async () => {
+            logger.info("Submitting withdraw");
             return await submitWithdraw(page, context, route.wallet_type);
           });
+          testRunLogger.completeStep(WithdrawFunnelSteps.WithdrawSubmitted);
 
+          // WithdrawFinalized: Transaction confirmed on destination chain
+          testRunLogger.startStep(WithdrawFunnelSteps.WithdrawFinalized);
           await test.step("Wait for finality", async () => {
             logger.info("Waiting for finality");
             const res = await waitForFinality(page);
@@ -120,17 +116,31 @@ for (const route of withdrawRoutes) {
             expect(res.ok).toBeTruthy();
             passed = true;
           });
+          testRunLogger.completeStep(WithdrawFunnelSteps.WithdrawFinalized);
           /* =========================
             TEST PASSED
             ========================= */
           logger.success("Withdraw flow complete", { route_id: route.id, explorerUrlsAll, txHashesAll });
-          await dd.routeResult({ passed: true, txHash, explorerUrlsAll, txHashesAll });
+          
+          // Emit comprehensive test run log for successful tests
+          await testRunLogger.logTestResult({
+            status: "passed",
+            txHash,
+            explorerUrl,
+          });
         } catch (e: any) {
           /* =========================
             TEST FAILED
             ========================= */
-          logger.error("Submit/finality failed", e, { route_id: route.id, explorerUrlsAll, txHashesAll });
-          await dd.routeResult({ passed: false, error: e, explorerUrlsAll, txHashesAll });
+          logger.error("Withdraw failed", e, { route_id: route.id, explorerUrlsAll, txHashesAll });
+          
+          // Emit comprehensive test run log for failed tests
+          await testRunLogger.logTestResult({
+            status: "failed",
+            error: e,
+            txHash,
+            explorerUrl,
+          });
           throw e;
         }
 
@@ -142,14 +152,10 @@ for (const route of withdrawRoutes) {
             const balancesBefore = (result as any)?.balancesBefore;
             const balancesAfter = (result as any)?.balancesAfter;
 
-            await dd.rebalanceResult({
-              passed: true,
-              balancesBefore,
-              balancesAfter,
-            });
+            // Note: Rebalance logging could be added to the modular system in the future if needed
           } catch (e: any) {
             logger.warning("Rebalance failed", { route_id: route.id, error: { message: e?.message } });
-            await dd.rebalanceResult({ passed: false, error: e });
+            // Note: Rebalance logging could be added to the modular system in the future if needed
           }
         });        
       }

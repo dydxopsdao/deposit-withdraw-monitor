@@ -3,20 +3,24 @@ import { chromium, BrowserContext, Page } from '@playwright/test';
 import { PHANTOM_EXT_PATH } from "../../../config/constants";
 import { WALLET_PASSWORD, assertPhantomSecrets } from "./constants";
 import { findPageWithUrl } from '../../../utils/helpers/windows';
-import { clickAnyButton } from '../../../utils/helpers/ui-helper';
+import { clickAnyButton, isVisible } from '../../../utils/helpers/ui-helper';
 import { logger } from '../../../utils/logger/logging-utils';
 import { phantomSelectors as s } from './selectors';
 import { TEST_TIMEOUTS } from "../../../config/timeouts";
 
 
+/**
+ * Launches Chromium with the Phantom extension side-loaded and automation tweaks.
+ * @param userDataDir Persistent profile directory so extension state is kept.
+ * @param headless Whether to run without a visible UI; defaults to CI heuristic.
+ * @returns Browser context primed for interacting with Phantom.
+ */
 export async function launchContextWithExtension(
-  userDataDir: string,
-  headless = !!process.env.CI
+  userDataDir: string
 ): Promise<BrowserContext> {
   assertPhantomSecrets();
 
   const context = await chromium.launchPersistentContext(userDataDir, {
-    // TODO: Respect the headless argument above instead of hardcoding false.
     headless: false,
     ignoreDefaultArgs: ['--enable-automation'],
     args: [
@@ -37,6 +41,12 @@ export async function launchContextWithExtension(
   return context;
 }
 
+/**
+ * Walks through Phantom's onboarding flow to import an existing wallet.
+ * @param context Browser context with the Phantom extension loaded.
+ * @param seedPhrase 12-word mnemonic used to restore the test wallet.
+ * @returns Promise that resolves when onboarding is complete or skipped.
+ */
 export async function setupWallet(context: BrowserContext, seedPhrase: string) {
   logger.step("Setting up Phantom wallet");
 
@@ -80,6 +90,13 @@ export async function setupWallet(context: BrowserContext, seedPhrase: string) {
   logger.info("Phantom wallet setup complete");
 }
 
+/**
+ * Opens the Phantom unlock page and retries entering the password if needed.
+ * @param context Browser context that should contain the extension UI.
+ * @param maxRetries Number of attempts before surfacing an error.
+ * @param retryDelay Delay between attempts so the UI can settle.
+ * @returns Promise that resolves once the wallet is unlocked.
+ */
 export async function unlockPhantomWallet(
   context: BrowserContext,
   maxRetries = 3,
@@ -117,6 +134,8 @@ export async function unlockPhantomWallet(
  * Phantom usually shows a single “Approve/Connect” button.
  * In their UI it’s commonly data-testid="primary-button".
  * We also try visible “Approve”/“Connect” by role to be resilient.
+ * @param context Browser context that will surface the popup window.
+ * @returns Promise that resolves once the popup is handled or dismissed.
  */
 export async function handlePhantomPopup(context: BrowserContext) {
   logger.info("Waiting for Phantom popup…");
@@ -132,7 +151,7 @@ export async function handlePhantomPopup(context: BrowserContext) {
 
     // First try canonical test id:
     const primary = ph.getByTestId("primary-button");
-    if (await primary.isVisible()) {
+    if (await isVisible(primary)) {
       await primary.click();
     } else {
       // Fallback to common labels:
@@ -156,6 +175,12 @@ function extractId(u: string): string | null {
  * Since you launch with ONLY Phantom loaded (disable-extensions-except + load-extension),
  * the first chrome-extension service worker is Phantom.
  */
+/**
+ * Discovers the Phantom extension id by inspecting existing or new service workers.
+ * @param ctx Browser context created via `launchContextWithExtension`.
+ * @param timeoutMs How long to wait for a service worker to appear.
+ * @returns The resolved extension id (32-char string).
+ */
 export async function getPhantomId(ctx: BrowserContext, timeoutMs = TEST_TIMEOUTS.EXTENSIONS): Promise<string> {
   const existing = ctx.serviceWorkers().filter(w => w.url().startsWith("chrome-extension://"));
   if (existing.length) {
@@ -172,6 +197,13 @@ export async function getPhantomId(ctx: BrowserContext, timeoutMs = TEST_TIMEOUT
  * Opens a Phantom internal page. `urlOrTemplate` can be either:
  *  - A full chrome-extension URL with any ID (we'll replace the ID), or
  *  - A template with "{id}" placeholder, e.g. "chrome-extension://{id}/onboarding.html"
+ */
+/**
+ * Opens a Chrome-extension URL inside the Phantom context, substituting the real id.
+ * @param ctx Browser context running Phantom.
+ * @param urlWithAnyId Chrome-extension URL or template containing `{id}` placeholder.
+ * @param waitUntil Load state to wait for before returning.
+ * @returns Newly opened Phantom page.
  */
 export async function openPhantomUrl(
   ctx: BrowserContext,

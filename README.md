@@ -291,8 +291,14 @@ src/
         constants.ts
         index.ts
   utils/
-    datadog                  # findPageWithUrl(context, matcher)
-      datadog-utils.ts       # emitResult/emitLog
+    datadog/
+      index.ts               # Public API (createDepositLogger/createWithdrawLogger, step enums)
+      core/
+        types.ts             # Base interfaces and flow configuration pattern
+        logger.ts            # Generic FlowTestRunLogger (flow-agnostic)
+      flows/
+        deposit.ts           # Deposit-specific config (steps, schema, route_kind)
+        withdraw.ts          # Withdraw-specific config (steps, schema)
     finality/
       finality.ts            # Deposit Assertion - FE/BE
     helpers/
@@ -314,36 +320,25 @@ routes.yaml                  # Test source of truth
 
 ---
 
-## Telemetry (Datadog) [WIP]
+## Observability (Datadog)
 
-A tiny HTTP client sends both a **result gauge** (1/0) and a **structured log** per run.
+- Purpose: single structured log per test run with funnel analysis and timings.
+- Pattern: flow-agnostic core + flow configs.
+- Directory: see `utils/datadog/` in project structure above.
 
-```ts
-await emitResult(passed, [
-  `route_id:${route.id}`,
-  `wallet:${route.wallet_type}`,
-  `src:${route.src_chain}`,
-  `dst:${route.dst_chain}`,
-  `env:${ENV}`,
-]);
+Top-level concepts:
+- Core: `FlowTestRunLogger` assembles the log, tracks steps, and sends to Datadog.
+- Flows: each flow defines its own steps and log schema (deposit/withdraw).
+- IDs: unique `test_id` matches report upload path for easy correlation.
 
-await emitLog(passed ? "deposit.ok" : "deposit.error", {
-  route_id: route.id,
-  route_kind: route.route_kind,
-  amount: route.amount,
-  src_chain: route.src_chain,
-  dst_chain: route.dst_chain,
-  tx_hash: txHash,
-  status: passed ? "ok" : "error",
-  error_stage: passed ? undefined : error_stage,
-});
-```
+Usage in tests:
+- Import from `utils/datadog`: `datadog`, `DepositFunnelSteps` or `WithdrawFunnelSteps`.
+- Create logger per test, call `startStep`/`completeStep`, then `logTestResult`.
 
-**Env** [WIP]
-
-* `DD_API_KEY` (required to send) — if unset, functions no‑op.
-* `DD_SITE`
-* `DD_SERVICE`/`DD_SOURCE` — optional labels.
+Env:
+- Required to send: `DD_API_KEY`, `DD_SITE`.
+- Optional: `DD_SERVICE`, `DD_SOURCE`, `DD_VERBOSE=1`, `DD_DRY_RUN=1`, `DD_ENV` (default: `prod`).
+- Local testing: set `DD_ENV=dev` in `.env.local` to isolate data from production.
 
 ---
 
