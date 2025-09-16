@@ -432,7 +432,7 @@ export async function selectTokenDeposit(page: Page, token: string, chain: strin
       target = candidates.nth(1);
       break;
     }
-    await page.waitForTimeout(100);
+    await page.waitForTimeout(TEST_TIMEOUTS.POLL);
   }
 
   // Make sure we can click it
@@ -514,7 +514,7 @@ export async function submitDeposit(page: Page, context: BrowserContext, wallet:
   await dydxSelectors.amountInput(page).press("Tab").catch(() => {});
 
   // Wait until it’s actually enabled (handles disabled/aria-disabled)
-  await expect(btn).toBeEnabled({ timeout: T });
+  await expect(btn).toBeEnabled({ timeout: TEST_TIMEOUTS.ELEMENT });
   // Click for real
   await btn.click();
   logger.info("Deposit funds button clicked");
@@ -606,7 +606,7 @@ export async function selectTokenWithdraw(page: Page, token: string, chain: stri
       target = candidates.nth(1);
       break;
     }
-    await page.waitForTimeout(100);
+    await page.waitForTimeout(TEST_TIMEOUTS.POLL);
   }
 
   // Make sure we can click it

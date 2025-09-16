@@ -75,7 +75,7 @@ export async function clickAnyButton(
         clicks++;
         clickedThisLoop = true;
         // Small gap for the next step (e.g. Next → Connect)
-        await page.waitForTimeout(250).catch(() => {});
+        await page.waitForTimeout(TEST_TIMEOUTS.POLL).catch(() => {});
       } catch (e: any) {
         // Button may disappear due to instant navigation/close — ignore and continue
         logger.debug(`${contextLabel}: click failed for "${re.source}" (${e?.message ?? e})`);
