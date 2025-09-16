@@ -13,7 +13,7 @@
 import fs from "fs";
 import path from "path";
 import jsYaml from "js-yaml";
-import { logger } from "../logger/logging-utils";
+import { logger } from "../../logger/logging-utils";
 
 export type WalletType = "metamask" | "phantom";
 export type RouteKind = "deposit" | "withdraw";
