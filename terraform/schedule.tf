@@ -55,6 +55,10 @@ resource "aws_ecs_task_definition" "this" {
           value = aws_s3_bucket.reports.bucket
         },
         {
+          name  = "REPORTS_CLOUDFRONT_URL"
+          value = "https://${aws_cloudfront_distribution.reports.domain_name}"
+        },
+        {
           name  = "DD_SERVICE"
           value = var.datadog_service
         },
