@@ -17,7 +17,6 @@ export interface BaseTestRunLog {
   dst_chain: string;
   token: string;
   amount: string;
-  route_kind: "regular" | "instant";
   
   // Transaction details (for successful flows only)
   tx_hash?: string;
@@ -38,11 +37,13 @@ export interface FlowStepData<TStep extends string> {
   step_timings: Partial<Record<TStep, number>>;
 }
 
+import type { Route } from "../../route/routes";
+
 export interface BaseFlowConfig<TStep extends string, TLog extends BaseTestRunLog> {
   flowName: string;
   steps: Record<string, TStep>;
   allSteps: TStep[];
-  createLogInterface: (base: BaseTestRunLog, stepData: FlowStepData<TStep>) => TLog;
+  createLogInterface: (base: BaseTestRunLog, stepData: FlowStepData<TStep>, route: Route) => TLog;
 }
 
 export interface TestResult {

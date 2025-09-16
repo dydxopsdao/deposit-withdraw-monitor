@@ -32,7 +32,7 @@ routes:
     src_chain: dydx
     dst_chain: polygon
     cadence_min: 30
-    enabled: false
+    enabled: true
 
   - id: metamask-arbitrum-usdc-withdrawal
     kind: withdraw
@@ -236,4 +236,4 @@ routes:
     src_chain: polygon
     dst_chain: dydx
     cadence_min: 30
-    enabled: false
+    enabled: true

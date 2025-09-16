@@ -15,6 +15,7 @@ const DD_SERVICE = process.env.DD_SERVICE;
 const DD_SOURCE = process.env.DD_SOURCE;
 const DD_DRY_RUN = process.env.DD_DRY_RUN === "1";
 const DD_VERBOSE = process.env.DD_VERBOSE === "1";
+const DD_ENV = process.env.DD_ENV ?? "prod";
 
 // Report configuration
 const REPORTS_CLOUDFRONT_URL = process.env.REPORTS_CLOUDFRONT_URL;
@@ -98,11 +99,10 @@ export class FlowTestRunLogger<TStep extends string, TLog extends BaseTestRunLog
       timestamp: new Date().toISOString(),
       test_id: this.testId,
       route_id: this.route.id,
-      
       test_status: result.status,
       duration_ms: totalDuration,
-      
-      // Route details
+            
+      // Route details (from route object)
       wallet_type: this.route.wallet_type,
       src_chain: this.route.src_chain,
       dst_chain: this.route.dst_chain,
@@ -216,6 +216,7 @@ export class FlowTestRunLogger<TStep extends string, TLog extends BaseTestRunLog
       ddsource: DD_SOURCE,
       service: DD_SERVICE,
       hostname: hostname(),
+      env: DD_ENV,
       attributes: log,
     };
 
@@ -243,6 +244,7 @@ export class FlowTestRunLogger<TStep extends string, TLog extends BaseTestRunLog
       `dst_chain:${log.dst_chain}`,
       `token:${log.token}`,
       `flow:${this.config.flowName}`,
+      `env:${DD_ENV}`,
     ];
 
     // Add route_kind if present (deposit-only)
