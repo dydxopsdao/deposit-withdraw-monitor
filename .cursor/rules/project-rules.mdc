@@ -1,0 +1,139 @@
+---
+description: Repository baseline (TypeScript + Playwright)
+alwaysApply: false
+---
+
+### Context initialization
+- ALWAYS read `.notes/project_overview.md` and `.notes/task_list.md` (if present).
+- If present, also read `.notes/decisions.md` and `.notes/changelog.md`.
+- Scan `package.json` scripts and `.github/workflows/` to understand CI behavior.
+
+### Operational protocol
+- Before action
+  - Create a MECE task breakdown with explicit acceptance criteria.
+  - Identify affected files/modules and risks.
+  - Propose the smallest viable change first.
+- Implementation steps
+  - Read relevant code sections before editing.
+  - Preserve existing functionality and public contracts.
+  - Maintain type safety (strict types; no implicit any/null leaks).
+  - Prefer pure, testable functions; isolate side effects.
+  - Use repository logging/telemetry utilities (no bare `console.log`).
+
+### Safety requirements
+- Do not break type safety.
+- Typed errors only; no silent catches.
+- No secrets in code or logs; use env/CI secrets.
+- Deterministic behavior only; avoid arbitrary waits/time-based flakiness.
+
+### Project directives — Deposit-Withdraw Monitor
+- Stack: TypeScript, Playwright, GitHub Actions, Node 20
+- Domain constraints:
+  - Wallet/extension automation handles notification windows vs popups.
+  - Prefer role-based selectors with regex word boundaries.
+  - Use central `TEST_TIMEOUTS`; avoid ad-hoc magic numbers.
+
+### CI expectations
+- CI workflows: `.github/workflows/build-and-push.yml`, `.github/workflows/validate-routes.yml`.
+- Local steps are optional; rely on CI as the source of truth.
+
+### Checklist (PR)
+- Smallest viable change; backwards compatibility considered.
+- Tests updated as needed.
+- Selectors robust; no secrets or flaky waits.
+- Use `.github/pull_request_template.md` sections for summary/testing/checklist.
+
+### Commit protocol
+- Conventional Commits (e.g., `test(e2e): stabilize chain picker selector with word boundaries`).
+
+@package.json
+
+description: Notes-first context
+globs:
+
+".notes/**"
+
+"**/*"
+alwaysApply: true
+
+@.notes/project_overview.md
+
+description: Type safety & coding standards
+globs:
+
+"src/**/*.ts"
+
+"src/**/*.tsx"
+alwaysApply: true
+
+@tsconfig.json
+
+description: Playwright testing rules
+globs:
+
+"src/tests/**/*.ts"
+
+"src/targets/**/*.ts"
+alwaysApply: true
+
+@src/config/timeouts.ts
+
+description: Wallet/extension automation (MetaMask/Phantom)
+globs:
+
+"src/targets/wallets/**"
+alwaysApply: false
+
+@src/targets/wallets/metamask/flows.ts
+
+description: Selector & timeout policy
+globs:
+
+"src/tests/**/*.ts"
+alwaysApply: false
+
+@src/utils/selectors.ts
+
+description: CI parity & performance
+globs:
+
+".github/workflows/**/*.yml"
+
+"package.json"
+alwaysApply: true
+
+@.github/workflows/build-and-push.yml
+
+description: Build and push container image
+globs:
+
+".github/workflows/build-and-push.yml"
+alwaysApply: false
+
+@.github/workflows/validate-routes.yml
+
+description: Validate routes configuration
+globs:
+
+".github/workflows/validate-routes.yml"
+alwaysApply: false
+
+@.gitignore
+
+description: Documentation & commit protocol
+globs:
+
+"src/**/*.ts"
+
+".notes/**"
+alwaysApply: true
+
+@.github/pull_request_template.md
+
+description: Pull request template in use
+globs:
+
+".github/pull_request_template.md"
+alwaysApply: false
+
+@README.md
