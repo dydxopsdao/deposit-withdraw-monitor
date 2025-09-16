@@ -1,8 +1,16 @@
 import { Route } from '../utils/route/routes';
 import interop, { CHAIN_IDS } from './interop';
-import { BalanceMap } from '../utils/datadog/datadog-utils';
 
 export { rebalanceNow };
+export type { BalanceMap };
+
+/**
+ * The balance map is an array of objects with the following properties:
+ * - token: The token symbol, e.g. "USDC", "ETH", "SOL"
+ * - chain: The chain name as in the route, e.g. "base", "dydx", "solana"
+ * - amount: The amount of the token, e.g. "42.1337"
+ */
+type BalanceMap = Array<{ token: string; chain: string; amount: string }>;
 
 /**
  * Rebalances the given route
@@ -24,11 +32,11 @@ async function rebalanceNow(route: Route): Promise<{ balancesBefore: BalanceMap;
 
 async function rebalanceDepositRoute(route: Route): Promise<{ balancesBefore: BalanceMap; balancesAfter: BalanceMap }> {
   interop.configureSkipClient();
-  
+
   // Get balances before concurrently
   const [sourceBalanceBefore, dydxBalanceBefore] = await Promise.all([
     interop.getUsdcBalance(CHAIN_IDS[route.src_chain], route.wallet_address),
-    interop.getFreeCollateral(route.dydx_address)
+    interop.getFreeCollateral(route.dydx_address),
   ]);
 
   const balancesBefore = [
@@ -57,7 +65,7 @@ async function rebalanceDepositRoute(route: Route): Promise<{ balancesBefore: Ba
   // Get balances after concurrently
   const [sourceBalanceAfter, dydxBalanceAfter] = await Promise.all([
     interop.getUsdcBalance(CHAIN_IDS[route.src_chain], route.wallet_address),
-    interop.getFreeCollateral(route.dydx_address)
+    interop.getFreeCollateral(route.dydx_address),
   ]);
 
   const balancesAfter = [
@@ -83,7 +91,7 @@ async function rebalanceWithdrawRoute(
   // Get balances before concurrently
   const [dydxBalanceBefore, destBalanceBefore] = await Promise.all([
     interop.getFreeCollateral(route.dydx_address),
-    interop.getUsdcBalance(CHAIN_IDS[route.dst_chain], route.wallet_address)
+    interop.getUsdcBalance(CHAIN_IDS[route.dst_chain], route.wallet_address),
   ]);
 
   const balancesBefore = [
@@ -112,7 +120,7 @@ async function rebalanceWithdrawRoute(
   // Get balances after concurrently
   const [dydxBalanceAfter, destBalanceAfter] = await Promise.all([
     interop.getFreeCollateral(route.dydx_address),
-    interop.getUsdcBalance(CHAIN_IDS[route.dst_chain], route.wallet_address)
+    interop.getUsdcBalance(CHAIN_IDS[route.dst_chain], route.wallet_address),
   ]);
 
   const balancesAfter = [
