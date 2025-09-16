@@ -3,8 +3,8 @@
 
 import { expect, type BrowserContext, type Page, type Locator } from "@playwright/test";
 import { DAPP_URL } from "../../config/constants";
-import { logger } from "../../logger";
-import { WalletType } from "../../utils";
+import { logger } from "../../logger/logging-utils";
+import { WalletType } from "../../utils/routes";
 import { TEST_TIMEOUTS } from "../../config/timeouts";
 import { handleMetamaskPopup, conditionallyUnlockMetamask } from "../wallets/metamask/flows";
 import { handlePhantomPopup as handlePhantomPopup } from "../wallets/phantom/flows";
