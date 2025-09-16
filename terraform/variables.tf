@@ -34,6 +34,12 @@ variable "datadog_source" {
   default     = "playwright"
 }
 
+variable "dd_env" {
+  description = "Datadog environment tag (dev, prod)"
+  type        = string
+  default     = "dev"
+}
+
 variable "region" {
   description = "AWS region"
   type        = string

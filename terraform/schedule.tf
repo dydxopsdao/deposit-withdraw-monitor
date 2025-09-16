@@ -65,6 +65,10 @@ resource "aws_ecs_task_definition" "this" {
         {
           name  = "DD_SOURCE"
           value = var.datadog_source
+        },
+        {
+          name  = "DD_ENV"
+          value = var.dd_env
         },        
         {
           name  = "SEED_PHRASES_SECRET_ARN"
