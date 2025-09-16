@@ -1,5 +1,5 @@
-import { loadSecretsFromAWS } from "./src/utils/helpers/secrets.js";
-import { logger } from "./src/utils/logger/logging-utils.js";
+import { loadSecretsFromAWS } from "./src/utils/secrets";
+import { logger } from "./src/logger/logging-utils";
 
 /**
  * Playwright global setup function
