@@ -31,7 +31,7 @@ import {
 export { configureSkipClient, executeRoute, getBalances, getUsdcRoutes, generateUserAddresses, sweepNobleBalance };
 
 /**
- * Configures the Skip client so that it knows hot to withdraw from dYdX.
+ * Configures the Skip client so that it knows how to withdraw from dYdX.
  */
 const configureSkipClient = (): void => {
   assertInteropSecrets();
