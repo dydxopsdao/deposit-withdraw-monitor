@@ -1,7 +1,7 @@
 import { expect, Locator, Page } from "@playwright/test";
 import { logger } from "../../logger";
-import { TEST_TIMEOUTS } from "../../config/timeouts";
 import { retry } from "../retry";
+import { TEST_TIMEOUTS } from "../config/timeouts";
 
 export async function isVisible(
   locator: Locator,
@@ -9,6 +9,8 @@ export async function isVisible(
 ): Promise<boolean> {
   const timeout = opts?.timeout ?? TEST_TIMEOUTS.DELAY;
   try {
+    logger.info("Checking if locator is visible", { locator });
+    logger.info("Timeout", { timeout });
     logger.info("Checking if locator is visible", { locator });
     logger.info("Timeout", { timeout });
     await expect(locator).toBeVisible({ timeout });
