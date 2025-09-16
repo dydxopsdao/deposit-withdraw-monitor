@@ -3,6 +3,7 @@ import { expect, type Page } from "@playwright/test";
 import { dydxSelectors as dydxSelectors } from "../../targets/dydx/selectors";
 import { TEST_TIMEOUTS } from "../../config/timeouts";
 import { logger } from "../logger/logging-utils";
+import { isVisible } from "../helpers/ui-helper";
 
 type FinalityResult = { ok: boolean; explorerUrl?: string; txHash?: string; explorerUrlsAll?: string[]; txHashesAll?: (string | undefined)[] };
 
@@ -12,6 +13,15 @@ const DEFAULT_FINALITY_TIMEOUT =
   (TEST_TIMEOUTS as any)?.TEST ??
   10 * 60_000; // fallback 10m
 
+/**
+ * Watches the dYdX transfer dialog until the operation completes or times out.
+ * Scrapes any transaction links that appear once the flow finishes.
+ * @param page Active dYdX page containing the funds dialog.
+ * @param timeoutMs Total time to wait before declaring failure.
+ * @param pollMs Delay between polling attempts while in progress.
+ * @param graceMs Small wait used when the dialog briefly disappears.
+ * @returns Aggregated status plus any explorer URLs and hashes observed.
+ */
 export async function waitForFinality(
   page: Page,
   timeoutMs = DEFAULT_FINALITY_TIMEOUT,
@@ -35,18 +45,18 @@ export async function waitForFinality(
   // Poll until completed or timeout
   while (Date.now() < end) {
     // If dialog vanished unexpectedly, bail
-    if (!(await dlg.isVisible())) break;
+    if (!(await isVisible(dlg))) break;
      // Still “in progress”? keep polling
-     if (await inProgress.isVisible().catch(() => false)) {
+     if (await isVisible(inProgress)) {
       await page.waitForTimeout(pollMs);
       continue;
     }
     const isDepositDone =
-      (await depDone.isVisible().catch(() => false)) ||
-      (await depCTA.isVisible().catch(() => false));
+      (await isVisible(depDone)) ||
+      (await isVisible(depCTA));
 
     const isWithdrawDone =
-      await wdrDone.isVisible().catch(() => false);
+      await isVisible(wdrDone);
     // Completed?
     if (isDepositDone || isWithdrawDone) {
       logger.info("Transfer completed");
@@ -100,6 +110,11 @@ export async function waitForFinality(
   return { ok: false };
 }
 
+/**
+ * Tries to extract a transaction hash from a variety of explorer URL formats.
+ * @param href Explorer link captured from the dApp UI.
+ * @returns Parsed transaction hash when recognised, otherwise undefined.
+ */
 function extractTxHash(href: string): string | undefined {
   return (
     // EVM

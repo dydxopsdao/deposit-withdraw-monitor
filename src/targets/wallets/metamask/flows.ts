@@ -10,7 +10,9 @@ import { TEST_TIMEOUTS } from "../../../config/timeouts";
 import fs from "fs";
 
 /**
- * Launch a persistent context with the MetaMask extension loaded.
+ * Launches a persistent Chromium context with the MetaMask extension loaded.
+ * @param userDataDir Directory where extension state should persist between runs.
+ * @returns Browser context ready for MetaMask automation.
  */
 export async function launchContextWithExtension(
   userDataDir: string
@@ -47,7 +49,10 @@ export async function launchContextWithExtension(
 }
 
 /**
- * Run first-time onboarding: import SRP, set password, opt out of telemetry, etc.
+ * Runs first-time MetaMask onboarding: import SRP, set password, opt out of telemetry.
+ * @param context Browser context with MetaMask extension pages.
+ * @param seedPhrase Secret recovery phrase for the wallet being restored.
+ * @returns Promise that resolves when onboarding is finished.
  */
 export async function setupWallet(context: BrowserContext, seedPhrase: string) {
   logger.step("Setting up MetaMask wallet");
@@ -102,7 +107,11 @@ export async function setupWallet(context: BrowserContext, seedPhrase: string) {
   logger.info("Wallet setup complete");
 }
 
-
+/**
+ * Navigates to the MetaMask unlock screen (if present) and enters the password.
+ * @param context Browser context with the MetaMask extension profile.
+ * @returns Promise that resolves after MetaMask is unlocked or skipped.
+ */
 export async function unlockMetamaskWallet(context: BrowserContext) {
   logger.step("Unlocking MetaMask wallet");
   // TODO: Retry if the unlock page isn't found immediately to reduce flakiness.
@@ -135,9 +144,9 @@ async function findExistingUnlockPage(context: BrowserContext): Promise<Page | u
 }
 
 /**
- * Conditionally unlocks the MetaMask wallet. It first checks if the unlock page
- * is already open, and if not, waits for it to appear.
+ * Conditionally unlocks the MetaMask wallet, reusing an existing popup if present.
  * @param context The Playwright BrowserContext.
+ * @returns Promise that resolves when the unlock attempt completes.
  */
 export async function conditionallyUnlockMetamask(context: BrowserContext) {
   logger.step("Checking for MetaMask unlock page");
@@ -179,6 +188,8 @@ export async function conditionallyUnlockMetamask(context: BrowserContext) {
  * MetaMask connection popup flows vary slightly by version/permissions.
  * We try a short sequence of common buttons: Next → Connect → Approve.
  * (If a Sign prompt appears later during auth, handle it in your auth flow.)
+ * @param context Browser context that emits the popup window.
+ * @returns Promise that resolves once the popup has been actioned.
  */
 export async function handleMetamaskPopup(context: BrowserContext) {
   logger.info("Waiting for MetaMask popup…");

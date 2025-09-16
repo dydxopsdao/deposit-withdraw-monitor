@@ -97,7 +97,7 @@ routes:
     src_chain: ethereum
     dst_chain: dydx
     cadence_min: 30
-    enabled: false
+    enabled: true
 
   - id: metamask-arbitrum-usdc-deposit-regular
     kind: deposit
