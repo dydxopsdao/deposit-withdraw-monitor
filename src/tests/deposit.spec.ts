@@ -91,7 +91,6 @@ for (const route of depositRoutes) {
 
       try {
           await test.step("Open app", async () => {
-            await page.pause();
             await openApp(page, context, {
               waitUntil: "domcontentloaded",
               maxRetries: 3,

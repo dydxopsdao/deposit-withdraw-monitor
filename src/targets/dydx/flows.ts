@@ -215,6 +215,7 @@ export async function connectWallet(
   wallet: WalletType
 ): Promise<Page> {
   logger.step(`Connecting wallet: ${wallet}`);
+  
   // TODO: Emit metrics or structured logs for each connection attempt to aid debugging in CI.
   //TODO add hahndling of the warning / disconnect
   // TODO: If stale wallet popups are open from previous runs, close them proactively.
@@ -252,14 +253,38 @@ export async function connectWallet(
     
   }
 
-
   // 8) Assert the dApp now shows a connected state
-  const acctBtn = dydxSelectors
-  .accountMenuButton(page, wallet)
-  .or(dydxSelectors.accountMenuButtonLoose(page));
-
-  await expect(acctBtn).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
-  logger.success(`Wallet connected: ${wallet}`);
+  try {
+    const acctBtn = dydxSelectors
+      .accountMenuButton(page, wallet)
+      .or(dydxSelectors.accountMenuButtonLoose(page));
+  
+    await expect(acctBtn).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
+    logger.success(`Wallet connected: ${wallet}`, { wallet });
+  } catch (err) {
+    logger.warning(
+      "Account menu not visible after wallet connect, checking for deposit dialog...",
+      {
+        wallet,
+        error: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
+      }
+    );
+  
+    try {
+      const depositDialog = dydxSelectors.fundsDialog(page);
+      await expect(depositDialog).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
+      logger.success(`Wallet connected (inferred from deposit dialog): ${wallet}`, { wallet });
+    } catch (dialogErr) {
+      logger.error(
+        "Neither account menu nor deposit dialog found after wallet connect",
+        dialogErr instanceof Error ? dialogErr : new Error(String(dialogErr)),
+        { wallet }
+      );
+      throw err; // rethrow original error
+    }
+  }
+  
 
   return page;
 }
@@ -466,9 +491,9 @@ export async function clickAnyDeposit(page: Page) {
     await btn.scrollIntoViewIfNeeded().catch(() => {});
     await btn.click();
     return;
-    }
   }
   throw new Error('No clickable "Deposit" button found (all hidden or disabled).');
+}
 
 
 /**
