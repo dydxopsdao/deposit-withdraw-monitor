@@ -43,6 +43,7 @@ export async function preferSecondCandidate(
 }
 
 /**
+
  * Clicks whichever matching button becomes available, retrying until timeout.
  * Useful for wallet popups where labels vary between versions.
  * @param page Playwright page that owns the buttons.
@@ -59,6 +60,7 @@ type ClickAnyOpts = {
   /** Stop after this many clicks (default: unlimited until timeout) */
   maxClicks?: number;
 };
+
 export async function clickAnyButton(
   page: Page,
   names: RegExp[],
