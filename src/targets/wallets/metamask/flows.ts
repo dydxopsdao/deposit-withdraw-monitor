@@ -3,9 +3,8 @@ import { chromium, BrowserContext, Page } from "@playwright/test";
 import { METAMASK_EXT_PATH } from "../../../config/constants";
 import { WALLET_PASSWORD, assertMetamaskSecrets } from "./constants";
 import { metamaskSelectors as s } from "./selectors";
-import { findPageWithUrl } from "../../../utils/helpers/windows";
-import { clickAnyButton } from "../../../utils/helpers/ui-helper";
-import { logger } from "../../../utils/logger/logging-utils";
+import { findPageWithUrl, clickAnyButton } from "../../../utils";
+import { logger } from "../../../logger";
 import { TEST_TIMEOUTS } from "../../../config/timeouts";
 import fs from "fs";
 

@@ -37,7 +37,7 @@ export interface FlowStepData<TStep extends string> {
   step_timings: Partial<Record<TStep, number>>;
 }
 
-import type { Route } from "../../route/routes";
+import type { Route } from "../../../utils";
 
 export interface BaseFlowConfig<TStep extends string, TLog extends BaseTestRunLog> {
   flowName: string;

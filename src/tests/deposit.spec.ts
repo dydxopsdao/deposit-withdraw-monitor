@@ -12,13 +12,17 @@
 // Rebalance: never fails the test.
 
 import { test, expect } from "../fixtures";
-import { logger } from "../utils/logger/logging-utils";
-import { getRoutesSync, type Route, type WalletType } from "../utils/route/routes";
-import { datadog, DepositFunnelSteps } from "../utils/datadog";
+import { logger } from "../logger";
+import {
+  getRoutesSync,
+  type Route,
+  type WalletType,
+  waitForFinality,
+} from "../utils";
 import { openApp, connectWallet, deposit, submitDeposit } from "../targets/dydx/flows";
 import { dydxSelectors } from "../targets/dydx/selectors";
 import { TEST_TIMEOUTS } from "../config/timeouts";
-import { waitForFinality } from "../utils/finality/finality";
+import { datadog, DepositFunnelSteps } from "../utils/datadog";
 
 // ---- Route discovery (sync so tests can be defined at import time) ----------
 const onlyRouteId = process.env.ROUTE_ID?.trim();

@@ -4,7 +4,7 @@
 import { FlowTestRunLogger } from './core/logger';
 import { depositFlowConfig, DepositFunnelSteps } from './flows/deposit';
 import { withdrawFlowConfig, WithdrawFunnelSteps } from './flows/withdraw';
-import { Route } from '../route/routes';
+import { Route } from '../../utils';
 
 // Namespace export with flow-specific factory functions
 export const datadog = {

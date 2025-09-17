@@ -1,6 +1,6 @@
 // targets/dydx/selectors.ts
 import type { Page, Locator } from "@playwright/test";
-import type { WalletType } from "../../utils/route/routes";
+import type { WalletType } from "../../utils";
 
 type Selector = (p: Page, ...args: any[]) => Locator;
 
