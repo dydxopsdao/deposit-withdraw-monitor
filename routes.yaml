@@ -17,7 +17,7 @@ routes:
     src_chain: dydx
     dst_chain: ethereum
     cadence_min: 30
-    enabled: false
+    enabled: true
 
   - id: metamask-polygon-usdc-withdrawal
     kind: withdraw
@@ -32,7 +32,7 @@ routes:
     src_chain: dydx
     dst_chain: polygon
     cadence_min: 30
-    enabled: false
+    enabled: true
 
   - id: metamask-arbitrum-usdc-withdrawal
     kind: withdraw
@@ -47,7 +47,7 @@ routes:
     src_chain: dydx
     dst_chain: arbitrum
     cadence_min: 30
-    enabled: false
+    enabled: true
 
   - id: metamask-base-usdc-withdrawal
     kind: withdraw
@@ -62,22 +62,22 @@ routes:
     src_chain: dydx
     dst_chain: base
     cadence_min: 30
-    enabled: false
+    enabled: true
 
   - id: phantom-solana-usdc-withdrawal
     kind: withdraw
-    description: "$101 USDC to Solana Withdrawal with Phantom"
+    description: "$11 USDC to Solana Withdrawal with Phantom"
     wallet_type: phantom
     wallet_alias: phantom-solana-usdc-withdrawal
     wallet_address: "GMT491QXoAtz3rpjUxioABTayjcVKrUuTeGs1RMPWDpj"
     wallet_seed: ${SEED_PHRASE_PHANTOM_SOLANA_USDC_WITHDRAWAL}
     dydx_address: "dydx19pg8nznm04r0ah072hpuvtwtapc7k4s4ekw2ma"
     dydx_seed: ${SEED_PHRASE_DYDX_SOLANA_USDC_WITHDRAWAL}
-    amount: "101"
+    amount: "11"
     src_chain: dydx
     dst_chain: solana
     cadence_min: 30
-    enabled: false
+    enabled: true
 
   # ---------------------------
   # DEPOSITS – $10 REGULAR
@@ -114,7 +114,7 @@ routes:
     src_chain: arbitrum
     dst_chain: dydx
     cadence_min: 30
-    enabled: false
+    enabled: true
 
   - id: metamask-base-usdc-deposit-regular
     kind: deposit
@@ -131,7 +131,7 @@ routes:
     src_chain: base
     dst_chain: dydx
     cadence_min: 30
-    enabled: false
+    enabled: true
 
   - id: metamask-polygon-usdc-deposit-regular
     kind: deposit
@@ -147,7 +147,7 @@ routes:
     token: USDC
     src_chain: polygon
     dst_chain: dydx
-    cadence_min: 10
+    cadence_min: 30
     enabled: true
 
   - id: phantom-solana-usdc-deposit
@@ -165,7 +165,7 @@ routes:
     src_chain: solana
     dst_chain: dydx
     cadence_min: 30
-    enabled: false
+    enabled: true
 
   # ---------------------------
   # INSTANT DEPOSITS – $101
@@ -185,7 +185,7 @@ routes:
     src_chain: ethereum
     dst_chain: dydx
     cadence_min: 30
-    enabled: false
+    enabled: true
 
   - id: metamask-arbitrum-usdc-deposit-instant
     kind: deposit
@@ -202,7 +202,7 @@ routes:
     src_chain: arbitrum
     dst_chain: dydx
     cadence_min: 30
-    enabled: false
+    enabled: true
 
   - id: metamask-base-usdc-deposit-instant
     kind: deposit
@@ -219,7 +219,7 @@ routes:
     src_chain: base
     dst_chain: dydx
     cadence_min: 30
-    enabled: false
+    enabled: true
 
   - id: metamask-polygon-usdc-deposit-instant
     kind: deposit
@@ -236,4 +236,4 @@ routes:
     src_chain: polygon
     dst_chain: dydx
     cadence_min: 30
-    enabled: false
+    enabled: true

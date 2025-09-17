@@ -55,6 +55,10 @@ resource "aws_ecs_task_definition" "this" {
           value = aws_s3_bucket.reports.bucket
         },
         {
+          name  = "REPORTS_CLOUDFRONT_URL"
+          value = "https://${aws_cloudfront_distribution.reports.domain_name}"
+        },
+        {
           name  = "DD_SERVICE"
           value = var.datadog_service
         },
@@ -65,6 +69,10 @@ resource "aws_ecs_task_definition" "this" {
         {
           name  = "DD_SOURCE"
           value = var.datadog_source
+        },
+        {
+          name  = "DD_ENV"
+          value = var.dd_env
         },        
         {
           name  = "SEED_PHRASES_SECRET_ARN"

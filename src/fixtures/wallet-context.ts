@@ -2,7 +2,7 @@
 import { test } from '@playwright/test';
 import fs from 'fs';
 import { USER_DATA_DIR } from '../config/constants';
-import { type Route } from '../utils/route/routes';
+import { type Route } from '../utils';
 import {
   launchContextWithExtension as launchMetamaskContext,
   setupWallet as setupMetamaskWallet,
@@ -13,7 +13,7 @@ import {
   setupWallet as setupPhantomWallet,
   unlockPhantomWallet as unlockPhantomWallet,
 } from '../targets/wallets/phantom/flows';
-import { logger } from '../utils/logger/logging-utils';
+import { logger } from '../logger';
 import path from 'path';
 
 export const walletContextTest = test.extend<{

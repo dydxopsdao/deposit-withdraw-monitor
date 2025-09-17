@@ -1,6 +1,6 @@
 import { expect, Locator, Page } from "@playwright/test";
-import { logger } from "../logger/logging-utils";
-import { TEST_TIMEOUTS } from "../../config/timeouts";
+import { logger } from "../logger";
+import { TEST_TIMEOUTS } from "../config/timeouts";
 
 type ClickAnyOpts = {
   /** Total time to keep scanning/clicking */
@@ -28,7 +28,7 @@ type ClickAnyOpts = {
 
 export async function isVisible(
   locator: Locator,
-  timeout = TEST_TIMEOUTS.ELEMENT
+  timeout = TEST_TIMEOUTS.DEFAULT
 ): Promise<boolean> {
   try {
     await expect(locator).toBeVisible({ timeout });
