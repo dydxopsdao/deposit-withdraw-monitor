@@ -2,7 +2,7 @@
 import { expect, type Page } from "@playwright/test";
 import { dydxSelectors as dydxSelectors } from "../targets/dydx/selectors";
 import { TEST_TIMEOUTS } from "../config/timeouts";
-import { logger } from "../logger/logging-utils";
+import { logger } from "../logger";
 import { isVisible } from "./ui-helper";
 
 type FinalityResult = { ok: boolean; explorerUrl?: string; txHash?: string; explorerUrlsAll?: string[]; txHashesAll?: (string | undefined)[] };

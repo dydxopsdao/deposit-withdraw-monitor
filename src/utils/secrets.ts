@@ -1,5 +1,5 @@
 import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';
-import { logger } from '../logger/logging-utils';
+import { logger } from '../logger';
 
 /**
  * Loads secrets from AWS Secrets Manager and populates process.env.
