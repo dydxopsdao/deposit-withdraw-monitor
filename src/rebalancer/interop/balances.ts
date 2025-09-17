@@ -14,7 +14,7 @@ import {
 } from './constants';
 import { getBalances } from './skip';
 
-import { logger } from '../../utils/logger/logging-utils';
+import { logger } from '../../logger';
 
 export { getUsdcBalance, getFreeCollateral, newUsdcAmount, depositToSubaccount };
 export type { UsdcAmount };

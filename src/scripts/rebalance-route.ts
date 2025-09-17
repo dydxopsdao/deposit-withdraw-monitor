@@ -6,7 +6,7 @@ const envFile = process.env.CI ? '.env' : '.env.local';
 dotenv.config({ path: envFile });
 console.log(`> Loaded environment from ${envFile}`);
 
-import { getRoutesSync } from '../utils/route/routes';
+import { getRoutesSync } from '../utils/routes';
 import interop, { CHAIN_IDS } from '../rebalancer/interop';
 
 async function main(): Promise<void> {
