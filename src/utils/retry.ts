@@ -6,7 +6,7 @@
  * for an exponentially increasing delay before retrying:
  *   delay = baseDelayMs * 2^(attempt-1) [+ jitter]
  */
-import { logger } from "./logger/logging-utils";
+import { logger } from "../logger";
 
 export class RetryError extends Error {
   readonly attempts: number;

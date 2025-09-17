@@ -28,16 +28,18 @@ export async function preferSecondCandidate(
   candidates: Locator,
   windowMs: number
 ): Promise<Locator> {
-  const tries = Math.max(1, Math.floor(windowMs / TEST_TIMEOUTS.POLL));
-  try {
-    return await retry(async () => {
-      const count = await candidates.count();
-      if (count >= 2) return candidates.nth(1);
-      throw new Error("Second candidate not yet available");
-    }, { retries: tries - 1, baseDelayMs: TEST_TIMEOUTS.POLL, jitterRatio: 0.15 });
-  } catch {
-    return candidates.first();
+  const poll = TEST_TIMEOUTS.POLL;
+  const maxWindow = Math.min(windowMs, 5000);
+  const deadline = Date.now() + maxWindow;
+
+  while (Date.now() < deadline) {
+    const count = await candidates.count();
+    if (count >= 2) return candidates.nth(1);
+    const remaining = deadline - Date.now();
+    await new Promise((r) => setTimeout(r, Math.min(poll, Math.max(0, remaining))));
   }
+
+  return candidates.first();
 }
 
 /**
