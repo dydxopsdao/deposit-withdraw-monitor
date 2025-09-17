@@ -9,7 +9,7 @@ import { TEST_TIMEOUTS } from "../../config/timeouts";
 import { handleMetamaskPopup, conditionallyUnlockMetamask } from "../wallets/metamask/flows";
 import { handlePhantomPopup as handlePhantomPopup } from "../wallets/phantom/flows";
 import { dydxSelectors } from "./selectors";
-import { isVisible, preferSecondCandidate, clickWithFallback } from "../../utils/helpers/ui-helper";
+import { preferSecondCandidate, clickWithFallback } from "../../utils/ui-helper";
 import { retry, RetryError } from "../../utils/retry";
 
 //#region openApp

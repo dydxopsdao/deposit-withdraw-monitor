@@ -1,6 +1,6 @@
 import { expect, Locator, Page } from "@playwright/test";
-import { logger } from "../../logger";
-import { retry } from "../retry";
+import { logger } from "../logger";
+import { retry } from "./retry";
 import { TEST_TIMEOUTS } from "../config/timeouts";
 
 export async function isVisible(
