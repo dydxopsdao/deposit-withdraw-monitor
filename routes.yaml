@@ -147,7 +147,7 @@ routes:
     token: USDC
     src_chain: polygon
     dst_chain: dydx
-    cadence_min: 10
+    cadence_min: 30
     enabled: true
 
   - id: phantom-solana-usdc-deposit
