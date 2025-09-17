@@ -66,14 +66,14 @@ routes:
 
   - id: phantom-solana-usdc-withdrawal
     kind: withdraw
-    description: "$101 USDC to Solana Withdrawal with Phantom"
+    description: "$11 USDC to Solana Withdrawal with Phantom"
     wallet_type: phantom
     wallet_alias: phantom-solana-usdc-withdrawal
     wallet_address: "GMT491QXoAtz3rpjUxioABTayjcVKrUuTeGs1RMPWDpj"
     wallet_seed: ${SEED_PHRASE_PHANTOM_SOLANA_USDC_WITHDRAWAL}
     dydx_address: "dydx19pg8nznm04r0ah072hpuvtwtapc7k4s4ekw2ma"
     dydx_seed: ${SEED_PHRASE_DYDX_SOLANA_USDC_WITHDRAWAL}
-    amount: "101"
+    amount: "11"
     src_chain: dydx
     dst_chain: solana
     cadence_min: 30
