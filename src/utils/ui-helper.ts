@@ -28,7 +28,7 @@ type ClickAnyOpts = {
 
 export async function isVisible(
   locator: Locator,
-  timeout = TEST_TIMEOUTS.ELEMENT
+  timeout = TEST_TIMEOUTS.DEFAULT
 ): Promise<boolean> {
   try {
     await expect(locator).toBeVisible({ timeout });
