@@ -317,7 +317,7 @@ export async function openWalletPicker(page: Page, retries = 2) {
 
   try {
     await retry(
-      async (_attemptNo) => {
+      async () => {
         await expect(connectBtn).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
         logger.info("Connect wallet button visible, clicking");
         await connectBtn.click();
@@ -361,7 +361,7 @@ const re = (txt: string) => new RegExp(`\\b${txt.replace(/[.*+?^${}()|[\]\\]/g, 
  * Drives the deposit dialog through token selection and amount entry.
  * Wallet popups and final submission are handled separately.
  * @param page Active dYdX page.
- * @param _context Reserved for parity with withdraw flow (unused here).
+ * @param context Reserved for parity with withdraw flow (unused here).
  * @param amount Amount to enter into the deposit form.
  * @param src_chain Source chain name shown in the UI selector.
  * @param token Token symbol to pair with the source chain.
@@ -370,7 +370,7 @@ const re = (txt: string) => new RegExp(`\\b${txt.replace(/[.*+?^${}()|[\]\\]/g, 
  */
 export async function deposit(
   page: Page,
-  _context: BrowserContext,
+  context: BrowserContext,
   amount: string,
   src_chain: string, // e.g. "polygon"
   token: string,      // e.g. "USDC"
@@ -503,7 +503,7 @@ export async function submitDeposit(page: Page, context: BrowserContext, wallet:
 /**
  * Navigates the withdraw dialog to pick the destination and amount to send.
  * @param page Active dYdX page.
- * @param _context Reserved for parity with deposit flow (unused here).
+ * @param context Reserved for parity with deposit flow (unused here).
  * @param amount Amount to withdraw.
  * @param dst_chain Destination chain shown in the UI selector.
  * @param token Token symbol pairing the withdrawal route.
@@ -512,7 +512,7 @@ export async function submitDeposit(page: Page, context: BrowserContext, wallet:
  */
 export async function withdraw(
   page: Page,
-  _context: BrowserContext,
+  context: BrowserContext,
   amount: string,
   dst_chain: string, // e.g. "polygon"
   token: string,      // e.g. "USDC"
