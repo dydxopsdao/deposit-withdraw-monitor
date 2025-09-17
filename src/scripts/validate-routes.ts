@@ -5,7 +5,7 @@
 import fs from 'fs';
 import path from 'path';
 
-import { logger } from '../logger/logging-utils';
+import { logger } from '../logger';
 
 // Prime env vars found in routes.yaml so the loader's env substitution doesn't fail in CI
 function primeEnvFromYaml(filePath: string) {
@@ -29,7 +29,7 @@ async function main() {
     process.env.ROUTE_ID_DUPLICATE_MODE = 'throw';
 
     // Dynamic import to avoid ESM/CommonJS quirks in various runners
-    const { getRoutesSync } = await import('../utils/routes');
+    const { getRoutesSync } = await import('../utils');
     const routes = getRoutesSync();
     // Basic additional sanity: at least one route
     if (!routes || !Array.isArray(routes)) throw new Error('Loader did not return routes array');

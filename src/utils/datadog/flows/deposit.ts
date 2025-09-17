@@ -2,7 +2,7 @@
 // Deposit flow specific configuration for datadog logging
 
 import { BaseTestRunLog, BaseFlowConfig, FlowStepData } from '../core/types';
-import type { Route } from "../../route/routes";
+import type { Route } from "../../../utils";
 
 // v4-web-aligned funnel steps for deposit flow
 export const DepositFunnelSteps = {

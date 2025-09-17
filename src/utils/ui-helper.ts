@@ -1,5 +1,5 @@
 import { expect, Locator, Page } from "@playwright/test";
-import { logger } from "../logger/logging-utils";
+import { logger } from "../logger";
 import { TEST_TIMEOUTS } from "../config/timeouts";
 
 type ClickAnyOpts = {

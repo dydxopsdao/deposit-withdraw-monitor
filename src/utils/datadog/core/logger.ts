@@ -2,8 +2,8 @@
 // Generic flow-agnostic test run logger for comprehensive datadog logging
 // Emits one comprehensive log at test completion with funnel analysis
 
-import { logger as consoleLogger } from "../../logger/logging-utils";
-import { Route } from "../../route/routes";
+import { logger as consoleLogger } from "../../../logger";
+import { Route } from "../../../utils";
 import { TEST_TIMEOUTS } from "../../../config/timeouts";
 import { hostname } from "os";
 import { BaseTestRunLog, BaseFlowConfig, FlowStepData, TestResult } from './types';

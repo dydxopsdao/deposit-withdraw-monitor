@@ -2,9 +2,9 @@
 
 Small console logger with timestamped, human-readable output and optional metadata/error details.
 
-* File: `utils/logger/logging-utils.ts`
-* Formatter: `utils/logger/formatters.ts`
-* Types: `utils/logger/types.ts`
+* File: `logger/logging-utils.ts`
+* Formatter: `logger/formatters.ts`
+* Types: `logger/types.ts`
 
 ---
 
@@ -21,7 +21,7 @@ Small console logger with timestamped, human-readable output and optional metada
 ## Install / Import
 
 ```ts
-import { logger } from "../utils/logger/logging-utils"; // adjust path
+import { logger } from "../logger"; // adjust path
 ```
 
 ---
@@ -69,7 +69,7 @@ Metadata: {
 Extend the redaction list when needed:
 
 ```ts
-import { safeStringify } from "../utils/logger/formatters";
+import { safeStringify } from "../logger";
 
 const EXTRA_REDACTIONS = new Set(["sessionId", "csrf", "x-api-token"]);
 const json = safeStringify(obj, EXTRA_REDACTIONS, 2);
@@ -99,7 +99,7 @@ Metadata: {
 
 ```ts
 import { test, expect } from "@playwright/test";
-import { logger } from "../utils/logger/logging-utils";
+import { logger } from "../logger";
 
 test("Connect MetaMask", async ({ page }) => {
   logger.step("Opening app", { url: "https://example.test" });
