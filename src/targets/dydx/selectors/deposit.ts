@@ -11,7 +11,7 @@ export const tokenPickerDialogDeposit: Selector = (page) =>
   page.getByText("Your tokens");
 
 export const depositFundsButton: Selector = (page) =>
-  fundsDialog(page).getByRole("button", { name: /^deposit funds$/i });
+  fundsDialog(page).locator(':is(button[type="submit"], button[action="Primary"])').first();
 
 export const depositDoneTitle: Selector = (page) =>
   fundsDialog(page).getByText(/^deposit completed$/i).first();
