@@ -5,7 +5,7 @@ export type { Route, WalletType, RouteKind, DepositRouteKind } from "./routes";
 
 export { loadSecretsFromAWS } from "./secrets";
 
-export { isVisible, clickAnyButton } from "./ui-helper";
+export { isVisible, clickAnyButton, preferSecondCandidate, clickWithFallback } from "./ui-helper";
 
 export { findPageWithUrl } from "./windows";
 
