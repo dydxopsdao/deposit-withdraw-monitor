@@ -133,8 +133,6 @@ export async function openApp(
           if (afterNavigate) {
             await afterNavigate(page);
           }
-  
-          return page; // success for this attempt
         },
         {
           retries: maxRetries,
