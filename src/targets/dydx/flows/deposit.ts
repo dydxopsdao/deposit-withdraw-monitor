@@ -1,7 +1,7 @@
 import { expect, type BrowserContext, type Page } from "@playwright/test";
 import { TEST_TIMEOUTS } from "../../../config/timeouts";
 import { logger } from "../../../logger";
-import { WalletType } from "../../../utils";
+import { clickWithFallback, preferSecondCandidate, WalletType } from "../../../utils";
 import { depositFundsButton, tokenPickerDialogDeposit } from "../selectors/deposit";
 import { tokenPickerCandidates, tokenPillDeposit, fundsDialog, amountInput } from "../selectors/funds-dialog";
 import { handleWalletPopup } from "./wallet";
@@ -9,7 +9,6 @@ import { clickAnyDeposit, enterAmount } from "./shared";
 
 export async function deposit(
   page: Page,
-  _context: BrowserContext,
   amount: string,
   src_chain: string,
   token: string,
@@ -42,30 +41,8 @@ export async function selectTokenDeposit(page: Page, token: string, chain: strin
   const candidates = tokenPickerCandidates(page, token, chain);
   await expect(candidates.first()).toBeVisible({ timeout: TEST_TIMEOUTS.ACTION });
 
-  let target = candidates.first();
-  const deadline = Date.now() + TEST_TIMEOUTS.ACTION;
-  while (Date.now() < deadline) {
-    if ((await candidates.count()) >= 2) {
-      target = candidates.nth(1);
-      break;
-    }
-    await page.waitForTimeout(TEST_TIMEOUTS.POLL);
-  }
-
-  await target.evaluate((el) => el.scrollIntoView({ block: "center" })).catch(() => {});
-  await expect(target).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
-  await expect(target).toBeEnabled({ timeout: TEST_TIMEOUTS.ELEMENT });
-
-  try {
-    await target.click({ timeout: TEST_TIMEOUTS.ELEMENT });
-  } catch {
-    const box = await target.boundingBox();
-    if (box) {
-      await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-    } else {
-      await target.click({ force: true });
-    }
-  }
+  const target = await preferSecondCandidate(candidates, TEST_TIMEOUTS.ACTION);
+  await clickWithFallback(page, target, { label: "token/chain candidate" });
 }
 
 export async function submitDeposit(page: Page, context: BrowserContext, wallet: WalletType) {

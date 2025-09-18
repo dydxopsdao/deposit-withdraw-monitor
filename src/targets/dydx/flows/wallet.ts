@@ -15,7 +15,7 @@ export async function connectWallet(
 ): Promise<Page> {
   logger.step(`Connecting wallet: ${wallet}`);
 
-  if (await isVisible(accountMenuButton(page))) {
+  if (await isVisible(accountMenuButton(page), {timeout: TEST_TIMEOUTS.DELAY})) {
     logger.info("Wallet appears already connected (account menu visible)");
     return page;
   }

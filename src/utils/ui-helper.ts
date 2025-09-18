@@ -1,15 +1,8 @@
 import { expect, Locator, Page } from "@playwright/test";
 import { logger } from "../logger";
 import { TEST_TIMEOUTS } from "../config/timeouts";
+import { retry } from "./retry";
 
-type ClickAnyOpts = {
-  /** Total time to keep scanning/clicking */
-  overallTimeoutMs?: number;
-  /** Poll interval while waiting for buttons to appear */
-  pollMs?: number;
-  /** Stop after this many clicks (default: unlimited until timeout) */
-  maxClicks?: number;
-};
 /**
  * Waits for a button matching any of the provided regular expressions to appear and clicks it.
  * Repeats this process, polling at a configurable interval, until either a maximum number of clicks
@@ -28,10 +21,10 @@ type ClickAnyOpts = {
 
 export async function isVisible(
   locator: Locator,
-  timeout = TEST_TIMEOUTS.DEFAULT
+  opts?: { timeout?: number }
 ): Promise<boolean> {
   try {
-    await expect(locator).toBeVisible({ timeout });
+    await expect(locator).toBeVisible({ timeout: opts?.timeout ?? TEST_TIMEOUTS.DELAY });
     return true;
   } catch {
     return false;
@@ -39,6 +32,29 @@ export async function isVisible(
 }
 
 /**
+* Prefer the second candidate if it appears within windowMs; otherwise return the first.
+ */
+export async function preferSecondCandidate(
+  candidates: Locator,
+  windowMs: number
+): Promise<Locator> {
+  const poll = TEST_TIMEOUTS.POLL;
+  const maxWindow = Math.min(windowMs, 5000);
+  const deadline = Date.now() + maxWindow;
+
+  while (Date.now() < deadline) {
+    const count = await candidates.count();
+    if (count >= 2) return candidates.nth(1);
+    const remaining = deadline - Date.now();
+    await new Promise((r) => setTimeout(r, Math.min(poll, Math.max(0, remaining))));
+  }
+
+  return candidates.first();
+}
+
+/**
+  /**
+
  * Clicks whichever matching button becomes available, retrying until timeout.
  * Useful for wallet popups where labels vary between versions.
  * @param page Playwright page that owns the buttons.
@@ -47,6 +63,15 @@ export async function isVisible(
  * @param opts Optional tuning knobs for polling cadence and retry depth.
  * @returns Total number of buttons clicked during the scan loop.
  */
+type ClickAnyOpts = {
+  /** Total time to keep scanning/clicking */
+  overallTimeoutMs?: number;
+  /** Poll interval while waiting for buttons to appear */
+  pollMs?: number;
+  /** Stop after this many clicks (default: unlimited until timeout) */
+  maxClicks?: number;
+};
+
 export async function clickAnyButton(
   page: Page,
   names: RegExp[],
@@ -92,4 +117,65 @@ export async function clickAnyButton(
   }
 
   return clicks; // how many buttons we actually clicked
+}
+
+export type ClickWithFallbackOptions = {
+  timeout?: number;
+  retries?: number;
+  requireEnabled?: boolean;
+  scroll?: boolean;
+  label?: string;
+};
+
+export async function clickWithFallback(
+  page: Page,
+  locator: Locator,
+  opts: ClickWithFallbackOptions = {}
+): Promise<void> {
+  const {
+    timeout = TEST_TIMEOUTS.ELEMENT,
+    retries = 2,
+    requireEnabled = true,
+    scroll = true,
+    label,
+  } = opts;
+
+  await retry(
+    async (attemptNo) => {
+      if (scroll) await locator.scrollIntoViewIfNeeded().catch(() => {});
+      await expect(locator).toBeVisible({ timeout });
+      if (requireEnabled) {
+        await expect(locator).toBeEnabled({ timeout });
+      }
+
+      try {
+        await locator.click({ timeout });
+        if (attemptNo > 1) {
+          logger.debug(`clickWithFallback: success on attempt ${attemptNo}${label ? ` (${label})` : ""}`);
+        }
+        return;
+      } catch (e) {
+        // Fallback: bounding box click if available; else force
+        const box = await locator.boundingBox();
+        if (box) {
+          await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+          logger.debug(`clickWithFallback: used bounding box${label ? ` (${label})` : ""}`);
+          return;
+        }
+        await locator.click({ force: true, timeout });
+        logger.debug(`clickWithFallback: used force click${label ? ` (${label})` : ""}`);
+      }
+    },
+    {
+      retries,
+      baseDelayMs: TEST_TIMEOUTS.POLL,
+      jitterRatio: 0.15,
+      onAttemptFailure: (attemptNo, err) => {
+        const msg = (err as Error)?.message ?? String(err);
+        logger.debug(
+          `clickWithFallback: attempt ${attemptNo} failed${label ? ` (${label})` : ""}: ${msg}`
+        );
+      },
+    }
+  );
 }

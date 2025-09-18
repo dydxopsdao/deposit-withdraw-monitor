@@ -2,6 +2,7 @@ import { type BrowserContext, type Page } from "@playwright/test";
 import { DAPP_URL } from "../../../config/constants";
 import { logger } from "../../../logger";
 import type { WaitTarget } from "../types";
+import { RetryError, retry } from "../../../utils/retry";
 
 export type OpenAppOptions = {
   url?: string;
@@ -16,16 +17,16 @@ export type OpenAppOptions = {
 
 export async function openApp(
   page: Page,
-  context: BrowserContext,
   urlOrOptions?: string | OpenAppOptions
 ): Promise<Page> {
+  // Normalize options: support a string URL for ergonomics.
   const opts: OpenAppOptions =
     typeof urlOrOptions === "string" ? { url: urlOrOptions } : (urlOrOptions ?? {});
 
   const {
     url,
     path,
-    waitUntil = "domcontentloaded",
+    waitUntil = "domcontentloaded", // SPA-friendly default
     maxRetries = 3,
     retryDelayMs = 1_000,
     bringToFront = true,
@@ -33,65 +34,55 @@ export async function openApp(
     afterNavigate,
   } = opts;
 
-  const targetUrl = url ?? new URL(path ?? "", DAPP_URL).toString();
-  logger.step(`Navigating to app: ${targetUrl}`);
-
-  let lastError: unknown;
-
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    const attemptNo = attempt + 1;
-
+    // Build the target URL from base + path unless an absolute URL was provided.
+    const targetUrl = url ?? new URL(path ?? "", DAPP_URL).toString();
+    logger.step(`Navigating to app: ${targetUrl}`);
+  
     try {
-      if (attempt > 0) {
-        const delay = retryDelayMs * Math.pow(2, attempt - 1);
-        logger.info(`Retry ${attempt} of ${maxRetries} → waiting ${delay}ms`);
-        await page.waitForTimeout(delay);
-      }
-
-      await page.goto(targetUrl, { waitUntil });
-      if (bringToFront) await page.bringToFront();
-
-      /* TODO: Handle concurrent runs with connected vs not.
-      if (waitFor) {
-        const list = Array.isArray(waitFor) ? waitFor : [waitFor];
-        logger.info(`Waiting for ${list.length} selector(s) to be visible`);
-        for (const item of list) {
-          if (typeof item === "string") {
-            logger.debug(`waitForSelector: ${item}`);
-            await page.waitForSelector(item, {
-              state: "visible",
-              timeout: TEST_TIMEOUTS.ELEMENT,
-            });
+      await retry(
+        async (attemptNo) => {
+          // Navigate and bring the tab forward (wallet popups often assume focus).
+          await page.goto(targetUrl, { waitUntil });
+          if (bringToFront) await page.bringToFront();
+          //TODO build a helper function to wait for the UI to be ready  
+          if (attemptNo > 1) {
+            logger.success(`Navigated to dYdX on attempt ${attemptNo}: ${targetUrl}`);
           } else {
-            const loc = item(page);
-            logger.debug("waitFor locator(factory)");
-            await loc.first().waitFor({
-              state: "visible",
-              timeout: TEST_TIMEOUTS.ELEMENT,
-            });
+            logger.success(`Navigated to dYdX: ${targetUrl}`);
           }
+  
+          // Post-nav hook: last chance to tidy up (cookie/region banners, etc).
+          if (afterNavigate) {
+            await afterNavigate(page);
+          }
+        },
+        {
+          retries: maxRetries,
+          baseDelayMs: retryDelayMs,
+          jitterRatio: 0.2,
+          onAttemptFailure: (attemptNo, err) => {
+            const total = maxRetries + 1;
+            const remaining = maxRetries - (attemptNo - 1);
+            const msg = (err as Error)?.message ?? String(err);
+            logger.warning(
+              `Navigation attempt ${attemptNo}/${total} failed for ${targetUrl} (${remaining} retries left): ${msg}`
+            );
+          },
         }
-      } */
-
-      if (afterNavigate) {
-        await afterNavigate(page);
-      }
-
-      logger.success(
-        `Navigated to dYdX: ${targetUrl}${attempt > 0 ? ` on attempt ${attemptNo}` : ""}`
       );
+  
       return page;
-    } catch (err) {
-      lastError = err;
-      logger.warning(
-        `Navigation attempt ${attemptNo} failed for ${targetUrl}: ${(err as Error)?.message}`
-      );
+    } catch (e) {
+      if (e instanceof RetryError) {
+        const lastMsg =
+          (e.lastError as Error)?.message ?? (typeof e.lastError === "string" ? e.lastError : "Unknown error");
+        logger.error(
+          `Failed to navigate after ${e.attempts} attempts: ${targetUrl} (last error: ${lastMsg})`,
+          (e.lastError as Error) ?? e
+        );
+        throw (e.lastError as Error) ?? e;
+      }
+      logger.error(`Failed to navigate to ${targetUrl}`, e as Error);
+      throw e;
     }
   }
-
-  logger.error(
-    `Failed to navigate after ${maxRetries + 1} attempts: ${targetUrl}`,
-    lastError as Error
-  );
-  throw lastError;
-}
