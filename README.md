@@ -354,3 +354,45 @@ Env:
 * The spec separates errors into `pre_submit` vs `submit_or_finality`. You can add retries to pre‑submit only.
 
 ---
+
+## Custom v4-client-js Dependency Fix
+
+This project uses a custom build of `@dydxprotocol/v4-client-js` due to export issues in the official NPM package. The custom build is hosted on S3 and referenced directly in `package.json`.
+
+### Why a custom build?
+
+The official `@dydxprotocol/v4-client-js` package has incorrect exports that prevent proper module resolution by Playwright. Our custom build fixes these export issues.
+
+### Building and updating the custom dependency
+
+To update the custom dependency:
+
+1. Clone our fork of the v4-clients repository:
+   ```bash
+   git clone https://github.com/dydxopsdao/v4-clients.git
+   cd v4-clients
+   ```
+   *Note: This is our fork of the upstream [dydxprotocol/v4-clients](https://github.com/dydxprotocol/v4-clients) repository.*
+
+2. Check out the fix branch:
+   ```bash
+   git checkout v4-client-js-3.0.3-fix-exports
+   ```
+
+3. Build and package:
+   ```bash
+   npm run build && npm pack
+   ```
+   This produces `dydxprotocol-v4-client-js-3.0.3.tgz`
+
+4. Upload to S3:
+   ```bash
+   aws s3 cp dydxprotocol-v4-client-js-3.0.3.tgz s3://dydxopsdao-deposit-withdraw-monitor-v4-client-js-fix-exports/
+   ```
+
+5. Update `package.json` with the new S3 URL and install:
+   ```bash
+   npm install https://dydxopsdao-deposit-withdraw-monitor-v4-client-js-fix-exports.s3.ap-northeast-1.amazonaws.com/dydxprotocol-v4-client-js-3.0.3.tgz
+   ```
+
+**Note:** The S3 URL in `package.json` should be updated to point to the new file location after upload.

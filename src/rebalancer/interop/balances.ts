@@ -1,7 +1,7 @@
 import { formatUnits, parseUnits } from 'viem';
 import Long from 'long';
 
-import { LocalWallet, ValidatorClient, BroadcastMode, encodeJson } from '@dydxprotocol/v4-client-js';
+import { LocalWallet, ValidatorClient, BroadcastMode, encodeJson, SubaccountInfo } from '@dydxprotocol/v4-client-js';
 
 import {
   CHAIN_CONFIGS,
@@ -132,9 +132,11 @@ async function depositToSubaccount(dYdXSeed: string, amount: bigint | string) {
     },
   });
 
+  const subaccount = SubaccountInfo.forLocalWallet(dYdXWallet, 0);
+
   const msg = validatorClient.post.composer.composeMsgDepositToSubaccount(
-    dYdXAddress,
-    0, // subaccount number
+    subaccount.address,
+    subaccount.subaccountNumber,
     DYDX_USDC_ASSET_ID,
     Long.fromValue(amount.toString())
   );
@@ -145,7 +147,7 @@ async function depositToSubaccount(dYdXSeed: string, amount: bigint | string) {
 
   try {
     const response = await validatorClient.post.send(
-      dYdXWallet,
+      subaccount,
       () => Promise.resolve([msg]),
       false,
       undefined,
@@ -161,7 +163,8 @@ async function depositToSubaccount(dYdXSeed: string, amount: bigint | string) {
       dYdXChainConfig.getRpcEndpoint(),
       typeof response.hash === 'string' ? response.hash : Buffer.from(response.hash).toString('hex')
     );
-    await waitForIndexerToCatchUp(txBlockNumber);
+    // Add 5 blocks to the tx block number to account for potential indexer lag
+    await waitForIndexerToCatchUp(txBlockNumber.add(5));
   } catch (error) {
     throw new Error(`error sending deposit to subaccount: ${error instanceof Error ? error.message : String(error)}`);
   }

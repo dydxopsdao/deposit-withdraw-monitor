@@ -12,9 +12,7 @@ import {
   CosmosTx,
 } from '@skip-go/client';
 
-import { NobleClient, LocalWallet } from '@dydxprotocol/v4-client-js';
-//import { MsgWithdrawFromSubaccount } from '@dydxprotocol/v4-client-js';
-import { MsgWithdrawFromSubaccount } from '@dydxprotocol/v4-proto/src/codegen/dydxprotocol/sending/transfer.js';
+import { LocalWallet, MsgWithdrawFromSubaccount, NobleClient } from '@dydxprotocol/v4-client-js';
 
 import { deriveCosmosAddress, deriveEvmAddress, deriveSvmAddress } from '../signers';
 

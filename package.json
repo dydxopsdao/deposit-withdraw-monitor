@@ -24,7 +24,7 @@
   "dependencies": {
     "@aws-sdk/client-secrets-manager": "^3.879.0",
     "@cosmjs/proto-signing": "^0.36.0",
-    "@dydxprotocol/v4-client-js": "^2.7.0",
+    "@dydxprotocol/v4-client-js": "https://dydxopsdao-deposit-withdraw-monitor-v4-client-js-fix-exports.s3.ap-northeast-1.amazonaws.com/dydxprotocol-v4-client-js-3.0.3.tgz",
     "@dydxprotocol/v4-proto": "^9.0.0",
     "@playwright/test": "^1.54.2",
     "@skip-go/client": "^1.5.4",
