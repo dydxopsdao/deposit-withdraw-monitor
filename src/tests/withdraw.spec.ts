@@ -78,7 +78,7 @@ for (const route of withdrawRoutes) {
           // NavigateDialog: Open app and connect wallet to reach withdraw dialog
           testRunLogger.startStep(WithdrawFunnelSteps.NavigateDialog);
           await test.step("Open app", async () => {
-            await openApp(page, context, {
+            await openApp(page, {
               waitUntil: "domcontentloaded",
               maxRetries: 3,
               retryDelayMs: 1500,
@@ -94,7 +94,7 @@ for (const route of withdrawRoutes) {
           // WithdrawInitiated: User fills withdraw dialog and initiates a withdrawal
           testRunLogger.startStep(WithdrawFunnelSteps.WithdrawInitiated);
           await test.step("Withdraw Dialog Input", async () => {
-            await withdraw(page, context, String(route.amount), route.dst_chain, route.token, route.wallet_type);
+            await withdraw(page, String(route.amount), route.dst_chain, route.token, route.wallet_type);
           });
           testRunLogger.completeStep(WithdrawFunnelSteps.WithdrawInitiated);
 

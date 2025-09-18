@@ -79,7 +79,7 @@ for (const route of depositRoutes) {
           // NavigateDialog: Open app and connect wallet to reach deposit dialog
           testRunLogger.startStep(DepositFunnelSteps.NavigateDialog);
           await test.step("Open app", async () => {
-            await openApp(page, context, {
+            await openApp(page, {
               waitUntil: "domcontentloaded",
               maxRetries: 3,
               retryDelayMs: 1500,
@@ -95,7 +95,7 @@ for (const route of depositRoutes) {
           // DepositInitiated: User fills deposit dialog and initiates deposit
           testRunLogger.startStep(DepositFunnelSteps.DepositInitiated);
           await test.step("Deposit Dialog Input", async () => {
-            await deposit(page, context, route.amount, route.src_chain, route.token, route.wallet_type);
+            await deposit(page, route.amount, route.src_chain, route.token, route.wallet_type);
           });
           testRunLogger.completeStep(DepositFunnelSteps.DepositInitiated);
 
