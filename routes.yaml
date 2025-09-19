@@ -92,7 +92,7 @@ routes:
     dydx_address: "dydx14dzatfzpu4ha32dtuwrc2uu8jh9qzvlp9x8yup"
     dydx_seed: ${SEED_PHRASE_DYDX_ETHEREUM_USDC_DEPOSIT_REGULAR}
     route_kind: regular
-    amount: "10"
+    amount: "11"
     token: USDC
     src_chain: ethereum
     dst_chain: dydx
@@ -109,7 +109,7 @@ routes:
     dydx_address: "dydx1huk7kwwelk0dq3m4lt8fz6j002k3w65tnzls4g"
     dydx_seed: ${SEED_PHRASE_DYDX_ARBITRUM_USDC_DEPOSIT_REGULAR}
     route_kind: regular
-    amount: "10"
+    amount: "11"
     token: USDC
     src_chain: arbitrum
     dst_chain: dydx
@@ -126,7 +126,7 @@ routes:
     dydx_address: "dydx1a5955ycr8qytm039pjm5xvd89564smm760yag3"
     dydx_seed: ${SEED_PHRASE_DYDX_BASE_USDC_DEPOSIT_REGULAR}
     route_kind: regular
-    amount: "10"
+    amount: "11"
     token: USDC
     src_chain: base
     dst_chain: dydx
@@ -143,7 +143,7 @@ routes:
     dydx_address: "dydx1g7dvxqqw6mfr98c8203t09v5fe7ehhpc7ewgxj"
     dydx_seed: ${SEED_PHRASE_DYDX_POLYGON_USDC_DEPOSIT_REGULAR}
     route_kind: regular
-    amount: "10"
+    amount: "11"
     token: USDC
     src_chain: polygon
     dst_chain: dydx
@@ -160,7 +160,7 @@ routes:
     dydx_address: "dydx1y7r3nq2f0zlwt2ww4gvm39v000gt6wtwjk6jml"
     dydx_seed: ${SEED_PHRASE_DYDX_SOLANA_USDC_DEPOSIT}
     route_kind: regular
-    amount: "10"
+    amount: "11"
     token: USDC
     src_chain: solana
     dst_chain: dydx
