@@ -83,6 +83,10 @@ resource "aws_ecs_task_definition" "this" {
           value = aws_secretsmanager_secret.secrets["wallet_password"].arn
         },
         {
+          name  = "ALCHEMY_API_KEY_SECRET_ARN"
+          value = aws_secretsmanager_secret.secrets["alchemy_api_key"].arn
+        },
+        {
           name  = "DATADOG_API_KEY_SECRET_ARN"
           value = aws_secretsmanager_secret.secrets["datadog_api_key"].arn
         },

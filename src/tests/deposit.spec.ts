@@ -23,6 +23,7 @@ import { openApp, connectWallet, deposit, submitDeposit } from "../targets/dydx/
 import { dydxSelectors } from "../targets/dydx/selectors";
 import { TEST_TIMEOUTS } from "../config/timeouts";
 import { datadog, DepositFunnelSteps } from "../utils/datadog";
+import { rebalanceNow } from "../rebalancer";
 
 // ---- Route discovery (sync so tests can be defined at import time) ----------
 const onlyRouteId = process.env.ROUTE_ID?.trim();
@@ -146,7 +147,11 @@ for (const route of depositRoutes) {
         await test.step("Rebalance (teardown)", async () => {
           try {
             // Assume your rebalance returns optional balances; OK if it returns void
-            const result = await rebalanceNow(route, { reason: "post_test_teardown", last_tx: txHash, passed });
+            const result = await rebalanceNow(route);
+            const balancesBefore = (result as any)?.balancesBefore;
+            const balancesAfter = (result as any)?.balancesAfter;
+
+            // Note: Rebalance logging could be added to the modular system in the future if needed
           } catch (e: any) {
             logger.warning("Rebalance failed", { route_id: route.id, error: { message: e?.message } });
             // swallow — do not rethrow
@@ -155,7 +160,4 @@ for (const route of depositRoutes) {
       }
     });
   });
-}
-async function rebalanceNow(_route: Route, _opts: { reason: string; last_tx?: string; passed: boolean }) {
-  // TODO: implement; return { balancesBefore?: {...}, balancesAfter?: {...} } if you can
 }

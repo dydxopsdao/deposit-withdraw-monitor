@@ -15,6 +15,11 @@ locals {
       description = "Datadog API key for deposit-withdraw-monitor data collection"
       value       = var.datadog_api_key
     }
+    alchemy_api_key = {
+      name        = "deposit-withdraw-monitor/alchemy-api-key"
+      description = "Alchemy API key for EVM and SVM RPC nodes"
+      value       = var.alchemy_api_key
+    }
   }
 }
 

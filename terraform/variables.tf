@@ -10,6 +10,12 @@ variable "wallet_password" {
   sensitive   = true
 }
 
+variable "alchemy_api_key" {
+  description = "Alchemy API key for EVM and SVM RPC nodes"
+  type        = string
+  sensitive   = true
+}
+
 variable "datadog_api_key" {
   description = "Datadog API key for data collection"
   type        = string
