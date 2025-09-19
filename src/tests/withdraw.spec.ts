@@ -20,6 +20,7 @@ import {
   waitForFinality,
 } from "../utils";
 import { datadog, WithdrawFunnelSteps } from "../utils/datadog";
+import { sendMetricToDatadog } from "../utils/datadog/metrics";
 import { openApp, connectWallet, withdraw, submitWithdraw } from "../targets/dydx/flows";
 import { dydxSelectors } from "../targets/dydx/selectors";
 import { TEST_TIMEOUTS } from "../config/timeouts";
@@ -132,6 +133,9 @@ for (const route of withdrawRoutes) {
             txHash,
             explorerUrl,
           });
+          
+          // Send metrics for successful test
+          await sendMetricToDatadog(route, "withdraw", "passed");
         } catch (e: any) {
           /* =========================
             TEST FAILED
@@ -145,6 +149,10 @@ for (const route of withdrawRoutes) {
             txHash,
             explorerUrl,
           });
+          
+          // Send metrics for failed test
+          await sendMetricToDatadog(route, "withdraw", "failed");
+          
           throw e;
         }
 
