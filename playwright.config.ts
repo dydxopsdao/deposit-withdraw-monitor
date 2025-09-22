@@ -43,7 +43,8 @@ export default defineConfig({
     // baseURL: 'http://localhost:3000',
 
     /* Create trace files */
-    trace: "on"
+    trace: "on",
+    screenshot: "only-on-failure",
   },
 
   /* Configure projects for major browsers */
