@@ -40,7 +40,6 @@ export async function connectWallet(
     if (wallet === "metamask") {
       await conditionallyUnlockMetamask(context);
     }
-    await page.pause();
     logger.info("Handling wallet popup");
     await handleWalletPopup(context, wallet);
 
