@@ -34,80 +34,114 @@ export async function waitForFinality(
   const depCTA     = dydxSelectors.depositDoneCta(page);
   const wdrDone    = dydxSelectors.withdrawDoneLine(page);
 
-  // Make sure the dialog is open
-  await expect(dlg).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
-  await expect(inProgress).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
+  const scrapeTxLinks = async (): Promise<{
+    explorerUrl?: string;
+    txHash?: string;
+    explorerUrlsAll: string[];
+    txHashesAll: (string | undefined)[];
+  }> => {
+    let explorerUrl: string | undefined;
+    let txHash: string | undefined;
+    let explorerUrlsAll: string[] = [];
+    let txHashesAll: (string | undefined)[] = [];
+
+    try {
+      logger.info("Extracting transaction links");
+      const links = dydxSelectors.transferTxLinks(page);
+      // grab all hrefs currently in the dialog
+      const hrefs = await links.evaluateAll((els) =>
+        Array.from(
+          new Set(
+            els
+              .map((e) => (e as HTMLAnchorElement).href)
+              .filter(Boolean)
+          )
+        )
+      );
+
+      explorerUrlsAll = hrefs;
+      txHashesAll = hrefs.map(extractTxHash);
+
+      // backwards compatible “primary” pick: first with a parsed hash, else first href
+      const firstWithHash = hrefs.find((h, i) => txHashesAll[i]);
+      if (firstWithHash) {
+        explorerUrl = firstWithHash;
+        txHash = extractTxHash(firstWithHash);
+      } else if (hrefs[0]) {
+        explorerUrl = hrefs[0];
+      }
+    } catch {
+      // links optional; ignore
+    }
+
+    return { explorerUrl, txHash, explorerUrlsAll, txHashesAll };
+  };
+
+  const collectCompletion = async (): Promise<FinalityResult | undefined> => {
+    const isDepositDone =
+      (await isVisible(depDone, { timeout: graceMs })) ||
+      (await isVisible(depCTA, { timeout: graceMs }));
+
+    const isWithdrawDone = await isVisible(wdrDone, { timeout: graceMs });
+
+    if (!isDepositDone && !isWithdrawDone) return undefined;
+
+    logger.info("Transfer completed");
+    const linkInfo = await scrapeTxLinks();
+
+    return {
+      ok: true,
+      ...linkInfo,
+    } as FinalityResult & {
+      explorerUrlsAll?: string[];
+      txHashesAll?: (string | undefined)[];
+    };
+  };
 
   const end = Date.now() + timeoutMs;
 
+  // Flow might complete before we start monitoring: capture early success.
+  const earlyCompletion = await collectCompletion();
+  if (earlyCompletion) return earlyCompletion;
 
+  // Make sure the dialog is open
+  await expect(dlg).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
+
+  try {
+    await expect(inProgress).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
+  } catch (err) {
+    const completion = await collectCompletion();
+    if (completion) return completion;
+    throw err;
+  }
 
   // Poll until completed or timeout
   while (Date.now() < end) {
-    // If dialog vanished unexpectedly, bail
-    if (!(await isVisible(dlg))) break;
-     // Still “in progress”? keep polling
-     if (await isVisible(inProgress)) {
+    const completion = await collectCompletion();
+    if (completion) return completion;
+
+    // If dialog vanished unexpectedly, bail (after one last completion check)
+    if (!(await isVisible(dlg))) {
+      const lastAttempt = await collectCompletion();
+      if (lastAttempt) return lastAttempt;
+      break;
+    }
+
+    // Still “in progress”? keep polling
+    if (await isVisible(inProgress)) {
       await page.waitForTimeout(pollMs);
       continue;
     }
-    const isDepositDone =
-      (await isVisible(depDone)) ||
-      (await isVisible(depCTA));
 
-    const isWithdrawDone =
-      await isVisible(wdrDone);
-    // Completed?
-    if (isDepositDone || isWithdrawDone) {
-      logger.info("Transfer completed");
-      let explorerUrl: string | undefined;
-      let txHash: string | undefined;
-      let explorerUrlsAll: string[] = [];
-      let txHashesAll: (string | undefined)[] = [];
-    
-      try {
-        logger.info("Extracting transaction links");
-        const links = dydxSelectors.transferTxLinks(page);
-        // grab all hrefs currently in the dialog
-        const hrefs = await links.evaluateAll((els) =>
-          Array.from(new Set(els
-            .map((e) => (e as HTMLAnchorElement).href)
-            .filter(Boolean)))
-        );
-
-    
-        explorerUrlsAll = hrefs;
-        txHashesAll = hrefs.map(extractTxHash);
-    
-        // backwards compatible “primary” pick: first with a parsed hash, else first href
-        const firstWithHash = hrefs.find((h, i) => txHashesAll[i]);
-        if (firstWithHash) {
-          explorerUrl = firstWithHash;
-          txHash = extractTxHash(firstWithHash);
-        } else if (hrefs[0]) {
-          explorerUrl = hrefs[0];
-        }
-      } catch {
-        // links optional; ignore
-      }
-    
-      return {
-        ok: true,
-        explorerUrl,      // primary (for existing callers)
-        txHash,           // primary
-        explorerUrlsAll,  // all links
-        txHashesAll,      // all parsed hashes (may contain undefineds)
-      } as FinalityResult & {
-        explorerUrlsAll?: string[];
-        txHashesAll?: (string | undefined)[];
-      };
-    }
-    // Neither in-progress nor completed: small grace wait then re-check
     await page.waitForTimeout(graceMs);
   }
 
   // Timed out or dialog closed without completion
-  return { ok: false };
+  const linkInfo = await scrapeTxLinks();
+  return {
+    ok: false,
+    ...linkInfo,
+  };
 }
 
 /**
