@@ -2,6 +2,7 @@ import { expect, type BrowserContext, type Locator, type Page } from "@playwrigh
 import { TEST_TIMEOUTS } from "../../../config/timeouts";
 import { logger } from "../../../logger";
 import { WalletType, isVisible } from "../../../utils";
+import { retry, RetryError } from "../../../utils/retry";
 import { conditionallyUnlockMetamask, handleMetamaskPopup } from "../../wallets/metamask/flows";
 import { handlePhantomPopup } from "../../wallets/phantom/flows";
 import { accountMenuButton, accountMenuButtonLoose, connectWalletBtn } from "../selectors/header";
@@ -11,39 +12,115 @@ import { fundsDialog } from "../selectors/funds-dialog";
 export async function connectWallet(
   page: Page,
   context: BrowserContext,
-  wallet: WalletType
+  wallet: WalletType,
+  opts: { retries?: number } = {}
 ): Promise<Page> {
+  const { retries = 2 } = opts;
   logger.step(`Connecting wallet: ${wallet}`);
 
-  if (await isVisible(accountMenuButton(page), {timeout: TEST_TIMEOUTS.DELAY})) {
-    logger.info("Wallet appears already connected (account menu visible)");
+  const attemptConnect = async (attemptNo: number) => {
+    if (await walletAppearsConnected(page)) {
+      logger.info("Wallet already connected; skipping connect flow");
+      return page;
+    }
+
+    if (attemptNo > 1) {
+      logger.info(`Retrying wallet connect (attempt ${attemptNo}/${retries + 1})`, { wallet });
+    }
+
+    if (await isPickerOpen(page)) {
+      logger.info("Wallet picker already open; reusing existing modal");
+    } else {
+      await openWalletPicker(page);
+    }
+    
+    logger.info("Choose provider");
+    await chooseProvider(page, chooseProviderBtn(page, wallet), wallet);
+
+    if (wallet === "metamask") {
+      await conditionallyUnlockMetamask(context);
+    }
+    await page.pause();
+    logger.info("Handling wallet popup");
+    await handleWalletPopup(context, wallet);
+
+    logger.info("Sending request");
+    await sendRequest(page, sendRequestBtn(page));
+
+    logger.info("Confirming request");
+    await handleWalletPopup(context, wallet);
+
+    try {
+      await handleWalletPopup(context, wallet);
+    } catch {
+      /* optional second confirmation */
+    }
+
+    await assertWalletConnected(page, wallet);
+
     return page;
-  }
-
-  await openWalletPicker(page);
-
-  logger.info("Choose provider");
-  await chooseProvider(page, chooseProviderBtn(page, wallet), wallet);
-
-  if (wallet === "metamask") {
-    await conditionallyUnlockMetamask(context);
-  }
-
-  logger.info("Handling wallet popup");
-  await handleWalletPopup(context, wallet);
-
-  logger.info("Sending request");
-  await sendRequest(page, sendRequestBtn(page));
-
-  logger.info("Confirming request");
-  await handleWalletPopup(context, wallet);
+  };
 
   try {
-    await handleWalletPopup(context, wallet);
-  } catch {
-    /* optional second confirmation */
+    return await retry(attemptConnect, {
+      retries,
+      baseDelayMs: TEST_TIMEOUTS.DELAY,
+      label: "connectWallet",
+      onAttemptFailure: (attemptNo, error) => {
+        logger.warning("Wallet connect attempt failed", {
+          attempt: attemptNo,
+          wallet,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      },
+    });
+  } catch (err) {
+    if (err instanceof RetryError) {
+      logger.error(
+        "Failed to connect wallet after retries",
+        err.lastError instanceof Error ? err.lastError : err,
+        { wallet }
+      );
+      if (err.lastError) {
+        throw err.lastError instanceof Error ? err.lastError : new Error(String(err.lastError));
+      }
+    }
+    throw err;
+  }
+}
+
+export async function openWalletPicker(page: Page, retries = 2) {
+  if (await isPickerOpen(page)) return;
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    await expect(connectWalletBtn(page)).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
+    await connectWalletBtn(page).click();
+
+    if (await isPickerOpen(page)) return;
+
+    if (attempt < retries) await page.waitForTimeout(500);
   }
 
+  throw new Error("Wallet picker did not appear after clicking Connect wallet.");
+}
+
+export async function handleWalletPopup(context: BrowserContext, wallet: WalletType) {
+  if (wallet === "metamask") {
+    await handleMetamaskPopup(context);
+    logger.info("MetaMask wallet popup handled");
+  } else {
+    await handlePhantomPopup(context);
+    logger.info("Phantom wallet popup handled");
+  }
+}
+
+async function walletAppearsConnected(page: Page): Promise<boolean> {
+  const acctBtn = accountMenuButton(page).or(accountMenuButtonLoose(page));
+  if (await isVisible(acctBtn, { timeout: TEST_TIMEOUTS.DELAY })) return true;
+  return await isVisible(fundsDialog(page), { timeout: TEST_TIMEOUTS.DELAY });
+}
+
+async function assertWalletConnected(page: Page, wallet: WalletType): Promise<void> {
   try {
     const acctBtn = accountMenuButton(page).or(accountMenuButtonLoose(page));
     await expect(acctBtn).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
@@ -70,33 +147,6 @@ export async function connectWallet(
       );
       throw err;
     }
-  }
-
-  return page;
-}
-
-export async function openWalletPicker(page: Page, retries = 2) {
-  if (await isPickerOpen(page)) return;
-
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    await expect(connectWalletBtn(page)).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
-    await connectWalletBtn(page).click();
-
-    if (await isPickerOpen(page)) return;
-
-    if (attempt < retries) await page.waitForTimeout(500);
-  }
-
-  throw new Error("Wallet picker did not appear after clicking Connect wallet.");
-}
-
-export async function handleWalletPopup(context: BrowserContext, wallet: WalletType) {
-  if (wallet === "metamask") {
-    await handleMetamaskPopup(context);
-    logger.info("MetaMask wallet popup handled");
-  } else {
-    await handlePhantomPopup(context);
-    logger.info("Phantom wallet popup handled");
   }
 }
 
