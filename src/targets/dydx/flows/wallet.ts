@@ -36,7 +36,6 @@ export async function connectWallet(
     
     logger.info("Choose provider");
     await chooseProvider(page, chooseProviderBtn(page, wallet), wallet);
-
     if (wallet === "metamask") {
       await conditionallyUnlockMetamask(context);
     }

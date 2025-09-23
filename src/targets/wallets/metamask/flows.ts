@@ -128,6 +128,18 @@ export async function unlockMetamaskWallet(context: BrowserContext) {
   logger.info("MetaMask unlocked");
 } }
 
+const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const redactSensitive = (text: string): string => {
+  if (!WALLET_PASSWORD) return text;
+  return text.replace(new RegExp(escapeRegExp(WALLET_PASSWORD), "g"), "[REDACTED]");
+};
+
+const isUnlockOrNotificationPage = (page: Page): boolean => {
+  const url = page.url();
+  return s.urls.unlock.test(url) || s.urls.notification.test(url);
+};
+
 /**
  * Scans the browser context for an existing MetaMask page that needs unlocking.
  * @param context The Playwright BrowserContext.
@@ -135,7 +147,7 @@ export async function unlockMetamaskWallet(context: BrowserContext) {
  */
 async function findExistingUnlockPage(context: BrowserContext): Promise<Page | undefined> {
   for (const page of context.pages()) {
-    if (s.urls.unlock.test(page.url()) || s.urls.notification.test(page.url())) {
+    if (isUnlockOrNotificationPage(page)) {
       return page;
     }
   }
@@ -149,7 +161,6 @@ async function findExistingUnlockPage(context: BrowserContext): Promise<Page | u
  */
 export async function conditionallyUnlockMetamask(context: BrowserContext) {
   logger.step("Checking for MetaMask unlock page");
-
   let unlockPage = await findExistingUnlockPage(context);
 
   if (unlockPage) {
@@ -159,7 +170,7 @@ export async function conditionallyUnlockMetamask(context: BrowserContext) {
     try {
       // Wait for either the unlock or notification page to be created
       unlockPage = await context.waitForEvent('page', {
-        predicate: page => s.urls.unlock.test(page.url()) || s.urls.notification.test(page.url()),
+        predicate: isUnlockOrNotificationPage,
         timeout: TEST_TIMEOUTS.POPUP_TIMEOUT,
       });
       logger.info(`MetaMask page appeared: ${unlockPage.url()}`);
@@ -173,12 +184,19 @@ export async function conditionallyUnlockMetamask(context: BrowserContext) {
   if (unlockPage) {
     try {
       await unlockPage.bringToFront();
-      logger.info("Attempting to unlock MetaMask with wallet password...");
-      await unlockPage.fill(s.unlock.pw, WALLET_PASSWORD, { timeout: TEST_TIMEOUTS.DEFAULT });
-      await unlockPage.click(s.unlock.pwSubmit);
+      await unlockPage.waitForLoadState("domcontentloaded").catch(() => {});
+      logger.info("Attempting to unlock MetaMask wallet...");
+      const passwordField = unlockPage.locator(s.unlock.pw);
+      if ((await passwordField.count()) === 0) {
+        logger.info("MetaMask unlock field not found; assuming unlock not required.");
+        return;
+      }
+      await passwordField.fill(WALLET_PASSWORD, { timeout: TEST_TIMEOUTS.DEFAULT });
+      await unlockPage.locator(s.unlock.pwSubmit).click({ timeout: TEST_TIMEOUTS.DEFAULT });
       logger.info("MetaMask unlocked successfully");
     } catch (error) {
-        logger.info(`Wallet unlock not required or failed: ${error.message}`);
+        const sanitized = redactSensitive(error instanceof Error ? error.message : String(error));
+        logger.info(`Wallet unlock not required or failed: ${sanitized}`);
     }
   }
 }
