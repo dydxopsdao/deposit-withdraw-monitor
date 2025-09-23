@@ -187,7 +187,9 @@ export async function conditionallyUnlockMetamask(context: BrowserContext) {
       await unlockPage.waitForLoadState("domcontentloaded").catch(() => {});
       logger.info("Attempting to unlock MetaMask wallet...");
       const passwordField = unlockPage.locator(s.unlock.pw);
-      if ((await passwordField.count()) === 0) {
+      try {
+        await passwordField.waitFor({ state: "visible", timeout: TEST_TIMEOUTS.POPUP_TIMEOUT });
+      } catch {
         logger.info("MetaMask unlock field not found; assuming unlock not required.");
         return;
       }
