@@ -8,7 +8,7 @@ export const metamaskSelectors = {
   // URLs that MM uses
   urls: {
     onboarding: /chrome-extension:\/\/.*\/home\.html#onboarding\/welcome/,
-    unlock: /chrome-extension:\/\/.*\/home\.html#unlock/,
+    unlock: /chrome-extension:\/\/[^/]+\/home\.html#(?:[^?#/]+\/)*unlock(?:[?#].*)?/i,
     notification:   /chrome-extension:\/\/[^/]+\/notification\.html(?:\?.*)?(?:#.*)?$/i,
 
   },

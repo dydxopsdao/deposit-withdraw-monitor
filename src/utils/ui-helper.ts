@@ -24,9 +24,11 @@ export async function isVisible(
   opts?: { timeout?: number }
 ): Promise<boolean> {
   try {
+    logger.debug(`Checking if ${locator} is visible`);
     await expect(locator).toBeVisible({ timeout: opts?.timeout ?? TEST_TIMEOUTS.DELAY });
     return true;
   } catch {
+    logger.debug(`${locator} is not visible`);
     return false;
   }
 }
