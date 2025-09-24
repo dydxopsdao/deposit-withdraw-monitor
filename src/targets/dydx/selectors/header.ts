@@ -2,7 +2,7 @@ import type { Selector } from "../types";
 import { DYDX_ADDRESS_RE } from "./constants";
 
 export const connectWalletBtn: Selector = (page) =>
-  page.getByRole("button", { name: /connect wallet/i });
+  page.getByRole("button", { name: /sign in/i });
 
 export const walletPickerDialog: Selector = (page) =>
   page.getByRole("dialog", { name: /connect (your )?wallet/i });
