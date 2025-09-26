@@ -61,7 +61,8 @@ export class DatadogMetricsClient {
     metricName: string,
     value: number,
     tags: MetricTag[] = [],
-    timestamp?: number
+    timestamp?: number,
+    source?: string
   ): Promise<void> {
     if (DD_DRY_RUN) {
       consoleLogger.info(`DD (dry-run) metric: ${metricName}`, {
@@ -94,7 +95,7 @@ export class DatadogMetricsClient {
             }
           ],
           tags: tagStrings,
-          source_type_name: this.source,
+          source_type_name: source || this.source,
         },
       ],
     };
@@ -204,5 +205,40 @@ export async function sendMetricToDatadog(
   const tags = client.buildTestRunTags(route, flowName, testStatus, failureStep);
   const isPassed = testStatus === "passed" ? 1 : 0;
   
-  await client.sendGauge("synthetic_test_run.is_passed", isPassed, tags);
+  // Use "playwright" as source for test metrics
+  await client.sendGauge("synthetic_test_run.is_passed", isPassed, tags, undefined, "playwright");
+}
+
+/**
+ * Build rebalancer-specific tags for balance metrics
+ */
+export function buildRebalancerTags(route: Route, chain: string): MetricTag[] {
+  return [
+    { key: "route_id", value: route.id },
+    { key: "route_kind", value: route.kind },
+    { key: "route_type", value: route.route_kind || "unknown" },
+    { key: "chain", value: chain },
+    { key: "asset", value: "USDC" },
+  ];
+}
+
+/**
+ * Send rebalancer balance metrics to Datadog
+ */
+export async function sendRebalancerBalanceMetrics(
+  route: Route,
+  balancesAfter: Array<{ asset: string; chain: string; amount: string }>,
+  client: DatadogMetricsClient = datadogMetrics
+): Promise<void> {
+  const timestamp = Math.floor(Date.now() / 1000);
+
+  // Send current USDC balance for each chain
+  for (const balance of balancesAfter) {
+    if (balance.asset === 'USDC') {
+      const tags = buildRebalancerTags(route, balance.chain);
+      const amount = parseFloat(balance.amount);
+      
+      await client.sendGauge("rebalancer.balance", amount, tags, timestamp);
+    }
+  }
 }

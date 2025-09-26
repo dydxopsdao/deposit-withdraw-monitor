@@ -1,6 +1,7 @@
 import { logger } from '../logger';
 import { Route } from '../utils/routes';
 import interop, { CHAIN_IDS } from './interop';
+import { sendRebalancerBalanceMetrics } from '../utils/datadog/metrics';
 
 export { rebalanceNow };
 export type { BalanceMap };
@@ -87,6 +88,10 @@ async function rebalanceDepositRoute(route: Route): Promise<{ balancesBefore: Ba
   ];
 
   logger.debug(`Balances after withdrawal`, { balancesAfter });
+
+  // Send balance metrics to Datadog
+  await sendRebalancerBalanceMetrics(route, balancesAfter);
+
   return { balancesBefore, balancesAfter };
 }
 
@@ -145,5 +150,9 @@ async function rebalanceWithdrawRoute(
   ];
   
   logger.debug(`Balances after deposit`, { balancesAfter });
+
+  // Send balance metrics to Datadog
+  await sendRebalancerBalanceMetrics(route, balancesAfter);
+
   return { balancesBefore, balancesAfter };
 }
