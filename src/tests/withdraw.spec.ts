@@ -20,7 +20,7 @@ import {
   waitForFinality,
 } from "../utils";
 import { datadog, WithdrawFunnelSteps } from "../utils/datadog";
-import { sendMetricToDatadog } from "../utils/datadog/metrics";
+import { sendMetricToDatadog, sendRebalancerBalanceMetrics } from "../utils/datadog/metrics";
 import { openApp, connectWallet, withdraw, submitWithdraw } from "../targets/dydx/flows";
 import { dydxSelectors } from "../targets/dydx/selectors";
 import { TEST_TIMEOUTS } from "../config/timeouts";
@@ -165,6 +165,13 @@ for (const route of withdrawRoutes) {
             const balancesAfter = (result as any)?.balancesAfter;
 
             // Note: Rebalance logging could be added to the modular system in the future if needed
+            
+            if (balancesAfter) {
+              // Send rebalancer balance metrics to Datadog
+              await sendRebalancerBalanceMetrics(route, balancesAfter);
+            } else {
+              logger.warning("No balance data from rebalancer", { route_id: route.id });
+            }
           } catch (e: any) {
             logger.warning("Rebalance failed", { route_id: route.id, error: { message: e?.message } });
             // Note: Rebalance logging could be added to the modular system in the future if needed

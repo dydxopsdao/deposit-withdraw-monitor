@@ -23,7 +23,7 @@ import { openApp, connectWallet, deposit, submitDeposit } from "../targets/dydx/
 import { dydxSelectors } from "../targets/dydx/selectors";
 import { TEST_TIMEOUTS } from "../config/timeouts";
 import { datadog, DepositFunnelSteps } from "../utils/datadog";
-import { sendMetricToDatadog } from "../utils/datadog/metrics";
+import { sendMetricToDatadog, sendRebalancerBalanceMetrics } from "../utils/datadog/metrics";
 import { rebalanceNow } from "../rebalancer";
 
 // ---- Route discovery (sync so tests can be defined at import time) ----------
@@ -159,6 +159,13 @@ for (const route of depositRoutes) {
             const balancesAfter = (result as any)?.balancesAfter;
 
             // Note: Rebalance logging could be added to the modular system in the future if needed
+
+            if (balancesAfter) {
+              // Send rebalancer balance metrics to Datadog
+              await sendRebalancerBalanceMetrics(route, balancesAfter);
+            } else {
+              logger.warning("No balance data from rebalancer", { route_id: route.id });
+            }
           } catch (e: any) {
             logger.warning("Rebalance failed", { route_id: route.id, error: { message: e?.message } });
             // swallow — do not rethrow
