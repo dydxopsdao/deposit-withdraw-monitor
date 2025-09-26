@@ -1,5 +1,5 @@
 // Run with:
-// tsx src/scripts/rebalance-route.ts <route_id>
+// npx tsx src/scripts/rebalance-route.ts <route_id>
 
 import dotenv from 'dotenv';
 const envFile = process.env.CI ? '.env' : '.env.local';

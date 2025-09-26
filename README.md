@@ -53,6 +53,9 @@ ROUTE_ID=metamask-ethereum-usdc-deposit-regular \
 
 # 6) (Optional) Rebalance a specific route manually
 npx tsx src/scripts/rebalance-route.ts metamask-ethereum-usdc-deposit-regular
+
+# 7) (Optional) Get balances for a specific route
+npx tsx src/scripts/get-route-balances.ts metamask-ethereum-usdc-deposit-regular
 ```
 ---
 
