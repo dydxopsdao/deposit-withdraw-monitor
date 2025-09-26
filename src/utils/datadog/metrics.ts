@@ -215,8 +215,8 @@ export async function sendMetricToDatadog(
 export function buildRebalancerTags(route: Route, chain: string): MetricTag[] {
   return [
     { key: "route_id", value: route.id },
-    { key: "route_kind", value: route.kind },
-    { key: "route_type", value: route.route_kind || "unknown" },
+    { key: "flow", value: route.kind },
+    { key: "route_kind", value: route.route_kind || "unknown" },
     { key: "chain", value: chain },
     { key: "asset", value: "USDC" },
   ];
