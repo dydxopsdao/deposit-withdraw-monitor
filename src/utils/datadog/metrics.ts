@@ -29,7 +29,7 @@ export class DatadogMetricsClient {
   private readonly site: string;
   private readonly service: string;
   private readonly source: string;
-  private readonly env: string;
+  public readonly env: string;
 
   constructor(
     apiKey?: string,
@@ -114,36 +114,6 @@ export class DatadogMetricsClient {
     }
   }
 
-  /**
-   * Build standard tags for test run metrics
-   */
-  buildTestRunTags(route: Route, flowName: string, testStatus: "passed" | "failed", failureStep?: string): MetricTag[] {
-    const tags: MetricTag[] = [
-      { key: "route_id", value: route.id },
-      { key: "wallet_type", value: route.wallet_type },
-      { key: "src_chain", value: route.src_chain },
-      { key: "dst_chain", value: route.dst_chain },
-      { key: "token", value: route.token },
-      { key: "flow", value: flowName },
-      { key: "env", value: this.env },
-    ];
-
-    // Add chain tag (non-dydx chain)
-    const chain = route.src_chain !== "dydx" ? route.src_chain : route.dst_chain;
-    tags.push({ key: "chain", value: chain });
-
-    // Add route_kind for deposit routes
-    if (route.route_kind) {
-      tags.push({ key: "route_kind", value: route.route_kind });
-    }
-
-    // Add failure step if provided
-    if (failureStep) {
-      tags.push({ key: "failure_step", value: failureStep });
-    }
-
-    return tags;
-  }
 
   /**
    * Post metric data to Datadog HTTP API
@@ -197,33 +167,71 @@ export class DatadogMetricsClient {
 export const datadogMetrics = new DatadogMetricsClient();
 
 /**
- * Send metric to Datadog
+ * Build standard tags for test run metrics
  */
-export async function sendMetricToDatadog(
-  route: Route,
-  flowName: "deposit" | "withdraw",
-  testStatus: "passed" | "failed",
-  failureStep?: string,
-  client: DatadogMetricsClient = datadogMetrics
-): Promise<void> {
-  const tags = client.buildTestRunTags(route, flowName, testStatus, failureStep);
-  const isPassed = testStatus === "passed" ? 1 : 0;
-  
-  // Use "playwright" as source for test metrics
-  await client.sendGauge("synthetic_test_run.is_passed", isPassed, tags, undefined, "playwright");
+export function buildTestRunTags(
+  route: Route, 
+  flowName: string, 
+  testStatus: "passed" | "failed", 
+  env: string,
+  failureStep?: string
+): MetricTag[] {
+  const tags: MetricTag[] = [
+    { key: "route_id", value: route.id },
+    { key: "wallet_type", value: route.wallet_type },
+    { key: "src_chain", value: route.src_chain },
+    { key: "dst_chain", value: route.dst_chain },
+    { key: "token", value: route.token },
+    { key: "flow", value: flowName },
+    { key: "env", value: env },
+  ];
+
+  // Add chain tag (non-dydx chain)
+  const chain = route.src_chain !== "dydx" ? route.src_chain : route.dst_chain;
+  tags.push({ key: "chain", value: chain });
+
+  // Add route_kind for deposit routes
+  if (route.route_kind) {
+    tags.push({ key: "route_kind", value: route.route_kind });
+  }
+
+  // Add failure step if provided
+  if (failureStep) {
+    tags.push({ key: "failure_step", value: failureStep });
+  }
+
+  return tags;
 }
 
 /**
  * Build rebalancer-specific tags for balance metrics
  */
-export function buildRebalancerTags(route: Route, chain: string): MetricTag[] {
+export function buildRebalancerTags(route: Route, chain: string, env: string): MetricTag[] {
   return [
     { key: "route_id", value: route.id },
     { key: "flow", value: route.kind },
     { key: "route_kind", value: route.route_kind || "unknown" },
     { key: "chain", value: chain },
     { key: "asset", value: "USDC" },
+    { key: "env", value: env },
   ];
+}
+
+/**
+ * Send test run metrics to Datadog
+ */
+export async function sendTestRunMetricsToDatadog(
+  route: Route,
+  flowName: "deposit" | "withdraw",
+  testStatus: "passed" | "failed",
+  failureStep?: string,
+  client: DatadogMetricsClient = datadogMetrics
+): Promise<void> {
+  const tags = buildTestRunTags(route, flowName, testStatus, client.env, failureStep);
+  const isPassed = testStatus === "passed" ? 1 : 0;
+  
+  // Use "playwright" as source for test metrics
+  await client.sendGauge("synthetic_test_run.is_passed", isPassed, tags, undefined, "playwright");
 }
 
 /**
@@ -239,7 +247,7 @@ export async function sendRebalancerBalanceMetrics(
   // Send current USDC balance for each chain
   for (const balance of balancesAfter) {
     if (balance.asset === 'USDC') {
-      const tags = buildRebalancerTags(route, balance.chain);
+      const tags = buildRebalancerTags(route, balance.chain, client.env);
       const amount = parseFloat(balance.amount);
       
       await client.sendGauge("rebalancer.balance", amount, tags, timestamp);

@@ -23,7 +23,7 @@ import { openApp, connectWallet, deposit, submitDeposit } from "../targets/dydx/
 import { dydxSelectors } from "../targets/dydx/selectors";
 import { TEST_TIMEOUTS } from "../config/timeouts";
 import { datadog, DepositFunnelSteps } from "../utils/datadog";
-import { sendMetricToDatadog, sendRebalancerBalanceMetrics } from "../utils/datadog/metrics";
+import { sendTestRunMetricsToDatadog, sendRebalancerBalanceMetrics } from "../utils/datadog/metrics";
 import { rebalanceNow } from "../rebalancer";
 
 // ---- Route discovery (sync so tests can be defined at import time) ----------
@@ -131,7 +131,7 @@ for (const route of depositRoutes) {
           });
           
           // Send metrics for successful test
-          await sendMetricToDatadog(route, "deposit", "passed");
+          await sendTestRunMetricsToDatadog(route, "deposit", "passed");
           
           // TODO: Consider closing the entire context here to avoid cross-test leakage when running multiple routes.
         } catch (e: any) {
@@ -146,7 +146,7 @@ for (const route of depositRoutes) {
           });
           
           // Send metrics for failed test
-          await sendMetricToDatadog(route, "deposit", "failed");
+          await sendTestRunMetricsToDatadog(route, "deposit", "failed");
           
           throw e;
       } finally {
