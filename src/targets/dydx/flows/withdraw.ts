@@ -21,7 +21,6 @@ export async function withdraw(
   } catch {
     /* dialog not open */
   }
-
   await withdrawButton(page).click();
   await expect(fundsDialog(page)).toBeVisible({ timeout: TEST_TIMEOUTS.DEFAULT });
   logger.info("Withdraw dialog opened");

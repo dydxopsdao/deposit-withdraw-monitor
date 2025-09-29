@@ -17,7 +17,6 @@ export async function connectWallet(
 ): Promise<Page> {
   const { retries = 2 } = opts;
   logger.step(`Connecting wallet: ${wallet}`);
-  await page.pause();
   const attemptConnect = async (attemptNo: number) => {
     if (await walletAppearsConnected(page)) {
       logger.info("Wallet already connected; skipping connect flow");
