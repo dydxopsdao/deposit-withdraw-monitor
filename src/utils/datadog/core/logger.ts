@@ -247,6 +247,10 @@ export class FlowTestRunLogger<TStep extends string, TLog extends BaseTestRunLog
       `env:${DD_ENV}`,
     ];
 
+    // Add chain tag (non-dydx chain) - same logic as metrics
+    const chain = log.src_chain !== "dydx" ? log.src_chain : log.dst_chain;
+    baseTags.push(`chain:${chain}`);
+
     // Add route_kind if present (deposit-only)
     if ((log as any).route_kind) {
       baseTags.push(`route_kind:${(log as any).route_kind}`);
