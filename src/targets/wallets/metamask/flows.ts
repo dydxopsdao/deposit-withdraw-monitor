@@ -224,11 +224,45 @@ export async function handleMetamaskPopup(context: BrowserContext) {
   try {
     // Some builds show a "MetaMask Notification" title, others keep it blank.
     // Defensive: click the common flow buttons if present
-   const clicks = await clickAnyButton(mm, [/^Next$/, /^Connect$/, /^Approve$/, /^Confirm$/], "MetaMask connect flow", {
-      overallTimeoutMs: 10000,
-      pollMs: 150,
-      maxClicks: 10,
-    });
+    const clicks = await clickAnyButton(
+      mm,
+      [/^Unlock$/i, /^Next$/, /^Connect$/, /^Approve$/, /^Confirm$/],
+      "MetaMask connect flow",
+      {
+        overallTimeoutMs: 10000,
+        pollMs: 150,
+        maxClicks: 10,
+        onBeforeClick: async ({ page, pattern, button }) => {
+          if (!/unlock/i.test(pattern.source)) return false;
+
+          if (!WALLET_PASSWORD) {
+            logger.warning("MetaMask unlock requested but WALLET_PASSWORD is not set; skipping auto-unlock");
+            return false;
+          }
+
+          try {
+            const passwordField = page.locator(s.unlock.pw);
+            await passwordField.waitFor({ state: "visible", timeout: TEST_TIMEOUTS.ELEMENT });
+            await passwordField.fill(WALLET_PASSWORD);
+          } catch (err: any) {
+            logger.warning(
+              `MetaMask unlock password entry failed: ${err?.message ?? err}`
+            );
+            return false;
+          }
+
+          try {
+            await button.click();
+          } catch (err: any) {
+            logger.warning(`MetaMask unlock click failed: ${err?.message ?? err}`);
+            return false;
+          }
+
+          logger.info("MetaMask unlock submitted; continuing connect flow");
+          return true;
+        },
+      }
+    );
     logger.info(`MetaMask popup handled: ${clicks} clicks`);
     // Close if MetaMask leaves the window open
     await mm.close().catch(() => {});
