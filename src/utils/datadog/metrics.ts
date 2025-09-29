@@ -128,6 +128,10 @@ export class DatadogMetricsClient {
       { key: "env", value: this.env },
     ];
 
+    // Add chain tag (non-dydx chain)
+    const chain = route.src_chain !== "dydx" ? route.src_chain : route.dst_chain;
+    tags.push({ key: "chain", value: chain });
+
     // Add route_kind for deposit routes
     if (route.route_kind) {
       tags.push({ key: "route_kind", value: route.route_kind });
