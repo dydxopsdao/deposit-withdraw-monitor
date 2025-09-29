@@ -2,7 +2,7 @@
 resource "aws_security_group" "task" {
   name        = "deposit-withdraw-monitor-scheduled-task-sg"
   description = "Egress-only SG for scheduled ECS task"
-  vpc_id      = aws_vpc.tests.id
+  vpc_id      = aws_vpc.routes.id
 
   egress {
     from_port   = 0

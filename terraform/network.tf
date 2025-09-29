@@ -21,79 +21,79 @@ locals {
   }
 }
 
-resource "aws_vpc" "tests" {
+resource "aws_vpc" "routes" {
   cidr_block           = local.vpc_cidr
   enable_dns_support   = true
   enable_dns_hostnames = true
 
   tags = {
-    Name = "deposit-withdraw-monitor-tests"
+    Name = "deposit-withdraw-monitor-routes"
   }
 }
 
-resource "aws_internet_gateway" "tests" {
-  vpc_id = aws_vpc.tests.id
+resource "aws_internet_gateway" "routes" {
+  vpc_id = aws_vpc.routes.id
 
   tags = {
-    Name = "deposit-withdraw-monitor-tests"
+    Name = "deposit-withdraw-monitor-routes"
   }
 }
 
 resource "aws_subnet" "public" {
   for_each = local.public_subnet_config
 
-  vpc_id                  = aws_vpc.tests.id
+  vpc_id                  = aws_vpc.routes.id
   availability_zone       = each.value.az
   cidr_block              = each.value.cidr_block
   map_public_ip_on_launch = true
 
   tags = {
-    Name = "deposit-withdraw-monitor-tests-public-${each.key}"
+    Name = "deposit-withdraw-monitor-routes-public-${each.key}"
   }
 }
 
 resource "aws_subnet" "private" {
   for_each = local.private_subnet_config
 
-  vpc_id                  = aws_vpc.tests.id
+  vpc_id                  = aws_vpc.routes.id
   availability_zone       = each.value.az
   cidr_block              = each.value.cidr_block
   map_public_ip_on_launch = false
 
   tags = {
-    Name = "deposit-withdraw-monitor-tests-private-${each.key}"
+    Name = "deposit-withdraw-monitor-routes-private-${each.key}"
   }
 }
 
-resource "aws_eip" "tests" {
+resource "aws_eip" "routes" {
   domain = "vpc"
 
   tags = {
-    Name = "deposit-withdraw-monitor-tests"
+    Name = "deposit-withdraw-monitor-routes"
   }
 }
 
-resource "aws_nat_gateway" "tests" {
-  allocation_id = aws_eip.tests.id
+resource "aws_nat_gateway" "routes" {
+  allocation_id = aws_eip.routes.id
   subnet_id     = aws_subnet.public[local.nat_gateway_az].id
 
   tags = {
-    Name = "deposit-withdraw-monitor-tests"
+    Name = "deposit-withdraw-monitor-routes"
   }
 
-  depends_on = [aws_internet_gateway.tests]
+  depends_on = [aws_internet_gateway.routes]
 }
 
 resource "aws_route_table" "public" {
-  vpc_id = aws_vpc.tests.id
+  vpc_id = aws_vpc.routes.id
 
   route {
     cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.tests.id
+    gateway_id = aws_internet_gateway.routes.id
   }
 
   tags = {
-    Name = "deposit-withdraw-monitor-tests-public"
+    Name = "deposit-withdraw-monitor-routes-public"
   }
 }
 
@@ -105,15 +105,15 @@ resource "aws_route_table_association" "public" {
 }
 
 resource "aws_route_table" "private" {
-  vpc_id = aws_vpc.tests.id
+  vpc_id = aws_vpc.routes.id
 
   route {
     cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.tests.id
+    nat_gateway_id = aws_nat_gateway.routes.id
   }
 
   tags = {
-    Name = "deposit-withdraw-monitor-tests-private"
+    Name = "deposit-withdraw-monitor-routes-private"
   }
 }
 
