@@ -37,6 +37,6 @@ output "reports_cloudfront_url" {
 }
 
 output "tests_egress_ip" {
-  value       = aws_eip.tests.public_ip
-  description = "Elastic IP address used for outbound test traffic"
+  value       = aws_eip.routes.public_ip
+  description = "Elastic IP address used for outbound route traffic"
 }
