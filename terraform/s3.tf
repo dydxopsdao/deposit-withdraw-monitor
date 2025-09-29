@@ -35,7 +35,7 @@ resource "aws_s3_bucket_public_access_block" "traces" {
 resource "aws_iam_role_policy" "s3_traces_permissions" {
   name = "deposit-withdraw-monitor-s3-traces-permissions"
   role = aws_iam_role.task_role.id
-  
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -97,7 +97,7 @@ resource "aws_s3_bucket_public_access_block" "reports" {
 resource "aws_iam_role_policy" "s3_reports_permissions" {
   name = "deposit-withdraw-monitor-s3-reports-permissions"
   role = aws_iam_role.task_role.id
-  
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [

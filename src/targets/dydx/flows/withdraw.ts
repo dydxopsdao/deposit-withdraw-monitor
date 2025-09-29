@@ -15,7 +15,6 @@ export async function withdraw(
   wallet: WalletType
 ) {
   logger.step(`Withdrawing ${amount} ${token} to ${dst_chain}`);
-
   try {
     await expect(fundsDialog(page)).toBeVisible({ timeout: TEST_TIMEOUTS.DEFAULT });
     await closeDialogButton(page).click();

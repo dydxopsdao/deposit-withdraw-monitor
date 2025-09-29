@@ -2,7 +2,7 @@
 resource "aws_security_group" "task" {
   name        = "deposit-withdraw-monitor-scheduled-task-sg"
   description = "Egress-only SG for scheduled ECS task"
-  vpc_id      = data.aws_vpc.default.id
+  vpc_id      = aws_vpc.tests.id
 
   egress {
     from_port   = 0
@@ -23,9 +23,9 @@ resource "aws_iam_role" "task_execution" {
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
     Statement = [{
-      Effect = "Allow",
+      Effect    = "Allow",
       Principal = { Service = "ecs-tasks.amazonaws.com" },
-      Action = "sts:AssumeRole"
+      Action    = "sts:AssumeRole"
     }]
   })
 }
@@ -39,7 +39,7 @@ resource "aws_iam_role_policy_attachment" "task_execution_managed" {
 resource "aws_iam_role_policy" "ecr_permissions" {
   name = "deposit-withdraw-monitor-ecr-permissions"
   role = aws_iam_role.task_execution.id
-  
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -53,8 +53,8 @@ resource "aws_iam_role_policy" "ecr_permissions" {
         Resource = aws_ecr_repository.this.arn
       },
       {
-        Effect = "Allow"
-        Action = "ecr:GetAuthorizationToken"
+        Effect   = "Allow"
+        Action   = "ecr:GetAuthorizationToken"
         Resource = "*"
       }
     ]
@@ -67,9 +67,9 @@ resource "aws_iam_role" "task_role" {
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
     Statement = [{
-      Effect = "Allow",
+      Effect    = "Allow",
       Principal = { Service = "ecs-tasks.amazonaws.com" },
-      Action = "sts:AssumeRole"
+      Action    = "sts:AssumeRole"
     }]
   })
 }
