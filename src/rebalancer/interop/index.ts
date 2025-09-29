@@ -4,6 +4,7 @@ import { withdrawMaxUsdc } from './withdraw';
 import { depositMaxUsdc } from './deposit';
 import { getUsdcBalance, getFreeCollateral } from './balances';
 import { configureSkipClient, getBalances, getUsdcRoutes, executeRoute } from './skip';
+import { deriveCosmosAddress } from '../signers/cosmos';
 
 // Export the constants
 export { CHAIN_IDS, CHAIN_CONFIGS };
@@ -18,4 +19,5 @@ export default {
   getBalances,
   getUsdcRoutes,
   executeRoute,
+  deriveCosmosAddress,
 } as const;

@@ -48,22 +48,37 @@ async function main(): Promise<void> {
     throw new Error(`Route ${routeId} not found`);
   }
 
-  const [walletBalances, dydxBalance, freeCollateral] = await Promise.all([
-    interop.getBalances(route.wallet_address, [
-      CHAIN_IDS[route.src_chain],
-      CHAIN_IDS[route.dst_chain],
-      CHAIN_IDS.noble,
-      CHAIN_IDS.osmosis,
-      CHAIN_IDS.neutron,
-      CHAIN_IDS.osmosis,
-    ]),
-    interop.getBalances(route.dydx_address, [CHAIN_IDS.dydx]),
+  const nobleAddress = await interop.deriveCosmosAddress(CHAIN_CONFIGS[CHAIN_IDS.noble].bech32Prefix, route.dydx_seed);
+  const osmosisAddress = await interop.deriveCosmosAddress(CHAIN_CONFIGS[CHAIN_IDS.osmosis].bech32Prefix, route.dydx_seed);
+  const neutronAddress = await interop.deriveCosmosAddress(CHAIN_CONFIGS[CHAIN_IDS.neutron].bech32Prefix, route.dydx_seed);
+
+  const [walletBalances, osmosisBalances, neutronBalances, nobleBalances, dydxBalances, freeCollateral] = await Promise.all([
+    interop.getBalances(route.wallet_address, [CHAIN_IDS[route.src_chain], CHAIN_IDS[route.dst_chain]]),
+    interop.getBalances(
+      osmosisAddress,
+      [CHAIN_IDS.osmosis]
+    ),
+    interop.getBalances(
+      neutronAddress,
+      [CHAIN_IDS.neutron]
+    ),
+    interop.getBalances(
+      nobleAddress,
+      [CHAIN_IDS.noble]
+    ),
+    interop.getBalances(
+      route.dydx_address,
+      [CHAIN_IDS.dydx]
+    ),
     interop.getFreeCollateral(route.dydx_address),
   ]);
 
   const balances: Balance[] = [];
   balances.push(...parseBalanceResponse(route.wallet_address, walletBalances));
-  balances.push(...parseBalanceResponse(route.dydx_address, dydxBalance));
+  balances.push(...parseBalanceResponse(osmosisAddress, osmosisBalances));
+  balances.push(...parseBalanceResponse(neutronAddress, neutronBalances));
+  balances.push(...parseBalanceResponse(nobleAddress, nobleBalances));
+  balances.push(...parseBalanceResponse(route.dydx_address, dydxBalances));
   balances.push({
     chain: CHAIN_CONFIGS[CHAIN_IDS.dydx].yamlKey,
     wallet: route.dydx_address,
