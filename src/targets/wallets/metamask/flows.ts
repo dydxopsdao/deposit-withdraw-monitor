@@ -63,12 +63,6 @@ export async function setupWallet(context: BrowserContext, seedPhrase: string) {
   }
   logger.debug(`MetaMask onboarding page: ${onboarding.url()}`);
 
-  // Welcome and Terms of Service
-  await onboarding.locator(s.onboarding.start).click();
-  await onboarding.locator(s.onboarding.termsScroll).click();
-  await onboarding.locator(s.onboarding.termsCheckbox).check();
-  await onboarding.locator(s.onboarding.termsAgree).click();
-
   // Import with Secret Recovery Phrase
   await onboarding.locator(s.onboarding.importWallet).click();
   await (await onboarding.waitForSelector(s.onboarding.importWithSrp, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
