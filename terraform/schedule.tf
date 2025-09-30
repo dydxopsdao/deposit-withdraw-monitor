@@ -127,7 +127,7 @@ resource "aws_cloudwatch_event_target" "run_tasks" {
     platform_version    = "1.4.0"
 
     network_configuration {
-      subnets          = [for subnet in aws_subnet.private : subnet.id]
+      subnets          = [aws_subnet.private.id]
       security_groups  = [aws_security_group.task.id]
       assign_public_ip = false
     }
