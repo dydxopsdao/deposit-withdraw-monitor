@@ -5,7 +5,7 @@ import { WalletType, isVisible } from "../../../utils";
 import { retry, RetryError } from "../../../utils/retry";
 import { conditionallyUnlockMetamask, handleMetamaskPopup } from "../../wallets/metamask/flows";
 import { handlePhantomPopup } from "../../wallets/phantom/flows";
-import { accountMenuButton, accountMenuButtonLoose, connectWalletBtn } from "../selectors/header";
+import { accountMenuButton, accountMenuButtonLoose, connectWalletBtn, signInWithWalletBtn } from "../selectors/header";
 import { chooseProviderBtn, sendRequestBtn } from "../selectors/wallet";
 import { fundsDialog } from "../selectors/funds-dialog";
 
@@ -32,7 +32,7 @@ export async function connectWallet(
     } else {
       await openWalletPicker(page);
     }
-    
+    await signInWithWalletBtn(page).click();
     logger.info("Choose provider");
     await chooseProvider(page, chooseProviderBtn(page, wallet), wallet);
     if (wallet === "metamask") {
@@ -88,7 +88,6 @@ export async function connectWallet(
 
 export async function openWalletPicker(page: Page, retries = 2) {
   if (await isPickerOpen(page)) return;
-
   for (let attempt = 0; attempt <= retries; attempt++) {
     await expect(connectWalletBtn(page)).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
     await connectWalletBtn(page).click();
@@ -161,7 +160,6 @@ async function sendRequest(page: Page, locator: Locator) {
 
 async function isPickerOpen(page: Page) {
   return (
-    (await isVisible(chooseProviderBtn(page, "metamask"))) ||
-    (await isVisible(chooseProviderBtn(page, "phantom")))
+    (await isVisible(signInWithWalletBtn(page)))
   );
 }
