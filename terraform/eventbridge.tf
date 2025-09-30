@@ -4,9 +4,9 @@ resource "aws_iam_role" "events_invoke_ecs" {
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
     Statement = [{
-      Effect = "Allow",
+      Effect    = "Allow",
       Principal = { Service = "events.amazonaws.com" },
-      Action = "sts:AssumeRole"
+      Action    = "sts:AssumeRole"
     }]
   })
 }
@@ -19,9 +19,9 @@ resource "aws_iam_role_policy" "events_invoke_ecs" {
     Version = "2012-10-17",
     Statement = [
       {
-        Sid    = "RunTask",
-        Effect = "Allow",
-        Action = ["ecs:RunTask"],
+        Sid      = "RunTask",
+        Effect   = "Allow",
+        Action   = ["ecs:RunTask"],
         Resource = "*"
       },
       {

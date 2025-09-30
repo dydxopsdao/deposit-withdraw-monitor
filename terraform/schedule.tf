@@ -73,7 +73,7 @@ resource "aws_ecs_task_definition" "this" {
         {
           name  = "DD_ENV"
           value = var.dd_env
-        },        
+        },
         {
           name  = "SEED_PHRASES_SECRET_ARN"
           value = aws_secretsmanager_secret.secrets["seed_phrases"].arn
@@ -127,9 +127,9 @@ resource "aws_cloudwatch_event_target" "run_tasks" {
     platform_version    = "1.4.0"
 
     network_configuration {
-      subnets          = data.aws_subnets.default.ids
+      subnets          = [aws_subnet.private.id]
       security_groups  = [aws_security_group.task.id]
-      assign_public_ip = true
+      assign_public_ip = false
     }
   }
 }
