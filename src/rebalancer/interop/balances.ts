@@ -82,10 +82,14 @@ function parseUsdcAmount(amount: bigint | string | number): TokenAmount {
  * @returns The balances for the native token and USDC for the given address on the given chain
  */
 async function getWalletBalances(chainId: string, walletAddress: string): Promise<WalletBalances> {
-  const usdcDenom = CHAIN_CONFIGS[chainId]?.usdcDenom;
   const nativeTokenDenom = CHAIN_CONFIGS[chainId]?.nativeDenom;
-  if (!usdcDenom || !nativeTokenDenom) {
-    throw new Error(`No USDC or native token denom found for chain ${chainId}`);
+  if (!nativeTokenDenom) {
+    throw new Error(`No native token denom found for chain ${chainId}`);
+  }
+
+  const usdcDenom = CHAIN_CONFIGS[chainId]?.usdcDenom;
+  if (!usdcDenom) {
+    throw new Error(`No USDC denom found for chain ${chainId}`);
   }
 
   const balances = await getBalances(walletAddress, [chainId]);
