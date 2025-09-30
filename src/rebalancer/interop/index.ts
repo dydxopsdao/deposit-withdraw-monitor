@@ -2,7 +2,7 @@
 import { CHAIN_IDS, CHAIN_CONFIGS } from './constants';
 import { withdrawMaxUsdc } from './withdraw';
 import { depositMaxUsdc } from './deposit';
-import { getUsdcBalance, getFreeCollateral } from './balances';
+import { getWalletBalances, getUsdcBalance, getFreeCollateral } from './balances';
 import { configureSkipClient, getBalances, getUsdcRoutes, executeRoute } from './skip';
 import { deriveCosmosAddress } from '../signers/cosmos';
 
@@ -13,6 +13,7 @@ export { CHAIN_IDS, CHAIN_CONFIGS };
 export default {
   withdrawMaxUsdc,
   depositMaxUsdc,
+  getWalletBalances,
   getUsdcBalance,
   getFreeCollateral,
   configureSkipClient,

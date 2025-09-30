@@ -30,9 +30,15 @@ async function main(): Promise<void> {
 
   switch (route.kind) {
     case 'deposit':
+      const [walletBalancesBeforeDeposit, freeCollateralBeforeDeposit] = await Promise.all([
+        interop.getWalletBalances(CHAIN_IDS[route.src_chain], route.wallet_address),
+        interop.getFreeCollateral(route.dydx_address),
+      ]);
+
       const balancesBeforeDeposit = {
-        walletBalance: (await interop.getUsdcBalance(CHAIN_IDS[route.src_chain], route.wallet_address)).formattedAmount,
-        dYdXBalance: (await interop.getFreeCollateral(route.dydx_address)).formattedAmount,
+        native: walletBalancesBeforeDeposit.native.formattedAmount,
+        usdc: walletBalancesBeforeDeposit.usdc.formattedAmount,
+        freeCollateral: freeCollateralBeforeDeposit.formattedAmount,
       };
       console.log(`Balances before withdraw: ${JSON.stringify(balancesBeforeDeposit, null, 2)}`);
 
@@ -44,17 +50,27 @@ async function main(): Promise<void> {
         route.wallet_seed
       );
 
+      const [walletBalancesAfterDeposit, freeCollateralAfterDeposit] = await Promise.all([
+        interop.getWalletBalances(CHAIN_IDS[route.src_chain], route.wallet_address),
+        interop.getFreeCollateral(route.dydx_address),
+      ]);
       const balancesAfterWithdraw = {
-        walletBalance: (await interop.getUsdcBalance(CHAIN_IDS[route.src_chain], route.wallet_address)).formattedAmount,
-        dYdXBalance: (await interop.getFreeCollateral(route.dydx_address)).formattedAmount,
+        native: walletBalancesAfterDeposit.native.formattedAmount,
+        usdc: walletBalancesAfterDeposit.usdc.formattedAmount,
+        freeCollateral: freeCollateralAfterDeposit.formattedAmount,
       };
       console.log(`Balances after withdraw: ${JSON.stringify(balancesAfterWithdraw, null, 2)}`);
       break;
 
     case 'withdraw':
+      const [walletBalancesBeforeWithdraw, freeCollateralBeforeWithdraw] = await Promise.all([
+        interop.getWalletBalances(CHAIN_IDS[route.dst_chain], route.wallet_address),
+        interop.getFreeCollateral(route.dydx_address),
+      ]);
       const balancesBeforeWithdraw = {
-        walletBalance: (await interop.getUsdcBalance(CHAIN_IDS[route.dst_chain], route.wallet_address)).formattedAmount,
-        dYdXBalance: (await interop.getFreeCollateral(route.dydx_address)).formattedAmount,
+        native: walletBalancesBeforeWithdraw.native.formattedAmount,
+        usdc: walletBalancesBeforeWithdraw.usdc.formattedAmount,
+        freeCollateral: freeCollateralBeforeWithdraw.formattedAmount,
       };
       console.log(`Balances before deposit: ${JSON.stringify(balancesBeforeWithdraw, null, 2)}`);
 
@@ -66,9 +82,14 @@ async function main(): Promise<void> {
         route.dydx_seed
       );
 
+      const [walletBalancesAfterWithdraw, freeCollateralAfterWithdraw] = await Promise.all([
+        interop.getWalletBalances(CHAIN_IDS[route.dst_chain], route.wallet_address),
+        interop.getFreeCollateral(route.dydx_address),
+      ]);
       const balancesAfterDeposit = {
-        walletBalance: (await interop.getUsdcBalance(CHAIN_IDS[route.dst_chain], route.wallet_address)).formattedAmount,
-        dYdXBalance: (await interop.getFreeCollateral(route.dydx_address)).formattedAmount,
+        native: walletBalancesAfterWithdraw.native.formattedAmount,
+        usdc: walletBalancesAfterWithdraw.usdc.formattedAmount,
+        freeCollateral: freeCollateralAfterWithdraw.formattedAmount,
       };
       console.log(`Balances after deposit: ${JSON.stringify(balancesAfterDeposit, null, 2)}`);
       break;

@@ -16,23 +16,29 @@ import { getBalances } from './skip';
 
 import { logger } from '../../logger';
 
-export { getUsdcBalance, getFreeCollateral, newUsdcAmount, depositToSubaccount };
-export type { UsdcAmount };
+export { parseUsdcAmount, getWalletBalances, getUsdcBalance, getFreeCollateral, depositToSubaccount };
+export type { TokenAmount };
 
-// The USDC balance for a given address on a given chain
-interface UsdcAmount {
+// The TokenAmount is a type that represents a token amount with an amount and a formatted amount
+interface TokenAmount {
   amount: bigint;
   formattedAmount: string;
 }
 
+// The WalletBalances is a type that represents the balances of a wallet with a native token and a USDC balance
+interface WalletBalances {
+  native: TokenAmount;
+  usdc: TokenAmount;
+}
+
 /**
- * Creates a new UsdcAmount from a bigint, string, or number
+ * Creates a new TokenAmount with USDC decimals from a bigint, string, or number
  * @param amount - The amount to create the UsdcAmount from. Can be a bigint,
  *   a string with formatted amount (e.g., "0.5"), a string containing a bigint
  *   value (e.g., "500000"), or a number (e.g., 0.05).
- * @returns The new UsdcAmount
+ * @returns The new TokenAmount
  */
-function newUsdcAmount(amount: bigint | string | number): UsdcAmount {
+function parseUsdcAmount(amount: bigint | string | number): TokenAmount {
   if (typeof amount === 'bigint') {
     return {
       amount,
@@ -70,22 +76,44 @@ function newUsdcAmount(amount: bigint | string | number): UsdcAmount {
 }
 
 /**
+ * Gets the balances for the native token and USDC for a given address on a given chain
+ * @param chainId - The chain ID to get the balances for the native token and USDC
+ * @param walletAddress - The address to get the balances for
+ * @returns The balances for the native token and USDC for the given address on the given chain
+ */
+async function getWalletBalances(chainId: string, walletAddress: string): Promise<WalletBalances> {
+  const usdcDenom = CHAIN_CONFIGS[chainId]?.usdcDenom;
+  const nativeTokenDenom = CHAIN_CONFIGS[chainId]?.nativeDenom;
+  if (!usdcDenom || !nativeTokenDenom) {
+    throw new Error(`No USDC or native token denom found for chain ${chainId}`);
+  }
+
+  const balances = await getBalances(walletAddress, [chainId]);
+
+  const nativeBalance = {
+    amount: BigInt(balances?.chains[chainId]?.denoms[nativeTokenDenom]?.amount ?? '0'),
+    formattedAmount: balances?.chains[chainId]?.denoms[nativeTokenDenom]?.formattedAmount ?? '0',
+  };
+
+  const usdcBalance = {
+    amount: BigInt(balances?.chains[chainId]?.denoms[usdcDenom]?.amount ?? '0'),
+    formattedAmount: balances?.chains[chainId]?.denoms[usdcDenom]?.formattedAmount ?? '0',
+  };
+
+  return {
+    native: nativeBalance,
+    usdc: usdcBalance,
+  };
+}
+
+/**
  * Gets the USDC balance for a given address on a given chain
  * @param chainId - The chain ID to get the balance for
  * @param walletAddress - The address to get the balance for
  * @returns The USDC balance for the address on the given chain in USDC
  */
-async function getUsdcBalance(chainId: string, walletAddress: string): Promise<UsdcAmount> {
-  const usdcDenom = CHAIN_CONFIGS[chainId]?.usdcDenom;
-  if (!usdcDenom) {
-    throw new Error(`No USDC denom found for chain ${chainId}`);
-  }
-
-  const balances = await getBalances(walletAddress, [chainId]);
-  // The response is a bigint
-  const amount = BigInt(balances?.chains[chainId]?.denoms[usdcDenom]?.amount ?? '0');
-
-  return newUsdcAmount(amount);
+async function getUsdcBalance(chainId: string, walletAddress: string): Promise<TokenAmount> {
+  return await getWalletBalances(chainId, walletAddress).then(balances => balances.usdc);
 }
 
 /**
@@ -93,7 +121,7 @@ async function getUsdcBalance(chainId: string, walletAddress: string): Promise<U
  * @param dYdXAddress - The address of the dYdX account
  * @returns The free collateral of the dYdX account in USDC
  */
-async function getFreeCollateral(dYdXAddress: string): Promise<UsdcAmount> {
+async function getFreeCollateral(dYdXAddress: string): Promise<TokenAmount> {
   const response = await fetch(`${INDEXER_API_URL}/v4/addresses/${dYdXAddress}`, {
     headers: {
       'Content-Type': 'application/json',
@@ -106,7 +134,7 @@ async function getFreeCollateral(dYdXAddress: string): Promise<UsdcAmount> {
     ? (parseUnits(data.subaccounts[0].freeCollateral, DYDX_USDC_DECIMALS) as bigint)
     : 0n;
 
-  return newUsdcAmount(freeCollateral);
+  return parseUsdcAmount(freeCollateral);
 }
 
 /**
@@ -211,15 +239,11 @@ async function waitForIndexerToCatchUp(targetBlock: Long, pollMs = 500, maxPolls
     const indexerHeightNumber = Long.fromValue(indexerHeight.height);
 
     if (indexerHeightNumber.greaterThanOrEqual(targetBlock)) {
-      logger.debug(
-        `Indexer is at ${indexerHeightNumber}, target block is ${targetBlock}, catching up complete`
-      );
+      logger.debug(`Indexer is at ${indexerHeightNumber}, target block is ${targetBlock}, catching up complete`);
       return;
     }
 
-    logger.debug(
-      `Indexer is at ${indexerHeightNumber}, target block is ${targetBlock}, waiting for ${pollMs}ms`
-    );
+    logger.debug(`Indexer is at ${indexerHeightNumber}, target block is ${targetBlock}, waiting for ${pollMs}ms`);
     await new Promise(resolve => setTimeout(resolve, pollMs));
   }
 

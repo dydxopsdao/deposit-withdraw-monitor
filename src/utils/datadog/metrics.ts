@@ -206,13 +206,13 @@ export function buildTestRunTags(
 /**
  * Build rebalancer-specific tags for balance metrics
  */
-export function buildRebalancerTags(route: Route, chain: string, env: string): MetricTag[] {
+export function buildRebalancerTags(route: Route, chain: string, asset: string, env: string): MetricTag[] {
   return [
     { key: "route_id", value: route.id },
     { key: "flow", value: route.kind },
     { key: "route_kind", value: route.route_kind || "unknown" },
     { key: "chain", value: chain },
-    { key: "asset", value: "USDC" },
+    { key: "asset", value: asset },
     { key: "env", value: env },
   ];
 }
@@ -247,7 +247,14 @@ export async function sendRebalancerBalanceMetrics(
   // Send current USDC balance for each chain
   for (const balance of balancesAfter) {
     if (balance.asset === 'USDC') {
-      const tags = buildRebalancerTags(route, balance.chain, client.env);
+      const tags = buildRebalancerTags(route, balance.chain, 'USDC', client.env);
+      const amount = parseFloat(balance.amount);
+      
+      await client.sendGauge("rebalancer.balance", amount, tags, timestamp);
+    }
+    
+    if (balance.asset === 'NativeToken') {
+      const tags = buildRebalancerTags(route, balance.chain, 'NativeToken', client.env);
       const amount = parseFloat(balance.amount);
       
       await client.sendGauge("rebalancer.balance", amount, tags, timestamp);
