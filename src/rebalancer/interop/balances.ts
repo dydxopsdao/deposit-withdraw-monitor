@@ -17,7 +17,7 @@ import { getBalances } from './skip';
 import { logger } from '../../logger';
 
 export { parseUsdcAmount, getWalletBalances, getUsdcBalance, getFreeCollateral, depositToSubaccount };
-export type { TokenAmount };
+export type { TokenAmount, WalletBalances };
 
 // The TokenAmount is a type that represents a token amount with an amount and a formatted amount
 interface TokenAmount {

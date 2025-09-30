@@ -8,6 +8,7 @@ console.log(`> Loaded environment from ${envFile}`);
 
 import { getRoutesSync } from '../utils/routes';
 import interop, { CHAIN_IDS } from '../rebalancer/interop';
+import { buildBalanceMap } from '../rebalancer';
 
 async function main(): Promise<void> {
   interop.configureSkipClient();
@@ -30,17 +31,13 @@ async function main(): Promise<void> {
 
   switch (route.kind) {
     case 'deposit':
-      const [walletBalancesBeforeDeposit, freeCollateralBeforeDeposit] = await Promise.all([
+      const [walletBalancesBeforeWithdraw, freeCollateralBeforeWithdraw] = await Promise.all([
         interop.getWalletBalances(CHAIN_IDS[route.src_chain], route.wallet_address),
         interop.getFreeCollateral(route.dydx_address),
       ]);
 
-      const balancesBeforeDeposit = {
-        native: walletBalancesBeforeDeposit.native.formattedAmount,
-        usdc: walletBalancesBeforeDeposit.usdc.formattedAmount,
-        freeCollateral: freeCollateralBeforeDeposit.formattedAmount,
-      };
-      console.log(`Balances before withdraw: ${JSON.stringify(balancesBeforeDeposit, null, 2)}`);
+      const balancesBeforeWithdraw = buildBalanceMap(route, walletBalancesBeforeWithdraw, freeCollateralBeforeWithdraw);
+      console.log(`Balances before withdraw: ${JSON.stringify(balancesBeforeWithdraw, null, 2)}`);
 
       await interop.withdrawMaxUsdc(
         route.dydx_address,
@@ -50,29 +47,21 @@ async function main(): Promise<void> {
         route.wallet_seed
       );
 
-      const [walletBalancesAfterDeposit, freeCollateralAfterDeposit] = await Promise.all([
+      const [walletBalancesAfterWithdraw, freeCollateralAfterWithdraw] = await Promise.all([
         interop.getWalletBalances(CHAIN_IDS[route.src_chain], route.wallet_address),
         interop.getFreeCollateral(route.dydx_address),
       ]);
-      const balancesAfterWithdraw = {
-        native: walletBalancesAfterDeposit.native.formattedAmount,
-        usdc: walletBalancesAfterDeposit.usdc.formattedAmount,
-        freeCollateral: freeCollateralAfterDeposit.formattedAmount,
-      };
+      const balancesAfterWithdraw = buildBalanceMap(route, walletBalancesAfterWithdraw, freeCollateralAfterWithdraw);
       console.log(`Balances after withdraw: ${JSON.stringify(balancesAfterWithdraw, null, 2)}`);
       break;
 
     case 'withdraw':
-      const [walletBalancesBeforeWithdraw, freeCollateralBeforeWithdraw] = await Promise.all([
+      const [walletBalancesBeforeDeposit, freeCollateralBeforeDeposit] = await Promise.all([
         interop.getWalletBalances(CHAIN_IDS[route.dst_chain], route.wallet_address),
         interop.getFreeCollateral(route.dydx_address),
       ]);
-      const balancesBeforeWithdraw = {
-        native: walletBalancesBeforeWithdraw.native.formattedAmount,
-        usdc: walletBalancesBeforeWithdraw.usdc.formattedAmount,
-        freeCollateral: freeCollateralBeforeWithdraw.formattedAmount,
-      };
-      console.log(`Balances before deposit: ${JSON.stringify(balancesBeforeWithdraw, null, 2)}`);
+      const balancesBeforeDeposit = buildBalanceMap(route, walletBalancesBeforeDeposit, freeCollateralBeforeDeposit);
+      console.log(`Balances before deposit: ${JSON.stringify(balancesBeforeDeposit, null, 2)}`);
 
       await interop.depositMaxUsdc(
         route.dst_chain,
@@ -82,15 +71,11 @@ async function main(): Promise<void> {
         route.dydx_seed
       );
 
-      const [walletBalancesAfterWithdraw, freeCollateralAfterWithdraw] = await Promise.all([
+      const [walletBalancesAfterDeposit, freeCollateralAfterDeposit] = await Promise.all([
         interop.getWalletBalances(CHAIN_IDS[route.dst_chain], route.wallet_address),
         interop.getFreeCollateral(route.dydx_address),
       ]);
-      const balancesAfterDeposit = {
-        native: walletBalancesAfterWithdraw.native.formattedAmount,
-        usdc: walletBalancesAfterWithdraw.usdc.formattedAmount,
-        freeCollateral: freeCollateralAfterWithdraw.formattedAmount,
-      };
+      const balancesAfterDeposit = buildBalanceMap(route, walletBalancesAfterDeposit, freeCollateralAfterDeposit);
       console.log(`Balances after deposit: ${JSON.stringify(balancesAfterDeposit, null, 2)}`);
       break;
 
