@@ -1,24 +1,8 @@
 # --- Networking primitives to route ECS tasks through a static Elastic IP ---
 
 locals {
-  vpc_cidr                = "10.90.0.0/16"
-  availability_zone_limit = min(2, length(data.aws_availability_zones.available.names))
-  availability_zones      = slice(data.aws_availability_zones.available.names, 0, local.availability_zone_limit)
-  nat_gateway_az          = local.availability_zones[0]
-
-  public_subnet_config = {
-    for idx, az in local.availability_zones : az => {
-      az         = az
-      cidr_block = cidrsubnet(local.vpc_cidr, 4, idx)
-    }
-  }
-
-  private_subnet_config = {
-    for idx, az in local.availability_zones : az => {
-      az         = az
-      cidr_block = cidrsubnet(local.vpc_cidr, 4, idx + local.availability_zone_limit)
-    }
-  }
+  vpc_cidr          = "10.90.0.0/16"
+  availability_zone = data.aws_availability_zones.available.names[0]
 }
 
 resource "aws_vpc" "routes" {
@@ -40,28 +24,24 @@ resource "aws_internet_gateway" "routes" {
 }
 
 resource "aws_subnet" "public" {
-  for_each = local.public_subnet_config
-
   vpc_id                  = aws_vpc.routes.id
-  availability_zone       = each.value.az
-  cidr_block              = each.value.cidr_block
+  availability_zone       = local.availability_zone
+  cidr_block              = "10.90.0.0/20"
   map_public_ip_on_launch = true
 
   tags = {
-    Name = "deposit-withdraw-monitor-routes-public-${each.key}"
+    Name = "deposit-withdraw-monitor-routes-public"
   }
 }
 
 resource "aws_subnet" "private" {
-  for_each = local.private_subnet_config
-
   vpc_id                  = aws_vpc.routes.id
-  availability_zone       = each.value.az
-  cidr_block              = each.value.cidr_block
+  availability_zone       = local.availability_zone
+  cidr_block              = "10.90.16.0/20"
   map_public_ip_on_launch = false
 
   tags = {
-    Name = "deposit-withdraw-monitor-routes-private-${each.key}"
+    Name = "deposit-withdraw-monitor-routes-private"
   }
 }
 
@@ -75,7 +55,7 @@ resource "aws_eip" "routes" {
 
 resource "aws_nat_gateway" "routes" {
   allocation_id = aws_eip.routes.id
-  subnet_id     = aws_subnet.public[local.nat_gateway_az].id
+  subnet_id     = aws_subnet.public.id
 
   tags = {
     Name = "deposit-withdraw-monitor-routes"
@@ -98,9 +78,7 @@ resource "aws_route_table" "public" {
 }
 
 resource "aws_route_table_association" "public" {
-  for_each = aws_subnet.public
-
-  subnet_id      = each.value.id
+  subnet_id      = aws_subnet.public.id
   route_table_id = aws_route_table.public.id
 }
 
@@ -118,8 +96,6 @@ resource "aws_route_table" "private" {
 }
 
 resource "aws_route_table_association" "private" {
-  for_each = aws_subnet.private
-
-  subnet_id      = each.value.id
+  subnet_id      = aws_subnet.private.id
   route_table_id = aws_route_table.private.id
 }
