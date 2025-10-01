@@ -1,6 +1,6 @@
 import { logger } from '../logger';
 import { Route } from '../utils/routes';
-import interop, { CHAIN_IDS, TokenAmount, WalletBalances } from './interop';
+import interop, { CHAIN_CONFIGS, CHAIN_IDS, TokenAmount, WalletBalances } from './interop';
 
 export { buildBalanceMap, rebalanceNow };
 export type { BalanceMap };
@@ -16,9 +16,12 @@ type BalanceMap = Array<{ asset: string; chain: string; amount: string }>;
 function buildBalanceMap(route: Route, walletBalances: WalletBalances, freeCollateral: TokenAmount): BalanceMap {
   const [other, dydx] =
     route.kind === 'deposit' ? [route.src_chain, route.dst_chain] : [route.dst_chain, route.src_chain];
+
+  const nativeSymbol = CHAIN_CONFIGS[CHAIN_IDS[other]]?.nativeSymbol || 'NativeToken';
+
   return [
     { asset: 'USDC', chain: other, amount: walletBalances.usdc.formattedAmount },
-    { asset: 'NativeToken', chain: other, amount: walletBalances.native.formattedAmount },
+    { asset: nativeSymbol, chain: other, amount: walletBalances.native.formattedAmount },
     { asset: 'USDC', chain: dydx, amount: freeCollateral.formattedAmount },
   ];
 }

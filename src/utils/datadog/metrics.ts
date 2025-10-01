@@ -246,11 +246,9 @@ export async function sendRebalancerBalanceMetrics(
 
   // Send current USDC balance for each chain
   for (const balance of balancesAfter) {
-    if (balance.asset === 'USDC' || balance.asset === 'NativeToken') {
-      const tags = buildRebalancerTags(route, balance.chain, balance.asset, client.env);
-      const amount = parseFloat(balance.amount);
-      
-      await client.sendGauge("rebalancer.balance", amount, tags, timestamp);
-    }
+    const tags = buildRebalancerTags(route, balance.chain, balance.asset, client.env);
+    const amount = parseFloat(balance.amount);
+    
+    await client.sendGauge("rebalancer.balance", amount, tags, timestamp);
   }
 }
