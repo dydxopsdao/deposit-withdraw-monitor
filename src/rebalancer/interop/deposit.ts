@@ -8,7 +8,7 @@ import {
   NOBLE_USDC_MIN_AUTOSWEEP_AMOUNT,
   NOBLE_USDC_GAS_BUFFER,
 } from './constants';
-import { getUsdcBalance, newUsdcAmount, depositToSubaccount } from './balances';
+import { getUsdcBalance, parseUsdcAmount, depositToSubaccount } from './balances';
 import { executeRoute, getUsdcRoutes, generateUserAddresses, sweepNobleBalance } from './skip';
 
 export { depositMaxUsdc };
@@ -93,8 +93,8 @@ async function sweepNobleBalanceIfNeeded(dYdXSeed: string) {
   const nobleAddress = await deriveCosmosAddress(nobleChainConfig.bech32Prefix, dYdXSeed);
   const nobleBalance = await getUsdcBalance(nobleChainId, nobleAddress);
 
-  const gasBuffer = newUsdcAmount(NOBLE_USDC_GAS_BUFFER).amount;
-  const minSweep = newUsdcAmount(NOBLE_USDC_MIN_AUTOSWEEP_AMOUNT).amount;
+  const gasBuffer = parseUsdcAmount(NOBLE_USDC_GAS_BUFFER).amount;
+  const minSweep = parseUsdcAmount(NOBLE_USDC_MIN_AUTOSWEEP_AMOUNT).amount;
   const sweepThreshold = gasBuffer + minSweep;
 
   if (nobleBalance.amount < sweepThreshold) {
@@ -122,7 +122,7 @@ async function depositToSubaccountIfNeeded(dYdXSeed: string) {
   const address = await deriveCosmosAddress(dYdXChainConfig.bech32Prefix, dYdXSeed);
   const balance = await getUsdcBalance(dYdXChainId, address);
 
-  const minGasBuffer = newUsdcAmount(DYDX_USDC_GAS_BUFFER).amount;
+  const minGasBuffer = parseUsdcAmount(DYDX_USDC_GAS_BUFFER).amount;
 
   if (balance.amount < minGasBuffer) {
     logger.info(

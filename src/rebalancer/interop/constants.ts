@@ -9,6 +9,7 @@ export const CHAIN_CONFIGS = {
     yamlKey: 'ethereum',
     getRpcEndpoint: () => `https://eth-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`,
     nativeDenom: 'ethereum-native',
+    nativeSymbol: 'ETH',
     usdcDenom: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
     derivationPath: "m/44'/60'/0'/0/0" as `m/44'/60'/${string}`,
   },
@@ -16,6 +17,7 @@ export const CHAIN_CONFIGS = {
     yamlKey: 'base',
     getRpcEndpoint: () => `https://base-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`,
     nativeDenom: 'base-native',
+    nativeSymbol: 'ETH',
     usdcDenom: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
     derivationPath: "m/44'/60'/0'/0/0" as `m/44'/60'/${string}`,
   },
@@ -23,6 +25,7 @@ export const CHAIN_CONFIGS = {
     yamlKey: 'arbitrum',
     getRpcEndpoint: () => `https://arb-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`,
     nativeDenom: 'arbitrum-native',
+    nativeSymbol: 'ETH',
     usdcDenom: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
     derivationPath: "m/44'/60'/0'/0/0" as `m/44'/60'/${string}`,
   },
@@ -30,6 +33,7 @@ export const CHAIN_CONFIGS = {
     yamlKey: 'polygon',
     getRpcEndpoint: () => `https://polygon-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`,
     nativeDenom: 'polygon-native',
+    nativeSymbol: 'POL',
     usdcDenom: '0x3c499c542cef5e3811e1192ce70d8cc03d5c3359',
     derivationPath: "m/44'/60'/0'/0/0" as `m/44'/60'/${string}`,
   },
@@ -37,6 +41,7 @@ export const CHAIN_CONFIGS = {
     yamlKey: 'solana',
     getRpcEndpoint: () => `https://solana-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`,
     nativeDenom: 'solana-native',
+    nativeSymbol: 'SOL',
     usdcDenom: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
     derivationPath: "m/44'/501'/0'/0'" as `m/44'/501'/${string}`,
   },
@@ -44,6 +49,7 @@ export const CHAIN_CONFIGS = {
     yamlKey: 'dydx',
     getRpcEndpoint: () => 'https://dydx-ops-rpc.kingnodes.com',
     nativeDenom: 'adydx',
+    nativeSymbol: 'DYDX',
     usdcDenom: 'ibc/8E27BA2D5493AF5636760E354E46004562C46AB7EC0CC4C1CA14E9E20E2545B5',
     bech32Prefix: 'dydx',
   },
@@ -51,6 +57,7 @@ export const CHAIN_CONFIGS = {
     yamlKey: 'noble', // Not used for now
     getRpcEndpoint: () => 'https://noble-yx-rpc.polkachu.com/',
     nativeDenom: 'uusdc',
+    nativeSymbol: 'USDC',
     usdcDenom: 'uusdc',
     bech32Prefix: 'noble',
   },
@@ -58,6 +65,7 @@ export const CHAIN_CONFIGS = {
     yamlKey: 'osmosis', // Not used for now
     getRpcEndpoint: () => 'https://rpc.osmosis.zone',
     nativeDenom: 'uosmo',
+    nativeSymbol: 'OSMO',
     usdcDenom: 'ibc/498A0751C798A0D9A389AA3691123DADA57DAA4FE165D5C75894505B876BA6E4', // Noble USDC
     // Note: Axelar USDC is ibc/D189335C6E4A68B513C10AB227BF1C1D38C746766278BA3EEB4FB14124F1D858
     bech32Prefix: 'osmo',
@@ -66,6 +74,7 @@ export const CHAIN_CONFIGS = {
     yamlKey: 'neutron', // Not used for now
     getRpcEndpoint: () => 'https://neutron-rpc.publicnode.com',
     nativeDenom: 'untrn',
+    nativeSymbol: 'NTRN',
     usdcDenom: 'ibc/B559A80D62249C8AA07A380E2A2BEA6E5CA9A6F079C912C3A9E9B494105E4F81', // Noble USDC
     // Note: Axelar USDC is ibc/F082B65C88E4B6D5EF1DB243CDA1D331D002759E938A0F5CD3FFDC5D53B3E349
     bech32Prefix: 'neutron',

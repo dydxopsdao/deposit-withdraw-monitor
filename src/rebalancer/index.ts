@@ -1,17 +1,30 @@
 import { logger } from '../logger';
 import { Route } from '../utils/routes';
-import interop, { CHAIN_IDS } from './interop';
+import interop, { CHAIN_CONFIGS, CHAIN_IDS, TokenAmount, WalletBalances } from './interop';
 
-export { rebalanceNow };
+export { buildBalanceMap, rebalanceNow };
 export type { BalanceMap };
 
 /**
  * The balance map is an array of objects with the following properties:
- * - asset: The token symbol, e.g. "USDC", "ETH", "SOL"
+ * - asset: e.g. "USDC", "NativeToken"
  * - chain: The chain name as in the route, e.g. "base", "dydx", "solana"
  * - amount: The amount of the token, e.g. "42.1337"
  */
 type BalanceMap = Array<{ asset: string; chain: string; amount: string }>;
+
+function buildBalanceMap(route: Route, walletBalances: WalletBalances, freeCollateral: TokenAmount): BalanceMap {
+  const [other, dydx] =
+    route.kind === 'deposit' ? [route.src_chain, route.dst_chain] : [route.dst_chain, route.src_chain];
+
+  const nativeSymbol = CHAIN_CONFIGS[CHAIN_IDS[other]]?.nativeSymbol || 'NativeToken';
+
+  return [
+    { asset: 'USDC', chain: other, amount: walletBalances.usdc.formattedAmount },
+    { asset: nativeSymbol, chain: other, amount: walletBalances.native.formattedAmount },
+    { asset: 'USDC', chain: dydx, amount: freeCollateral.formattedAmount },
+  ];
+}
 
 /**
  * Rebalances the given route
@@ -36,25 +49,12 @@ async function rebalanceDepositRoute(route: Route): Promise<{ balancesBefore: Ba
   interop.configureSkipClient();
 
   // Get balances before concurrently
-  const [sourceBalanceBefore, dydxBalanceBefore] = await Promise.all([
-    interop.getUsdcBalance(CHAIN_IDS[route.src_chain], route.wallet_address),
+  const [walletBalancesBefore, freeCollateralBefore] = await Promise.all([
+    interop.getWalletBalances(CHAIN_IDS[route.src_chain], route.wallet_address),
     interop.getFreeCollateral(route.dydx_address),
   ]);
 
-  const balancesBefore = [
-    // on source chain:
-    {
-      asset: 'USDC',
-      chain: route.src_chain,
-      amount: sourceBalanceBefore.formattedAmount,
-    },
-    // on dYdX:
-    {
-      asset: 'USDC',
-      chain: route.dst_chain,
-      amount: dydxBalanceBefore.formattedAmount,
-    },
-  ];
+  const balancesBefore = buildBalanceMap(route, walletBalancesBefore, freeCollateralBefore);
   logger.debug(`Balances before withdrawal`, { balancesBefore });
 
   await interop.withdrawMaxUsdc(
@@ -66,25 +66,12 @@ async function rebalanceDepositRoute(route: Route): Promise<{ balancesBefore: Ba
   );
 
   // Get balances after concurrently
-  const [sourceBalanceAfter, dydxBalanceAfter] = await Promise.all([
-    interop.getUsdcBalance(CHAIN_IDS[route.src_chain], route.wallet_address),
+  const [walletBalancesAfter, freeCollateralAfter] = await Promise.all([
+    interop.getWalletBalances(CHAIN_IDS[route.src_chain], route.wallet_address),
     interop.getFreeCollateral(route.dydx_address),
   ]);
 
-  const balancesAfter = [
-    // on source chain:
-    {
-      asset: 'USDC',
-      chain: route.src_chain,
-      amount: sourceBalanceAfter.formattedAmount,
-    },
-    // on dYdX:
-    {
-      asset: 'USDC',
-      chain: route.dst_chain,
-      amount: dydxBalanceAfter.formattedAmount,
-    },
-  ];
+  const balancesAfter = buildBalanceMap(route, walletBalancesAfter, freeCollateralAfter);
 
   logger.debug(`Balances after withdrawal`, { balancesAfter });
   return { balancesBefore, balancesAfter };
@@ -94,25 +81,12 @@ async function rebalanceWithdrawRoute(
   route: Route
 ): Promise<{ balancesBefore: BalanceMap; balancesAfter: BalanceMap }> {
   // Get balances before concurrently
-  const [dydxBalanceBefore, destBalanceBefore] = await Promise.all([
+  const [freeCollateralBefore, walletBalancesBefore] = await Promise.all([
     interop.getFreeCollateral(route.dydx_address),
-    interop.getUsdcBalance(CHAIN_IDS[route.dst_chain], route.wallet_address),
+    interop.getWalletBalances(CHAIN_IDS[route.dst_chain], route.wallet_address),
   ]);
 
-  const balancesBefore = [
-    // on dYdX:
-    {
-      asset: 'USDC',
-      chain: route.src_chain,
-      amount: dydxBalanceBefore.formattedAmount,
-    },
-    // on destination chain:
-    {
-      asset: 'USDC',
-      chain: route.dst_chain,
-      amount: destBalanceBefore.formattedAmount,
-    },
-  ];
+  const balancesBefore = buildBalanceMap(route, walletBalancesBefore, freeCollateralBefore);
   logger.debug(`Balances before deposit`, { balancesBefore });
 
   await interop.depositMaxUsdc(
@@ -124,26 +98,13 @@ async function rebalanceWithdrawRoute(
   );
 
   // Get balances after concurrently
-  const [dydxBalanceAfter, destBalanceAfter] = await Promise.all([
+  const [freeCollateralAfter, walletBalancesAfter] = await Promise.all([
     interop.getFreeCollateral(route.dydx_address),
-    interop.getUsdcBalance(CHAIN_IDS[route.dst_chain], route.wallet_address),
+    interop.getWalletBalances(CHAIN_IDS[route.dst_chain], route.wallet_address),
   ]);
 
-  const balancesAfter = [
-    // on dYdX:
-    {
-      asset: 'USDC',
-      chain: route.src_chain,
-      amount: dydxBalanceAfter.formattedAmount,
-    },
-    // on destination chain:
-    {
-      asset: 'USDC',
-      chain: route.dst_chain,
-      amount: destBalanceAfter.formattedAmount,
-    },
-  ];
-  
+  const balancesAfter = buildBalanceMap(route, walletBalancesAfter, freeCollateralAfter);
+
   logger.debug(`Balances after deposit`, { balancesAfter });
   return { balancesBefore, balancesAfter };
 }
