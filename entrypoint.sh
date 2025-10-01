@@ -12,9 +12,9 @@ sleep 2
 export UPLOAD_TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
 echo "Upload timestamp set to: $UPLOAD_TIMESTAMP"
 
-# Execute the command passed to the script
+# Execute the command passed to the script with a 30 minute timeout
 echo "Running Playwright tests..."
-"$@"
+timeout 1800 "$@"
 
 # Capture the exit code of the tests
 TEST_EXIT_CODE=$?
