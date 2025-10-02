@@ -97,6 +97,10 @@ Essential variables include:
 * The spec loads YAML synchronously and defines **one test per enabled route**.
 * Filter with envs: `ROUTE_ID` and/or `WALLET`.
 
+
+## Rebalancing
+Each route can specify a `rebalance_threshold` - when funds on the source chain drop below this threshold, the system automatically triggers rebalancing by transferring the maximum available amount in the opposite direction (deposit routes withdraw max amount, withdrawal routes deposit max amount) to restore the route's working balance.
+
 ## Scheduling
 
 * Each route supports **multiple schedules** (e.g., work hours, after hours, weekends) using EventBridge cron expressions.
