@@ -1,5 +1,3 @@
-version: 1
-
 # Scheduling Configuration
 #
 # Each route can have multiple schedules defined with EventBridge cron expressions.
@@ -13,12 +11,14 @@ version: 1
 # - Use `,` for lists (e.g., `MON,WED,FRI`)
 #
 # Examples:
-#   - "0/30 * * * ? *"           Every 30 minutes, any day
-#   - "0/15 9-17 ? * MON-FRI *"  Every 15 min, 9am-5pm, weekdays
-#   - "0 18-23,0-8 ? * MON-FRI *" Every hour, outside 9am-5pm, weekdays
-#   - "0 */2 ? * SAT,SUN *"      Every 2 hours on weekends
+#   - "0/30 * * * ? *"             Every 30 minutes, any day
+#   - "0/15 9-17 ? * MON-FRI *"    Every 15 min, 9am-5pm, weekdays
+#   - "0 18-23,0-8 ? * MON-FRI *"  Every hour, outside 9am-5pm, weekdays
+#   - "0 */2 ? * SAT,SUN *"        Every 2 hours on weekends
 #
 # Full docs: https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-scheduled-rule-pattern.html
+
+version: 1
 
 routes:
   # ---------------------------
