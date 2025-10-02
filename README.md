@@ -97,6 +97,13 @@ Essential variables include:
 * The spec loads YAML synchronously and defines **one test per enabled route**.
 * Filter with envs: `ROUTE_ID` and/or `WALLET`.
 
+## Scheduling
+
+* Each route supports **multiple schedules** (e.g., work hours, after hours, weekends) using EventBridge cron expressions.
+* **DynamoDB locking** prevents concurrent executions of the same route across different schedules.
+* Lock acquired at container startup; released on exit (success or failure).
+* See `routes.yaml` header for cron format and examples.
+
 ---
 
 ## Running tests

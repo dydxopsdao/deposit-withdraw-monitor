@@ -40,3 +40,13 @@ output "tests_egress_ip" {
   value       = aws_eip.routes.public_ip
   description = "Elastic IP address used for outbound route traffic"
 }
+
+output "dynamodb_locks_table_name" {
+  value       = aws_dynamodb_table.task_execution_locks.name
+  description = "DynamoDB table name for task execution locks"
+}
+
+output "dynamodb_locks_table_arn" {
+  value       = aws_dynamodb_table.task_execution_locks.arn
+  description = "DynamoDB table ARN for task execution locks"
+}

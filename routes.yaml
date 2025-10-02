@@ -1,3 +1,23 @@
+# Scheduling Configuration
+#
+# Each route can have multiple schedules defined with EventBridge cron expressions.
+# Multiple schedules for the same route are prevented from running concurrently via DynamoDB locking.
+#
+# EventBridge Cron Format: "Minutes Hours Day-of-month Month Day-of-week Year"
+# - Use `?` for either day-of-month or day-of-week (one must be `?`)
+# - Use `*` for "any value"
+# - Use `/` for step values (e.g., `0/15` = every 15 minutes)
+# - Use `-` for ranges (e.g., `9-17` = 9am to 5pm)
+# - Use `,` for lists (e.g., `MON,WED,FRI`)
+#
+# Examples:
+#   - "0/30 * * * ? *"             Every 30 minutes, any day
+#   - "0/15 9-17 ? * MON-FRI *"    Every 15 min, 9am-5pm, weekdays
+#   - "0 18-23,0-8 ? * MON-FRI *"  Every hour, outside 9am-5pm, weekdays
+#   - "0 */2 ? * SAT,SUN *"        Every 2 hours on weekends
+#
+# Full docs: https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-scheduled-rule-pattern.html
+
 version: 1
 
 routes:
@@ -16,7 +36,10 @@ routes:
     amount: "101"
     src_chain: dydx
     dst_chain: ethereum
-    cadence_min: 30
+    schedules:
+      - name: "every_30min"
+        cron: "0/30 * * * ? *"
+        enabled: true
     enabled: true
 
   - id: metamask-polygon-usdc-withdrawal
@@ -31,7 +54,10 @@ routes:
     amount: "101"
     src_chain: dydx
     dst_chain: polygon
-    cadence_min: 30
+    schedules:
+      - name: "every_30min"
+        cron: "0/30 * * * ? *"
+        enabled: true
     enabled: true
 
   - id: metamask-arbitrum-usdc-withdrawal
@@ -46,7 +72,10 @@ routes:
     amount: "101"
     src_chain: dydx
     dst_chain: arbitrum
-    cadence_min: 30
+    schedules:
+      - name: "every_30min"
+        cron: "0/30 * * * ? *"
+        enabled: true
     enabled: true
 
   - id: metamask-base-usdc-withdrawal
@@ -61,7 +90,10 @@ routes:
     amount: "101"
     src_chain: dydx
     dst_chain: base
-    cadence_min: 30
+    schedules:
+      - name: "every_30min"
+        cron: "0/30 * * * ? *"
+        enabled: true
     enabled: true
 
   - id: phantom-solana-usdc-withdrawal
@@ -76,7 +108,10 @@ routes:
     amount: "11"
     src_chain: dydx
     dst_chain: solana
-    cadence_min: 30
+    schedules:
+      - name: "every_30min"
+        cron: "0/30 * * * ? *"
+        enabled: true
     enabled: true
 
   # ---------------------------
@@ -96,7 +131,10 @@ routes:
     token: USDC
     src_chain: ethereum
     dst_chain: dydx
-    cadence_min: 30
+    schedules:
+      - name: "every_30min"
+        cron: "0/30 * * * ? *"
+        enabled: true
     enabled: true
 
   - id: metamask-arbitrum-usdc-deposit-regular
@@ -113,7 +151,10 @@ routes:
     token: USDC
     src_chain: arbitrum
     dst_chain: dydx
-    cadence_min: 30
+    schedules:
+      - name: "every_30min"
+        cron: "0/30 * * * ? *"
+        enabled: true
     enabled: true
 
   - id: metamask-base-usdc-deposit-regular
@@ -130,7 +171,10 @@ routes:
     token: USDC
     src_chain: base
     dst_chain: dydx
-    cadence_min: 30
+    schedules:
+      - name: "every_30min"
+        cron: "0/30 * * * ? *"
+        enabled: true
     enabled: true
 
   - id: metamask-polygon-usdc-deposit-regular
@@ -147,7 +191,10 @@ routes:
     token: USDC
     src_chain: polygon
     dst_chain: dydx
-    cadence_min: 30
+    schedules:
+      - name: "every_30min"
+        cron: "0/30 * * * ? *"
+        enabled: true
     enabled: true
 
   - id: phantom-solana-usdc-deposit
@@ -164,7 +211,10 @@ routes:
     token: USDC
     src_chain: solana
     dst_chain: dydx
-    cadence_min: 30
+    schedules:
+      - name: "every_30min"
+        cron: "0/30 * * * ? *"
+        enabled: true
     enabled: true
 
   # ---------------------------
@@ -184,7 +234,10 @@ routes:
     token: USDC
     src_chain: ethereum
     dst_chain: dydx
-    cadence_min: 30
+    schedules:
+      - name: "every_30min"
+        cron: "0/30 * * * ? *"
+        enabled: true
     enabled: true
 
   - id: metamask-arbitrum-usdc-deposit-instant
@@ -201,7 +254,10 @@ routes:
     token: USDC
     src_chain: arbitrum
     dst_chain: dydx
-    cadence_min: 30
+    schedules:
+      - name: "every_30min"
+        cron: "0/30 * * * ? *"
+        enabled: true
     enabled: true
 
   - id: metamask-base-usdc-deposit-instant
@@ -218,7 +274,10 @@ routes:
     token: USDC
     src_chain: base
     dst_chain: dydx
-    cadence_min: 30
+    schedules:
+      - name: "every_30min"
+        cron: "0/30 * * * ? *"
+        enabled: true
     enabled: true
 
   - id: metamask-polygon-usdc-deposit-instant
@@ -235,5 +294,8 @@ routes:
     token: USDC
     src_chain: polygon
     dst_chain: dydx
-    cadence_min: 30
+    schedules:
+      - name: "every_30min"
+        cron: "0/30 * * * ? *"
+        enabled: true
     enabled: true
