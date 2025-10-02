@@ -4,35 +4,35 @@ locals {
   # Read routes.yaml dynamically
   routes_yaml = yamldecode(file("${path.module}/../routes.yaml"))
 
-  # Flatten routes and schedules into a list of {route_id, schedule_name, cron, enabled}
+  # Create a map of unique routes (one entry per route_id)
+  routes = { for route in local.routes_yaml.routes : route.id => route }
+
+  # Flatten routes and schedules into a list for EventBridge rules
   schedule_definitions = flatten([
-    for route in local.routes_yaml.routes : [
+    for route_id, route in local.routes : [
       for schedule in route.schedules : {
-        route_id        = route.id
+        route_id        = route_id
         schedule_name   = schedule.name
         cron_expression = schedule.cron
         enabled         = schedule.enabled && route.enabled # Both must be true
         # Create unique key for Terraform resource using schedule name
-        resource_key = "${route.id}-${schedule.name}"
+        resource_key = "${route_id}-${schedule.name}"
       }
     ]
   ])
-
-  # Get unique route IDs for task definitions and log groups
-  unique_routes = distinct([for route in local.routes_yaml.routes : route.id])
 }
 
 resource "aws_cloudwatch_log_group" "this" {
-  for_each = { for route in local.routes_yaml.routes : route.id => route }
+  for_each = local.routes
 
-  name              = "/ecs/test-${each.value.id}"
+  name              = "/ecs/test-${each.key}"
   retention_in_days = 7
 }
 
 resource "aws_ecs_task_definition" "this" {
-  for_each = { for route in local.routes_yaml.routes : route.id => route }
+  for_each = local.routes
 
-  family                   = each.value.id
+  family                   = each.key
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
   cpu                      = "2048"
@@ -48,7 +48,7 @@ resource "aws_ecs_task_definition" "this" {
       environment = [
         {
           name  = "ROUTE_ID"
-          value = each.value.id
+          value = each.key
         },
         {
           name  = "AWS_REGION"
