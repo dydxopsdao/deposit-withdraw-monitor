@@ -102,6 +102,10 @@ resource "aws_ecs_task_definition" "this" {
           name  = "DYNAMODB_LOCKS_TABLE_NAME"
           value = aws_dynamodb_table.task_execution_locks.name
         },
+        {
+          name  = "TASK_TIMEOUT_SECONDS"
+          value = tostring(var.task_timeout_seconds)
+        },
       ]
       logConfiguration = {
         logDriver = "awslogs",
