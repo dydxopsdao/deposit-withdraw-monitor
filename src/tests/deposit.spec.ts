@@ -72,6 +72,7 @@ for (const route of depositRoutes) {
         dydx_address: route.dydx_address,
         route_kind: route.route_kind,
         amount: route.amount,
+        rebalance_threshold: route.rebalance_threshold,
         src_chain: route.src_chain,
         dst_chain: route.dst_chain,
         token: route.token,
