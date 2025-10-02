@@ -1,5 +1,19 @@
 #!/bin/bash
 
+# Source the lock manager functions
+source /scripts/lock-manager.sh
+
+# Try to acquire lock before proceeding
+if ! acquire_lock "$ROUTE_ID"; then
+    echo "Another instance is already running for route: $ROUTE_ID"
+    echo "Exiting gracefully to prevent duplicate execution"
+    exit 0 # Exit with success code (not an error, just prevented duplicate)
+fi
+
+# Mark that we acquired the lock and ensure it's released on exit
+export LOCK_ACQUIRED=true
+trap cleanup_lock EXIT
+
 # Start Xvfb in the background
 echo "Starting Xvfb..."
 Xvfb :99 -screen 0 1280x720x24 -ac +extension GLX +render -noreset &

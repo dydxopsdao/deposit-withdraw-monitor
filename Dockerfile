@@ -67,7 +67,14 @@ ENV DISPLAY=:99
 # EXPOSE 3000
 ENV FORCE_COLOR=0
 #ENV DEBUG=pw:api
+
+# Copy lock manager script
+COPY scripts/lock-manager.sh /scripts/lock-manager.sh
+RUN chmod +x /scripts/lock-manager.sh
+
+# Copy entrypoint
 COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
 ENTRYPOINT ["/app/entrypoint.sh"]
 
