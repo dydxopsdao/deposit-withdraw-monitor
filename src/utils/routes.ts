@@ -35,6 +35,7 @@ export interface Route {
   src_chain: string;
   dst_chain: string;
   cadence_min?: number;
+  rebalance_threshold?: string;
   enabled?: boolean;
   paused?: boolean;
 }

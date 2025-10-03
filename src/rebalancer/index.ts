@@ -57,6 +57,18 @@ async function rebalanceDepositRoute(route: Route): Promise<{ balancesBefore: Ba
   const balancesBefore = buildBalanceMap(route, walletBalancesBefore, freeCollateralBefore);
   logger.debug(`Balances before withdrawal`, { balancesBefore });
 
+  if (
+    route.rebalance_threshold &&
+    parseFloat(walletBalancesBefore.usdc.formattedAmount) > parseFloat(route.rebalance_threshold)
+  ) {
+    logger.info(`Skipping withdrawal because threshold is not met`, {
+      route_id: route.id,
+      rebalance_threshold: route.rebalance_threshold,
+      wallet_balance: walletBalancesBefore.usdc.formattedAmount,
+    });
+    return { balancesBefore, balancesAfter: balancesBefore };
+  }
+
   await interop.withdrawMaxUsdc(
     route.dydx_address,
     route.dydx_seed,
@@ -88,6 +100,18 @@ async function rebalanceWithdrawRoute(
 
   const balancesBefore = buildBalanceMap(route, walletBalancesBefore, freeCollateralBefore);
   logger.debug(`Balances before deposit`, { balancesBefore });
+
+  if (
+    route.rebalance_threshold &&
+    parseFloat(freeCollateralBefore.formattedAmount) > parseFloat(route.rebalance_threshold)
+  ) {
+    logger.info(`Skipping deposit because threshold is not met`, {
+      route_id: route.id,
+      rebalance_threshold: route.rebalance_threshold,
+      free_collateral: freeCollateralBefore.formattedAmount,
+    });
+    return { balancesBefore, balancesAfter: balancesBefore };
+  }
 
   await interop.depositMaxUsdc(
     route.dst_chain,
