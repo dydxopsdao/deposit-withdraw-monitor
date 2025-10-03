@@ -59,7 +59,7 @@ async function rebalanceDepositRoute(route: Route): Promise<{ balancesBefore: Ba
 
   if (
     route.rebalance_threshold &&
-    parseFloat(route.rebalance_threshold) < parseFloat(walletBalancesBefore.usdc.formattedAmount)
+    parseFloat(walletBalancesBefore.usdc.formattedAmount) > parseFloat(route.rebalance_threshold)
   ) {
     logger.info(`Skipping withdrawal because threshold is not met`, {
       route_id: route.id,
@@ -103,7 +103,7 @@ async function rebalanceWithdrawRoute(
 
   if (
     route.rebalance_threshold &&
-    parseFloat(route.rebalance_threshold) < parseFloat(freeCollateralBefore.formattedAmount)
+    parseFloat(freeCollateralBefore.formattedAmount) > parseFloat(route.rebalance_threshold)
   ) {
     logger.info(`Skipping deposit because threshold is not met`, {
       route_id: route.id,

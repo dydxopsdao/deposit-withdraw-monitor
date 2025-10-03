@@ -34,7 +34,7 @@ routes:
     dydx_address: "dydx135pnjlthctp4vtk8hzl5w38958hwazcs3ln8pc"
     dydx_seed: ${SEED_PHRASE_DYDX_ETHEREUM_USDC_WITHDRAWAL}
     amount: "101"
-    rebalance_threshold: "203"
+    rebalance_threshold: "203" # amount x 2 + 1
     src_chain: dydx
     dst_chain: ethereum
     schedules:
@@ -53,7 +53,7 @@ routes:
     dydx_address: "dydx1va7e3pvr9zwnw04j80x6pvgs3m9e4ksk2rn785"
     dydx_seed: ${SEED_PHRASE_DYDX_POLYGON_USDC_WITHDRAWAL}
     amount: "101"
-    rebalance_threshold: "203"
+    rebalance_threshold: "203" # amount x 2 + 1
     src_chain: dydx
     dst_chain: polygon
     schedules:
@@ -91,7 +91,7 @@ routes:
     dydx_address: "dydx1qt3236y9efrv4k38utw3ygwdxfvdc6a3e0sgqn"
     dydx_seed: ${SEED_PHRASE_DYDX_BASE_USDC_WITHDRAWAL}
     amount: "101"
-    rebalance_threshold: "203"
+    rebalance_threshold: "203" # amount x 2 + 1
     src_chain: dydx
     dst_chain: base
     schedules:
@@ -134,7 +134,7 @@ routes:
     route_kind: regular
     amount: "11"
     token: USDC
-    rebalance_threshold: "23"
+    rebalance_threshold: "23" # amount x 2 + 1
     src_chain: ethereum
     dst_chain: dydx
     schedules:
@@ -155,7 +155,7 @@ routes:
     route_kind: regular
     amount: "11"
     token: USDC
-    rebalance_threshold: "23"
+    rebalance_threshold: "23" # amount x 2 + 1
     src_chain: arbitrum
     dst_chain: dydx
     schedules:
@@ -176,7 +176,7 @@ routes:
     route_kind: regular
     amount: "11"
     token: USDC
-    rebalance_threshold: "23"
+    rebalance_threshold: "23" # amount x 2 + 1
     src_chain: base
     dst_chain: dydx
     schedules:
@@ -197,7 +197,7 @@ routes:
     route_kind: regular
     amount: "11"
     token: USDC
-    rebalance_threshold: "23"
+    rebalance_threshold: "23" # amount x 2 + 1
     src_chain: polygon
     dst_chain: dydx
     schedules:
@@ -218,7 +218,7 @@ routes:
     route_kind: regular
     amount: "11"
     token: USDC
-    rebalance_threshold: "23"
+    rebalance_threshold: "23" # amount x 2 + 1
     src_chain: solana
     dst_chain: dydx
     schedules:
@@ -242,7 +242,7 @@ routes:
     route_kind: instant
     amount: "101"
     token: USDC
-    rebalance_threshold: "203"
+    rebalance_threshold: "203" # amount x 2 + 1
     src_chain: ethereum
     dst_chain: dydx
     schedules:
@@ -263,7 +263,7 @@ routes:
     route_kind: instant
     amount: "101"
     token: USDC
-    rebalance_threshold: "203"
+    rebalance_threshold: "203" # amount x 2 + 1
     src_chain: arbitrum
     dst_chain: dydx
     schedules:
@@ -284,7 +284,7 @@ routes:
     route_kind: instant
     amount: "101"
     token: USDC
-    rebalance_threshold: "203"
+    rebalance_threshold: "203" # amount x 2 + 1
     src_chain: base
     dst_chain: dydx
     schedules:
@@ -305,7 +305,7 @@ routes:
     route_kind: instant
     amount: "101"
     token: USDC
-    rebalance_threshold: "203"
+    rebalance_threshold: "203" # amount x 2 + 1
     src_chain: polygon
     dst_chain: dydx
     schedules:
