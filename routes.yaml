@@ -38,8 +38,14 @@ routes:
     src_chain: dydx
     dst_chain: ethereum
     schedules:
-      - name: "every_30min"
-        cron: "0/30 * * * ? *"
+      - name: "workhours"
+        cron: "0 9,11,13,15 ? * MON-FRI *"
+        enabled: true
+      - name: "afterhours"
+        cron: "0 21,3 ? * MON-FRI *"
+        enabled: true
+      - name: "weekends"
+        cron: "0 9,21 ? * SAT,SUN *"
         enabled: true
     enabled: true
 
@@ -57,8 +63,14 @@ routes:
     src_chain: dydx
     dst_chain: polygon
     schedules:
-      - name: "every_30min"
-        cron: "2/30 * * * ? *"
+      - name: "workhours"
+        cron: "4 10,12,14,16 ? * MON-FRI *"
+        enabled: true
+      - name: "afterhours"
+        cron: "4 22,4 ? * MON-FRI *"
+        enabled: true
+      - name: "weekends"
+        cron: "4 10,22 ? * SAT,SUN *"
         enabled: true
     enabled: true
 
@@ -76,8 +88,14 @@ routes:
     src_chain: dydx
     dst_chain: arbitrum
     schedules:
-      - name: "every_30min"
-        cron: "4/30 * * * ? *"
+      - name: "workhours"
+        cron: "8 11,13,15,17 ? * MON-FRI *"
+        enabled: true
+      - name: "afterhours"
+        cron: "8 23,5 ? * MON-FRI *"
+        enabled: true
+      - name: "weekends"
+        cron: "8 11,23 ? * SAT,SUN *"
         enabled: true
     enabled: true
 
@@ -95,8 +113,14 @@ routes:
     src_chain: dydx
     dst_chain: base
     schedules:
-      - name: "every_30min"
-        cron: "6/30 * * * ? *"
+      - name: "workhours"
+        cron: "12 10,11,12,13,14,15,16,17 ? * MON-FRI *"
+        enabled: true
+      - name: "afterhours"
+        cron: "12 20,0,4,8 ? * MON-FRI *"
+        enabled: true
+      - name: "weekends"
+        cron: "12 2,8,14,20 ? * SAT,SUN *"
         enabled: true
     enabled: true
 
@@ -114,8 +138,14 @@ routes:
     src_chain: dydx
     dst_chain: solana
     schedules:
-      - name: "every_30min"
-        cron: "8/30 * * * ? *"
+      - name: "workhours"
+        cron: "16 11,16 ? * MON-FRI *"
+        enabled: true
+      - name: "afterhours"
+        cron: "16 0 ? * MON-FRI *"
+        enabled: true
+      - name: "weekends"
+        cron: "16 6 ? * SAT,SUN *"
         enabled: true
     enabled: true
 
@@ -138,8 +168,14 @@ routes:
     src_chain: ethereum
     dst_chain: dydx
     schedules:
-      - name: "every_30min"
-        cron: "10/30 * * * ? *"
+      - name: "workhours"
+        cron: "20 10,15 ? * MON-FRI *"
+        enabled: true
+      - name: "afterhours"
+        cron: "20 2 ? * MON-FRI *"
+        enabled: true
+      - name: "weekends"
+        cron: "20 20 ? * SAT,SUN *"
         enabled: true
     enabled: true
 
@@ -159,8 +195,14 @@ routes:
     src_chain: arbitrum
     dst_chain: dydx
     schedules:
-      - name: "every_30min"
-        cron: "12/30 * * * ? *"
+      - name: "workhours"
+        cron: "24 11,16 ? * MON-FRI *"
+        enabled: true
+      - name: "afterhours"
+        cron: "24 1 ? * MON-FRI *"
+        enabled: true
+      - name: "weekends"
+        cron: "24 19 ? * SAT,SUN *"
         enabled: true
     enabled: true
 
@@ -180,8 +222,14 @@ routes:
     src_chain: base
     dst_chain: dydx
     schedules:
-      - name: "every_30min"
-        cron: "14/30 * * * ? *"
+      - name: "workhours"
+        cron: "28 10,12,14,16 ? * MON-FRI *"
+        enabled: true
+      - name: "afterhours"
+        cron: "28 20,4 ? * MON-FRI *"
+        enabled: true
+      - name: "weekends"
+        cron: "28 9,21 ? * SAT,SUN *"
         enabled: true
     enabled: true
 
@@ -201,8 +249,14 @@ routes:
     src_chain: polygon
     dst_chain: dydx
     schedules:
-      - name: "every_30min"
-        cron: "16/30 * * * ? *"
+      - name: "workhours"
+        cron: "32 11,13,15,17 ? * MON-FRI *"
+        enabled: true
+      - name: "afterhours"
+        cron: "32 21,5 ? * MON-FRI *"
+        enabled: true
+      - name: "weekends"
+        cron: "32 11,23 ? * SAT,SUN *"
         enabled: true
     enabled: true
 
@@ -222,8 +276,14 @@ routes:
     src_chain: solana
     dst_chain: dydx
     schedules:
-      - name: "every_30min"
-        cron: "18/30 * * * ? *"
+      - name: "workhours"
+        cron: "36 12,17 ? * MON-FRI *"
+        enabled: true
+      - name: "afterhours"
+        cron: "36 23 ? * MON-FRI *"
+        enabled: true
+      - name: "weekends"
+        cron: "36 5 ? * SAT,SUN *"
         enabled: true
     enabled: true
 
@@ -246,8 +306,14 @@ routes:
     src_chain: ethereum
     dst_chain: dydx
     schedules:
-      - name: "every_30min"
-        cron: "20/30 * * * ? *"
+      - name: "workhours"
+        cron: "40 10,12,14,16 ? * MON-FRI *"
+        enabled: true
+      - name: "afterhours"
+        cron: "40 22,4 ? * MON-FRI *"
+        enabled: true
+      - name: "weekends"
+        cron: "40 8,20 ? * SAT,SUN *"
         enabled: true
     enabled: true
 
@@ -267,8 +333,14 @@ routes:
     src_chain: arbitrum
     dst_chain: dydx
     schedules:
-      - name: "every_30min"
-        cron: "22/30 * * * ? *"
+      - name: "workhours"
+        cron: "44 10,11,12,13,14,15,16,17 ? * MON-FRI *"
+        enabled: true
+      - name: "afterhours"
+        cron: "44 19,23,3,7 ? * MON-FRI *"
+        enabled: true
+      - name: "weekends"
+        cron: "44 3,9,15,21 ? * SAT,SUN *"
         enabled: true
     enabled: true
 
@@ -288,8 +360,14 @@ routes:
     src_chain: base
     dst_chain: dydx
     schedules:
-      - name: "every_30min"
-        cron: "24/30 * * * ? *"
+      - name: "workhours"
+        cron: "48 10,11,12,13,14,15,16,17 ? * MON-FRI *"
+        enabled: true
+      - name: "afterhours"
+        cron: "48 20,0,4,8 ? * MON-FRI *"
+        enabled: true
+      - name: "weekends"
+        cron: "48 4,10,16,22 ? * SAT,SUN *"
         enabled: true
     enabled: true
 
@@ -309,7 +387,13 @@ routes:
     src_chain: polygon
     dst_chain: dydx
     schedules:
-      - name: "every_30min"
-        cron: "26/30 * * * ? *"
+      - name: "workhours"
+        cron: "52 10,11,12,13,14,15,16,17 ? * MON-FRI *"
+        enabled: true
+      - name: "afterhours"
+        cron: "52 18,22,2,6 ? * MON-FRI *"
+        enabled: true
+      - name: "weekends"
+        cron: "52 5,11,17,23 ? * SAT,SUN *"
         enabled: true
     enabled: true
