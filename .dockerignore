@@ -33,6 +33,7 @@ README.md
 # Scripts (except the ones we need)
 scripts/
 !scripts/download-extension.js
+!scripts/lock-manager.sh
 
 # IDE
 .vscode/
