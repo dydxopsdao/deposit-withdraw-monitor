@@ -72,6 +72,8 @@ type ClickAnyOpts = {
   pollMs?: number;
   /** Stop after this many clicks (default: unlimited until timeout) */
   maxClicks?: number;
+  /** Optional hook to run before clicking a matched button. Return true if the hook handled the click. */
+  onBeforeClick?: (args: { page: Page; button: Locator; pattern: RegExp }) => Promise<boolean> | boolean;
 };
 
 export async function clickAnyButton(
@@ -84,6 +86,7 @@ export async function clickAnyButton(
     overallTimeoutMs = TEST_TIMEOUTS.ACTION,
     pollMs = TEST_TIMEOUTS.POLL,
     maxClicks = Number.POSITIVE_INFINITY,
+    onBeforeClick,
   } = opts;
 
   const deadline = Date.now() + overallTimeoutMs;
@@ -98,11 +101,31 @@ export async function clickAnyButton(
 
       logger.debug(`${contextLabel}: clicking "${re.source}"`);
       try {
+        let handled = false;
+        if (onBeforeClick) {
+          try {
+            const hookResult = await onBeforeClick({ page, button: btn, pattern: re });
+            handled = hookResult === true;
+          } catch (hookError: any) {
+            logger.debug(
+              `${contextLabel}: onBeforeClick hook failed for "${re.source}" (${hookError?.message ?? hookError})`
+            );
+            handled = false;
+          }
+        }
+
+        if (handled) {
+          clicks++;
+          clickedThisLoop = true;
+          await page.waitForTimeout(pollMs).catch(() => {});
+          continue;
+        }
+
         await btn.click();
         clicks++;
         clickedThisLoop = true;
         // Small gap for the next step (e.g. Next → Connect)
-        await page.waitForTimeout(TEST_TIMEOUTS.POLL).catch(() => {});
+        await page.waitForTimeout(pollMs).catch(() => {});
       } catch (e: any) {
         // Button may disappear due to instant navigation/close — ignore and continue
         logger.debug(`${contextLabel}: click failed for "${re.source}" (${e?.message ?? e})`);
