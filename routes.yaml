@@ -64,13 +64,13 @@ routes:
     dst_chain: polygon
     schedules:
       - name: "workhours"
-        cron: "5 10,12,14,16 ? * MON-FRI *"
+        cron: "4 10,12,14,16 ? * MON-FRI *"
         enabled: true
       - name: "afterhours"
-        cron: "5 22,4 ? * MON-FRI *"
+        cron: "4 22,4 ? * MON-FRI *"
         enabled: true
       - name: "weekends"
-        cron: "5 10,22 ? * SAT,SUN *"
+        cron: "4 10,22 ? * SAT,SUN *"
         enabled: true
     enabled: true
 
@@ -89,13 +89,13 @@ routes:
     dst_chain: arbitrum
     schedules:
       - name: "workhours"
-        cron: "10 11,13,15,17 ? * MON-FRI *"
+        cron: "8 11,13,15,17 ? * MON-FRI *"
         enabled: true
       - name: "afterhours"
-        cron: "10 23,5 ? * MON-FRI *"
+        cron: "8 23,5 ? * MON-FRI *"
         enabled: true
       - name: "weekends"
-        cron: "10 11,23 ? * SAT,SUN *"
+        cron: "8 11,23 ? * SAT,SUN *"
         enabled: true
     enabled: true
 
@@ -114,13 +114,13 @@ routes:
     dst_chain: base
     schedules:
       - name: "workhours"
-        cron: "15 10,11,12,13,14,15,16,17 ? * MON-FRI *"
+        cron: "12 10,11,12,13,14,15,16,17 ? * MON-FRI *"
         enabled: true
       - name: "afterhours"
-        cron: "15 20,0,4,8 ? * MON-FRI *"
+        cron: "12 20,0,4,8 ? * MON-FRI *"
         enabled: true
       - name: "weekends"
-        cron: "15 2,8,14,20 ? * SAT,SUN *"
+        cron: "12 2,8,14,20 ? * SAT,SUN *"
         enabled: true
     enabled: true
 
@@ -139,13 +139,13 @@ routes:
     dst_chain: solana
     schedules:
       - name: "workhours"
-        cron: "20 11,16 ? * MON-FRI *"
+        cron: "16 11,16 ? * MON-FRI *"
         enabled: true
       - name: "afterhours"
-        cron: "20 0 ? * MON-FRI *"
+        cron: "16 0 ? * MON-FRI *"
         enabled: true
       - name: "weekends"
-        cron: "20 6 ? * SAT,SUN *"
+        cron: "16 6 ? * SAT,SUN *"
         enabled: true
     enabled: true
 
@@ -169,13 +169,13 @@ routes:
     dst_chain: dydx
     schedules:
       - name: "workhours"
-        cron: "25 10,15 ? * MON-FRI *"
+        cron: "20 10,15 ? * MON-FRI *"
         enabled: true
       - name: "afterhours"
-        cron: "25 2 ? * MON-FRI *"
+        cron: "20 2 ? * MON-FRI *"
         enabled: true
       - name: "weekends"
-        cron: "25 20 ? * SAT,SUN *"
+        cron: "20 20 ? * SAT,SUN *"
         enabled: true
     enabled: true
 
@@ -196,13 +196,13 @@ routes:
     dst_chain: dydx
     schedules:
       - name: "workhours"
-        cron: "30 11,16 ? * MON-FRI *"
+        cron: "24 11,16 ? * MON-FRI *"
         enabled: true
       - name: "afterhours"
-        cron: "30 1 ? * MON-FRI *"
+        cron: "24 1 ? * MON-FRI *"
         enabled: true
       - name: "weekends"
-        cron: "30 19 ? * SAT,SUN *"
+        cron: "24 19 ? * SAT,SUN *"
         enabled: true
     enabled: true
 
@@ -223,13 +223,13 @@ routes:
     dst_chain: dydx
     schedules:
       - name: "workhours"
-        cron: "35 10,12,14,16 ? * MON-FRI *"
+        cron: "28 10,12,14,16 ? * MON-FRI *"
         enabled: true
       - name: "afterhours"
-        cron: "35 20,4 ? * MON-FRI *"
+        cron: "28 20,4 ? * MON-FRI *"
         enabled: true
       - name: "weekends"
-        cron: "35 9,21 ? * SAT,SUN *"
+        cron: "28 9,21 ? * SAT,SUN *"
         enabled: true
     enabled: true
 
@@ -250,13 +250,13 @@ routes:
     dst_chain: dydx
     schedules:
       - name: "workhours"
-        cron: "40 11,13,15,17 ? * MON-FRI *"
+        cron: "32 11,13,15,17 ? * MON-FRI *"
         enabled: true
       - name: "afterhours"
-        cron: "40 21,5 ? * MON-FRI *"
+        cron: "32 21,5 ? * MON-FRI *"
         enabled: true
       - name: "weekends"
-        cron: "40 11,23 ? * SAT,SUN *"
+        cron: "32 11,23 ? * SAT,SUN *"
         enabled: true
     enabled: true
 
@@ -277,13 +277,13 @@ routes:
     dst_chain: dydx
     schedules:
       - name: "workhours"
-        cron: "45 12,17 ? * MON-FRI *"
+        cron: "36 12,17 ? * MON-FRI *"
         enabled: true
       - name: "afterhours"
-        cron: "45 23 ? * MON-FRI *"
+        cron: "36 23 ? * MON-FRI *"
         enabled: true
       - name: "weekends"
-        cron: "45 5 ? * SAT,SUN *"
+        cron: "36 5 ? * SAT,SUN *"
         enabled: true
     enabled: true
 
@@ -307,13 +307,13 @@ routes:
     dst_chain: dydx
     schedules:
       - name: "workhours"
-        cron: "50 10,12,14,16 ? * MON-FRI *"
+        cron: "40 10,12,14,16 ? * MON-FRI *"
         enabled: true
       - name: "afterhours"
-        cron: "50 22,4 ? * MON-FRI *"
+        cron: "40 22,4 ? * MON-FRI *"
         enabled: true
       - name: "weekends"
-        cron: "50 8,20 ? * SAT,SUN *"
+        cron: "40 8,20 ? * SAT,SUN *"
         enabled: true
     enabled: true
 
@@ -334,13 +334,13 @@ routes:
     dst_chain: dydx
     schedules:
       - name: "workhours"
-        cron: "55 10,11,12,13,14,15,16,17 ? * MON-FRI *"
+        cron: "44 10,11,12,13,14,15,16,17 ? * MON-FRI *"
         enabled: true
       - name: "afterhours"
-        cron: "55 19,23,3,7 ? * MON-FRI *"
+        cron: "44 19,23,3,7 ? * MON-FRI *"
         enabled: true
       - name: "weekends"
-        cron: "55 3,9,15,21 ? * SAT,SUN *"
+        cron: "44 3,9,15,21 ? * SAT,SUN *"
         enabled: true
     enabled: true
 
@@ -361,13 +361,13 @@ routes:
     dst_chain: dydx
     schedules:
       - name: "workhours"
-        cron: "2 10,11,12,13,14,15,16,17 ? * MON-FRI *"
+        cron: "48 10,11,12,13,14,15,16,17 ? * MON-FRI *"
         enabled: true
       - name: "afterhours"
-        cron: "2 20,0,4,8 ? * MON-FRI *"
+        cron: "48 20,0,4,8 ? * MON-FRI *"
         enabled: true
       - name: "weekends"
-        cron: "2 4,10,16,22 ? * SAT,SUN *"
+        cron: "48 4,10,16,22 ? * SAT,SUN *"
         enabled: true
     enabled: true
 
@@ -388,12 +388,12 @@ routes:
     dst_chain: dydx
     schedules:
       - name: "workhours"
-        cron: "7 10,11,12,13,14,15,16,17 ? * MON-FRI *"
+        cron: "52 10,11,12,13,14,15,16,17 ? * MON-FRI *"
         enabled: true
       - name: "afterhours"
-        cron: "7 18,22,2,6 ? * MON-FRI *"
+        cron: "52 18,22,2,6 ? * MON-FRI *"
         enabled: true
       - name: "weekends"
-        cron: "7 5,11,17,23 ? * SAT,SUN *"
+        cron: "52 5,11,17,23 ? * SAT,SUN *"
         enabled: true
     enabled: true
