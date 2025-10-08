@@ -6,8 +6,6 @@
 #   - DYNAMODB_LOCKS_TABLE_NAME: DynamoDB table name
 #   - AWS_REGION: AWS region
 
-set -e
-
 LOCK_TIMEOUT_SECONDS=3600 # Lock expires after 1 hour (safety mechanism)
 TASK_ARN="${ECS_CONTAINER_METADATA_URI_V4}" # ECS task metadata for unique ID
 
@@ -23,7 +21,6 @@ acquire_lock() {
 
     # Try to acquire lock using conditional PutItem
     # Condition: lock doesn't exist OR lock is expired
-    set +e # Don't exit on error
     aws dynamodb put-item \
         --table-name "$DYNAMODB_LOCKS_TABLE_NAME" \
         --item "{
@@ -39,7 +36,6 @@ acquire_lock() {
         2>&1
 
     local result=$?
-    set -e
 
     if [ $result -eq 0 ]; then
         echo "Lock acquired successfully for route: $route_id"
@@ -57,7 +53,6 @@ release_lock() {
 
     echo "Releasing lock for route: $route_id"
 
-    set +e # Don't exit on error
     aws dynamodb delete-item \
         --table-name "$DYNAMODB_LOCKS_TABLE_NAME" \
         --key "{\"route_id\": {\"S\": \"$route_id\"}}" \
@@ -67,7 +62,6 @@ release_lock() {
         2>&1
 
     local result=$?
-    set -e
 
     if [ $result -eq 0 ]; then
         echo "Lock released successfully for route: $route_id"
