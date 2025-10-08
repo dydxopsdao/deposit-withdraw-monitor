@@ -48,8 +48,8 @@ exports.handler = async (event) => {
       const prefix = uri === '/' ? '' : uri.slice(1); // Remove leading slash
       
       // Parse pagination parameters from query string
-      const url = new URL(`https://example.com${request.uri}${request.querystring ? '?' + request.querystring : ''}`);
-      const page = Math.max(1, parseInt(url.searchParams.get('page') || '1')); // Ensure page >= 1
+      const url = new URL(`https://example.com$${request.uri}$${request.querystring ? '?' + request.querystring : ''}`);
+      const page = parseInt(url.searchParams.get('page') || '1');
       const pageSize = 50;
       
       // Use S3 native pagination instead of loading everything into memory
@@ -65,15 +65,8 @@ exports.handler = async (event) => {
       let currentPage = 1;
       
       // Navigate to the requested page using S3 pagination
-      // Skip intermediate pages efficiently by only requesting continuation tokens
       while (currentPage < page) {
-        const tempParams = { 
-          Bucket: bucketName,
-          Prefix: prefix,
-          Delimiter: '/',
-          MaxKeys: 1 // Minimal request - we only need the continuation token
-        };
-        
+        const tempParams = { ...params };
         if (continuationToken) {
           tempParams.ContinuationToken = continuationToken;
         }
@@ -82,19 +75,15 @@ exports.handler = async (event) => {
         const tempData = await s3Client.send(tempCommand);
         
         if (!tempData.NextContinuationToken) {
-          // No more pages available, break and use whatever page we can reach
+          // No more pages available
           break;
         }
         
         continuationToken = tempData.NextContinuationToken;
         currentPage++;
-        
-        // Clean up intermediate response data immediately
-        tempData.CommonPrefixes = null;
-        tempData.Contents = null;
       }
       
-      // Now fetch the actual page we want with full pageSize
+      // Now fetch the actual page we want
       if (continuationToken && currentPage === page) {
         params.ContinuationToken = continuationToken;
       }
