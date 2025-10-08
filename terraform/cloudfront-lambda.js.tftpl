@@ -52,11 +52,41 @@ exports.handler = async (event) => {
       const page = parseInt(url.searchParams.get('page') || '1');
       const pageSize = 50;
       
+      // Use S3 native pagination instead of loading everything into memory
       const params = {
         Bucket: bucketName,
         Prefix: prefix,
-        Delimiter: '/'
+        Delimiter: '/',
+        MaxKeys: pageSize
       };
+      
+      // For pages beyond the first, we need to paginate through S3
+      let continuationToken = null;
+      let currentPage = 1;
+      
+      // Navigate to the requested page using S3 pagination
+      while (currentPage < page) {
+        const tempParams = { ...params };
+        if (continuationToken) {
+          tempParams.ContinuationToken = continuationToken;
+        }
+        
+        const tempCommand = new ListObjectsV2Command(tempParams);
+        const tempData = await s3Client.send(tempCommand);
+        
+        if (!tempData.NextContinuationToken) {
+          // No more pages available
+          break;
+        }
+        
+        continuationToken = tempData.NextContinuationToken;
+        currentPage++;
+      }
+      
+      // Now fetch the actual page we want
+      if (continuationToken && currentPage === page) {
+        params.ContinuationToken = continuationToken;
+      }
       
       const command = new ListObjectsV2Command(params);
       const data = await s3Client.send(command);
@@ -94,63 +124,26 @@ exports.handler = async (event) => {
         htmlParts.push(`<li><a href="$${parentUrl}" class="directory">[BACK]</a></li>`);
       }
       
-      // Collect all items for pagination
-      let allItems = [];
+      // Process current page items directly without storing in memory
+      let itemCount = 0;
       
-      // Process subdirectories from S3 response
+      // Process subdirectories from current S3 page
       if (data.CommonPrefixes) {
-        // Check if we have timestamp directories to determine sorting approach
-        const timestampDirRegex = /^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}$/;
-        let hasTimestampDirs = false;
-        
-        // Scan directories to check for timestamp pattern
         for (const item of data.CommonPrefixes) {
           const folderName = item.Prefix.replace(prefix, '').replace('/', '');
-          if (timestampDirRegex.test(folderName)) {
-            hasTimestampDirs = true;
-            break;
+          
+          // Check if this looks like a timestamp directory (contains date/time pattern)
+          const timestampDirRegex = /^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}$/;
+          const isTimestampDir = timestampDirRegex.test(folderName);
+          
+          if (isTimestampDir) {
+            // For timestamp directories, link directly to index.html
+            htmlParts.push(`<li><a href="/$${item.Prefix}index.html" class="file">$${folderName}</a></li>`);
+          } else {
+            // For other directories, show as directory
+            htmlParts.push(`<li><a href="/$${item.Prefix}" class="directory">$${folderName}/</a></li>`);
           }
-        }
-        
-        // Process directories based on whether they need sorting
-        if (hasTimestampDirs) {
-          // For timestamp directories, we need to sort them
-          const timestampItems = [];
-          const regularItems = [];
-          
-          // Separate timestamp and regular directories
-          for (const item of data.CommonPrefixes) {
-            const folderName = item.Prefix.replace(prefix, '').replace('/', '');
-            const isTimestampDir = timestampDirRegex.test(folderName);
-            
-            if (isTimestampDir) {
-              timestampItems.push({ type: 'report', name: folderName, url: `/$${item.Prefix}index.html`, sortKey: folderName });
-            } else {
-              regularItems.push({ type: 'directory', name: `$${folderName}/`, url: `/$${item.Prefix}` });
-            }
-          }
-          
-          // Sort timestamp directories in reverse chronological order (newest first)
-          timestampItems.sort((a, b) => b.sortKey.localeCompare(a.sortKey));
-          
-          // Remove temporary sortKey and add to allItems
-          for (const item of timestampItems) {
-            delete item.sortKey;
-            allItems.push(item);
-          }
-          
-          // Add regular directories
-          allItems.push(...regularItems);
-          
-          // Clear temporary arrays
-          timestampItems.length = 0;
-          regularItems.length = 0;
-        } else {
-          // No timestamp directories, process directly
-          for (const item of data.CommonPrefixes) {
-            const folderName = item.Prefix.replace(prefix, '').replace('/', '');
-            allItems.push({ type: 'directory', name: `$${folderName}/`, url: `/$${item.Prefix}` });
-          }
+          itemCount++;
         }
         
         // Clean up S3 response data
@@ -158,13 +151,14 @@ exports.handler = async (event) => {
         delete data.CommonPrefixes;
       }
       
-      // Add files (look for index.html in subdirectories)
+      // Process files from current S3 page
       if (data.Contents) {
         for (const item of data.Contents) {
           if (item.Key.endsWith('index.html')) {
             const relativePath = item.Key.replace(prefix, '');
             const fileName = relativePath.split('/').pop();
-            allItems.push({ type: 'file', name: `[FILE] $${fileName}`, url: `/$${item.Key}` });
+            htmlParts.push(`<li><a href="/$${item.Key}" class="file">[FILE] $${fileName}</a></li>`);
+            itemCount++;
           }
         }
         // Clean up S3 contents data
@@ -172,86 +166,36 @@ exports.handler = async (event) => {
         delete data.Contents;
       }
       
-      // Pagination logic
-      const totalItems = allItems.length;
-      const totalPages = Math.ceil(totalItems / pageSize);
-      const showPagination = totalItems >= pageSize;
-      
-      // Calculate pagination bounds
-      const startIndex = (page - 1) * pageSize;
-      const endIndex = Math.min(startIndex + pageSize, totalItems);
-      const paginatedItems = allItems.slice(startIndex, endIndex);
-      
-      // Extract paginated items and free up the full items array
-      allItems = null;
+      // Determine if pagination controls are needed
+      const hasNextPage = data.NextContinuationToken;
+      const hasPrevPage = page > 1;
+      const showPagination = hasNextPage || hasPrevPage;
       
       // Add pagination info
       if (showPagination) {
-        htmlParts.push(`<p><strong>Showing $${startIndex + 1}-$${endIndex} of $${totalItems} items (Page $${page} of $${totalPages})</strong></p>`);
+        const startIndex = ((page - 1) * pageSize) + 1;
+        const endIndex = startIndex + itemCount - 1;
+        htmlParts.push(`<p><strong>Showing $${startIndex}-$${endIndex} items (Page $${page})</strong></p>`);
       }
       
-      // Render paginated items
-      for (const item of paginatedItems) {
-        const cssClass = item.type === 'directory' ? 'directory' : 'file';
-        const label = item.type === 'report' ? item.name : 
-                     item.type === 'directory' ? `$${item.name}` :
-                     item.name;
-        htmlParts.push(`<li><a href="$${item.url}" class="$${cssClass}">$${label}</a></li>`);
-      }
-      
-      // Add pagination controls
+      // Add pagination controls (simplified for S3 native pagination)
       if (showPagination) {
         htmlParts.push('</ul><div style="margin-top: 20px; text-align: center;">');
         
         const currentPath = request.uri;
         
         // Previous page
-        if (page > 1) {
+        if (hasPrevPage) {
           htmlParts.push(`<a href="$${currentPath}?page=$${page - 1}" style="margin: 0 10px; padding: 8px 12px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px;">Previous</a>`);
         } else {
           htmlParts.push(`<span style="margin: 0 10px; padding: 8px 12px; background-color: #ccc; color: #666; border-radius: 4px;">Previous</span>`);
         }
         
-        // Page numbers with first and last always shown
-        const renderPageButton = (pageNum, isActive = false) => {
-          if (isActive) {
-            return `<span style="margin: 0 5px; padding: 8px 12px; background-color: #28a745; color: white; border-radius: 4px; font-weight: bold;">$${pageNum}</span>`;
-          } else {
-            return `<a href="$${currentPath}?page=$${pageNum}" style="margin: 0 5px; padding: 8px 12px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px;">$${pageNum}</a>`;
-          }
-        };
-        
-        // Always show first page
-        if (totalPages > 1) {
-          htmlParts.push(renderPageButton(1, page === 1));
-        }
-        
-        // Show ellipsis if needed before current page range
-        const startPage = Math.max(2, page - 2);
-        if (startPage > 2) {
-          htmlParts.push(`<span style="margin: 0 5px; padding: 8px 12px; color: #666;">...</span>`);
-        }
-        
-        // Show current page range (excluding first and last page)
-        const endPage = Math.min(totalPages - 1, page + 2);
-        for (let p = startPage; p <= endPage; p++) {
-          if (p > 1 && p < totalPages) {
-            htmlParts.push(renderPageButton(p, page === p));
-          }
-        }
-        
-        // Show ellipsis if needed after current page range
-        if (endPage < totalPages - 1) {
-          htmlParts.push(`<span style="margin: 0 5px; padding: 8px 12px; color: #666;">...</span>`);
-        }
-        
-        // Always show last page (if more than 1 page total)
-        if (totalPages > 1) {
-          htmlParts.push(renderPageButton(totalPages, page === totalPages));
-        }
+        // Current page indicator
+        htmlParts.push(`<span style="margin: 0 10px; padding: 8px 12px; background-color: #28a745; color: white; border-radius: 4px; font-weight: bold;">$${page}</span>`);
         
         // Next page
-        if (page < totalPages) {
+        if (hasNextPage) {
           htmlParts.push(`<a href="$${currentPath}?page=$${page + 1}" style="margin: 0 10px; padding: 8px 12px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px;">Next</a>`);
         } else {
           htmlParts.push(`<span style="margin: 0 10px; padding: 8px 12px; background-color: #ccc; color: #666; border-radius: 4px;">Next</span>`);
