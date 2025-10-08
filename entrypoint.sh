@@ -14,6 +14,10 @@ fi
 export LOCK_ACQUIRED=true
 trap cleanup_lock EXIT
 
+# debug
+trap 'echo "Received SIGTERM"; cleanup_lock; exit 143' TERM
+trap 'echo "Received SIGINT"; cleanup_lock; exit 130' INT
+
 # Start Xvfb in the background
 echo "Starting Xvfb..."
 Xvfb :99 -screen 0 1280x720x24 -ac +extension GLX +render -noreset &
