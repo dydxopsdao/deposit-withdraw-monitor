@@ -96,6 +96,7 @@ exports.handler = async (event) => {
       if (data.CommonPrefixes) {
         // Convert to array and sort
         let directories = Array.from(data.CommonPrefixes);
+        delete data.CommonPrefixes;  // save memory
         
         // Check if we have timestamp directories and sort them in reverse order
         const hasTimestampDirs = directories.some(item => {
@@ -137,6 +138,7 @@ exports.handler = async (event) => {
             allItems.push({ type: 'file', name: `[FILE] $${fileName}`, url: `/$${item.Key}` });
           }
         });
+        delete data.Contents;  // save memory
       }
       
       // Pagination logic
