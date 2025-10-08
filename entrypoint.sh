@@ -46,7 +46,7 @@ echo "Tests completed with exit code: $TEST_EXIT_CODE"
 S3_PATH=$AWS_REPORTS_BUCKET_NAME/$ROUTE_ID/$UPLOAD_TIMESTAMP/
 echo "Uploading report to S3: $S3_PATH"
 aws s3 cp playwright-report/ s3://$S3_PATH --recursive
-echo "Report uploaded to: $S3_PATH"
+echo "Done."
 
 # Exit with the same code as the tests
 exit $TEST_EXIT_CODE
