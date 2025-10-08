@@ -16,4 +16,4 @@ export const accountMenuButtonLoose: Selector = (page) =>
   page.getByRole("button", { name: DYDX_ADDRESS_RE });
 
 export const signInWithWalletBtn: Selector = (page) =>
-  page.getByRole("button", { name: /Sign in with Wallet/i });
+  page.getByRole("button", { name: /MetaMask|Phantom/i });

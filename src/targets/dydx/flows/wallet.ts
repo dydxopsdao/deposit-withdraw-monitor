@@ -33,8 +33,6 @@ export async function connectWallet(
       await openWalletPicker(page);
     }
     await signInWithWalletBtn(page).click();
-    logger.info("Choose provider");
-    await chooseProvider(page, chooseProviderBtn(page, wallet), wallet);
     logger.info("Handling wallet popup");
     await handleWalletPopup(context, wallet);
 
