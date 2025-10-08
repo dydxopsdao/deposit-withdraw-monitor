@@ -12,13 +12,7 @@ fi
 
 # Mark that we acquired the lock and ensure it's released on exit
 export LOCK_ACQUIRED=true
-
-# Trap all known signals to ensure cleanup_lock is called before exit.
-# List of common signals: HUP INT QUIT ILL ABRT FPE KILL SEGV PIPE ALRM TERM USR1 USR2 CHLD CONT STOP TSTP TTIN TTOU
-# Note: KILL and STOP cannot be trapped.
-for sig in HUP INT QUIT ILL ABRT FPE SEGV PIPE ALRM TERM USR1 USR2 CHLD TSTP TTIN TTOU; do
-  trap "echo \"Received SIG$sig\"; cleanup_lock; exit" "$sig"
-done
+trap cleanup_lock EXIT
 
 # Start Xvfb in the background
 echo "Starting Xvfb..."
