@@ -5,7 +5,7 @@ export const connectWalletBtn: Selector = (page) =>
   page.getByRole("button", { name: /sign in/i });
 
 export const walletPickerDialog: Selector = (page) =>
-  page.getByRole("dialog", { name: /Sign in with Wallet/i });
+  page.getByRole("dialog", { name: /Sign in/i });
 
 export const accountMenuButton: Selector = (page) =>
   page.getByRole("button", {
@@ -17,3 +17,6 @@ export const accountMenuButtonLoose: Selector = (page) =>
 
 export const signInWithWalletBtn: Selector = (page) =>
   page.getByRole("button", { name: /MetaMask|Phantom/i });
+
+export const viewMoreWalletsBtn: Selector = (page) =>
+  page.getByRole("button", { name: /View More Wallets/i });
