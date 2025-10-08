@@ -32,7 +32,6 @@ export async function connectWallet(
     } else {
       await openWalletPicker(page);
     }
-    await page.pause();
     logger.debug(wallet);
     if (wallet == "metamask") {
       await signInWithWalletBtn(page).click();
