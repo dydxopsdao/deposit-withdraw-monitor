@@ -47,12 +47,12 @@ exports.handler = async (event) => {
       const bucketName = '${BUCKET_NAME}';
       const prefix = uri === '/' ? '' : uri.slice(1); // Remove leading slash
       
-      // Parse pagination parameters from query string
+      // Parse continuation token from query string (no page numbers needed)
       const url = new URL(`https://example.com$${request.uri}$${request.querystring ? '?' + request.querystring : ''}`);
-      const page = parseInt(url.searchParams.get('page') || '1');
+      const continuationToken = url.searchParams.get('token');
       const pageSize = 50;
       
-      // Use S3 native pagination instead of loading everything into memory
+      // Use S3 native pagination with continuation token
       const params = {
         Bucket: bucketName,
         Prefix: prefix,
@@ -60,31 +60,8 @@ exports.handler = async (event) => {
         MaxKeys: pageSize
       };
       
-      // For pages beyond the first, we need to paginate through S3
-      let continuationToken = null;
-      let currentPage = 1;
-      
-      // Navigate to the requested page using S3 pagination
-      while (currentPage < page) {
-        const tempParams = { ...params };
-        if (continuationToken) {
-          tempParams.ContinuationToken = continuationToken;
-        }
-        
-        const tempCommand = new ListObjectsV2Command(tempParams);
-        const tempData = await s3Client.send(tempCommand);
-        
-        if (!tempData.NextContinuationToken) {
-          // No more pages available
-          break;
-        }
-        
-        continuationToken = tempData.NextContinuationToken;
-        currentPage++;
-      }
-      
-      // Now fetch the actual page we want
-      if (continuationToken && currentPage === page) {
+      // Add continuation token if provided
+      if (continuationToken) {
         params.ContinuationToken = continuationToken;
       }
       
@@ -166,39 +143,31 @@ exports.handler = async (event) => {
         delete data.Contents;
       }
       
-      // Determine if pagination controls are needed
+      // Determine if navigation controls are needed
       const hasNextPage = data.NextContinuationToken;
-      const hasPrevPage = page > 1;
-      const showPagination = hasNextPage || hasPrevPage;
+      const isFirstPage = !continuationToken;
+      const showNavigation = hasNextPage || !isFirstPage;
       
-      // Add pagination info
-      if (showPagination) {
-        const startIndex = ((page - 1) * pageSize) + 1;
-        const endIndex = startIndex + itemCount - 1;
-        htmlParts.push(`<p><strong>Showing $${startIndex}-$${endIndex} items (Page $${page})</strong></p>`);
+      // Add simple navigation info
+      if (showNavigation && itemCount > 0) {
+        htmlParts.push(`<p><strong>Showing $${itemCount} items</strong></p>`);
       }
       
-      // Add pagination controls (simplified for S3 native pagination)
-      if (showPagination) {
+      // Add minimal navigation controls using continuation tokens
+      if (showNavigation) {
         htmlParts.push('</ul><div style="margin-top: 20px; text-align: center;">');
         
         const currentPath = request.uri;
         
-        // Previous page
-        if (hasPrevPage) {
-          htmlParts.push(`<a href="$${currentPath}?page=$${page - 1}" style="margin: 0 10px; padding: 8px 12px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px;">Previous</a>`);
-        } else {
-          htmlParts.push(`<span style="margin: 0 10px; padding: 8px 12px; background-color: #ccc; color: #666; border-radius: 4px;">Previous</span>`);
+        // Start over button (if not on first page)
+        if (!isFirstPage) {
+          htmlParts.push(`<a href="$${currentPath}" style="margin: 0 10px; padding: 8px 12px; background-color: #6c757d; color: white; text-decoration: none; border-radius: 4px;">← Start Over</a>`);
         }
         
-        // Current page indicator
-        htmlParts.push(`<span style="margin: 0 10px; padding: 8px 12px; background-color: #28a745; color: white; border-radius: 4px; font-weight: bold;">$${page}</span>`);
-        
-        // Next page
+        // Next button (if more items available)
         if (hasNextPage) {
-          htmlParts.push(`<a href="$${currentPath}?page=$${page + 1}" style="margin: 0 10px; padding: 8px 12px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px;">Next</a>`);
-        } else {
-          htmlParts.push(`<span style="margin: 0 10px; padding: 8px 12px; background-color: #ccc; color: #666; border-radius: 4px;">Next</span>`);
+          const nextToken = encodeURIComponent(data.NextContinuationToken);
+          htmlParts.push(`<a href="$${currentPath}?token=$${nextToken}" style="margin: 0 10px; padding: 8px 12px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px;">Next →</a>`);
         }
         
         htmlParts.push(`</div><ul style="list-style: none;">`); // Reopen ul for consistency
