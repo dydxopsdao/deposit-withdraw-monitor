@@ -73,5 +73,5 @@ variable "report_service_password" {
 variable "task_timeout_seconds" {
   description = "Timeout in seconds for ECS task execution (used in entrypoint.sh)"
   type        = number
-  default     = 2400 # 40 minutes
+  default     = 2700 # 45 minutes
 }
