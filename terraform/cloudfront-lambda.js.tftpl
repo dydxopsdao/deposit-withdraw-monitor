@@ -50,7 +50,7 @@ exports.handler = async (event) => {
       // Parse continuation token from query string (no page numbers needed)
       const url = new URL(`https://example.com$${request.uri}$${request.querystring ? '?' + request.querystring : ''}`);
       const continuationToken = url.searchParams.get('token');
-      const pageSize = 50;
+      const pageSize = 100;
       
       // Use S3 native pagination with continuation token
       const params = {
