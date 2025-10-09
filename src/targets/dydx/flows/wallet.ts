@@ -5,9 +5,19 @@ import { WalletType, isVisible } from "../../../utils";
 import { retry, RetryError } from "../../../utils/retry";
 import { handleMetamaskPopup } from "../../wallets/metamask/flows";
 import { handlePhantomPopup } from "../../wallets/phantom/flows";
-import { accountMenuButton, accountMenuButtonLoose, connectWalletBtn, signInWithWalletBtn, viewMoreWalletsBtn, walletPickerDialog } from "../selectors/header";
+import {
+  accountMenuButton,
+  accountMenuButtonLoose,
+  connectWalletBtn,
+  signInWithWalletBtn,
+  viewMoreWalletsBtn,
+  walletPickerDialog,
+} from "../selectors/header";
 import { chooseProviderBtn, sendRequestBtn } from "../selectors/wallet";
 import { fundsDialog } from "../selectors/funds-dialog";
+
+const METAMASK_PENDING_REQUEST_TEXT = /request already pending/i;
+const METAMASK_CONNECTION_ERROR_TEXT = /couldn'?t connect to metamask/i;
 
 export async function connectWallet(
   page: Page,
@@ -26,15 +36,14 @@ export async function connectWallet(
     if (attemptNo > 1) {
       logger.info(`Retrying wallet connect (attempt ${attemptNo}/${retries + 1})`, { wallet });
     }
-
     if (await isPickerOpen(page)) {
       logger.info("Wallet picker already open; reusing existing modal");
     } else {
       await openWalletPicker(page);
     }
-    logger.debug(wallet);
     if (wallet == "metamask") {
       await signInWithWalletBtn(page).click();
+      await handlePendingWalletError(page, context, wallet);
     } else {
       await viewMoreWalletsBtn(page).click();
       await chooseProvider(page, chooseProviderBtn(page, wallet), wallet);
@@ -145,6 +154,36 @@ async function assertWalletConnected(page: Page, wallet: WalletType): Promise<vo
       throw err;
     }
   }
+}
+
+async function handlePendingWalletError(
+  page: Page,
+  context: BrowserContext,
+  wallet: WalletType
+): Promise<void> {
+  if (wallet !== "metamask") return;
+
+  const pendingRequest = page.getByText(METAMASK_PENDING_REQUEST_TEXT);
+  const connectionError = page.getByText(METAMASK_CONNECTION_ERROR_TEXT);
+
+  const visibleIndicators: Locator[] = [];
+  if (await isVisible(pendingRequest, { timeout: TEST_TIMEOUTS.DELAY })) {
+    visibleIndicators.push(pendingRequest);
+  }
+  if (await isVisible(connectionError, { timeout: TEST_TIMEOUTS.DELAY })) {
+    visibleIndicators.push(connectionError);
+  }
+
+  if (!visibleIndicators.length) return;
+
+  logger.info("Detected MetaMask pending request on connect modal; opening wallet popup");
+  await handleMetamaskPopup(context);
+
+  await Promise.all(
+    visibleIndicators.map((locator) =>
+      locator.waitFor({ state: "hidden", timeout: TEST_TIMEOUTS.ACTION }).catch(() => {})
+    )
+  );
 }
 
 async function chooseProvider(page: Page, provider: Locator, name: string) {
