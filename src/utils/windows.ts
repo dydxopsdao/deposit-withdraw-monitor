@@ -83,3 +83,29 @@ export async function findPageWithUrl(
   logger.error(`❌ No page found matching pattern after ${maxRetries} retries`);
   return null;
 }
+
+/**
+ * Closes every page in the context except the designated primary page.
+ * Defaults to preserving the first page returned by Playwright when no primary is provided.
+ */
+export async function closeNonPrimaryTabs(
+  context: BrowserContext,
+  primaryPage?: Page
+): Promise<void> {
+  const pages = context.pages();
+  if (!pages.length) return;
+
+  const keep = primaryPage ?? pages[0];
+  if (!keep) return;
+
+  for (const candidate of pages) {
+    if (candidate === keep) continue;
+    const url = safeUrl(candidate);
+    logger.info(`Closing non-primary tab: ${url}`);
+    try {
+      await candidate.close();
+    } catch (err) {
+      logger.warning(`Failed to close tab (${url}): ${(err as Error)?.message ?? err}`);
+    }
+  }
+}

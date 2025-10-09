@@ -1,7 +1,7 @@
 import { expect, type BrowserContext, type Locator, type Page } from "@playwright/test";
 import { TEST_TIMEOUTS } from "../../../config/timeouts";
 import { logger } from "../../../logger";
-import { WalletType, isVisible } from "../../../utils";
+import { WalletType, isVisible, closeNonPrimaryTabs } from "../../../utils";
 import { retry, RetryError } from "../../../utils/retry";
 import { handleMetamaskPopup } from "../../wallets/metamask/flows";
 import { handlePhantomPopup } from "../../wallets/phantom/flows";
@@ -28,6 +28,7 @@ export async function connectWallet(
   const { retries = 2 } = opts;
   logger.step(`Connecting wallet: ${wallet}`);
   const attemptConnect = async (attemptNo: number) => {
+    await closeNonPrimaryTabs(context, page);
     if (await walletAppearsConnected(page)) {
       logger.info("Wallet already connected; skipping connect flow");
       return page;

@@ -2,7 +2,7 @@
 import { test } from '@playwright/test';
 import fs from 'fs';
 import { USER_DATA_DIR } from '../config/constants';
-import { type Route } from '../utils';
+import { type Route, closeNonPrimaryTabs } from '../utils';
 import {
   launchContextWithExtension as launchMetamaskContext,
   setupWallet as setupMetamaskWallet,
@@ -68,8 +68,9 @@ export const walletContextTest = test.extend<{
   },
 
   page: async ({ context }, use) => {
-    // Reuse the first tab if present; otherwise open a new one.
-    const page = context.pages()[0] ?? (await context.newPage());
+    const [existingPrimary] = context.pages();
+    const page = existingPrimary ?? (await context.newPage());
+    await closeNonPrimaryTabs(context, page);
     await use(page);
   },
 });

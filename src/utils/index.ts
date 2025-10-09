@@ -7,4 +7,4 @@ export { loadSecretsFromAWS } from "./secrets";
 
 export { isVisible, clickAnyButton, preferSecondCandidate, clickWithFallback } from "./ui-helper";
 
-export { findPageWithUrl } from "./windows";
+export { findPageWithUrl, closeNonPrimaryTabs } from "./windows";

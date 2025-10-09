@@ -229,7 +229,7 @@ export async function handleMetamaskPopup(context: BrowserContext) {
       [/^Unlock$/i, /^Next$/, /^Connect$/, /^Approve$/, /^Confirm$/],
       "MetaMask connect flow",
       {
-        overallTimeoutMs: 10000,
+        overallTimeoutMs: 15000,
         pollMs: 150,
         maxClicks: 10,
         onBeforeClick: async ({ page, pattern, button }) => {
@@ -243,7 +243,9 @@ export async function handleMetamaskPopup(context: BrowserContext) {
           try {
             const passwordField = page.locator(s.unlock.pw);
             await passwordField.waitFor({ state: "visible", timeout: TEST_TIMEOUTS.ELEMENT });
+            logger.info("MetaMask unlock password field found");
             await passwordField.fill(WALLET_PASSWORD);
+            logger.info("MetaMask unlock password field filled");
           } catch (err: any) {
             logger.warning(
               `MetaMask unlock password entry failed: ${err?.message ?? err}`
