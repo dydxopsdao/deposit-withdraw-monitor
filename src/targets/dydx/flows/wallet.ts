@@ -43,6 +43,12 @@ export async function connectWallet(
       await openWalletPicker(page);
     }
     if (wallet == "metamask") {
+      try {
+        logger.info("Handling MetaMask popup incase it is open");
+        await handleMetamaskPopup(context);
+      } catch (error) {
+        
+      }
       await signInWithWalletBtn(page).click();
       await handlePendingWalletError(page, context, wallet);
     } else {
