@@ -7,6 +7,7 @@ export type RoleSel = { role: Role; name?: string | RegExp; exact?: boolean };
 export const metamaskSelectors = {
   // URLs that MM uses
   urls: {
+    extensionPage: /chrome-extension:\/\/[^/]+\/(?:home|notification)\.html(?:[?#].*)?$/i,
     onboarding: /chrome-extension:\/\/.*\/home\.html#onboarding\/welcome/,
     unlock: /chrome-extension:\/\/[^/]+\/home\.html#(?:[^?#/]+\/)*unlock(?:[?#].*)?/i,
     notification:   /chrome-extension:\/\/[^/]+\/notification\.html(?:\?.*)?(?:#.*)?$/i,

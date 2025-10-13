@@ -135,10 +135,7 @@ const redactSensitive = (text: string): string => {
   return text.replace(new RegExp(escapeRegExp(WALLET_PASSWORD), "g"), "[REDACTED]");
 };
 
-const isUnlockOrNotificationPage = (page: Page): boolean => {
-  const url = page.url();
-  return s.urls.unlock.test(url) || s.urls.notification.test(url);
-};
+const isExtensionPage = (page: Page): boolean => s.urls.extensionPage.test(page.url());
 
 /**
  * Scans the browser context for an existing MetaMask page that needs unlocking.
@@ -147,7 +144,7 @@ const isUnlockOrNotificationPage = (page: Page): boolean => {
  */
 async function findExistingUnlockPage(context: BrowserContext): Promise<Page | undefined> {
   for (const page of context.pages()) {
-    if (isUnlockOrNotificationPage(page)) {
+    if (isExtensionPage(page)) {
       return page;
     }
   }
@@ -170,7 +167,7 @@ export async function conditionallyUnlockMetamask(context: BrowserContext) {
     try {
       // Wait for either the unlock or notification page to be created
       unlockPage = await context.waitForEvent('page', {
-        predicate: isUnlockOrNotificationPage,
+        predicate: isExtensionPage,
         timeout: TEST_TIMEOUTS.POPUP_TIMEOUT,
       });
       logger.info(`MetaMask page appeared: ${unlockPage.url()}`);
