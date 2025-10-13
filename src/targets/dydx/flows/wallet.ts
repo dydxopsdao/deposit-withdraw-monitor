@@ -42,18 +42,21 @@ export async function connectWallet(
     } else {
       await openWalletPicker(page);
     }
-    if (wallet == "metamask") {
+    if (wallet === "metamask") {
       try {
         logger.info("Handling MetaMask popup incase it is open");
         await handleMetamaskPopup(context);
       } catch (error) {
         
       }
-      await signInWithWalletBtn(page).click();
+    }
+
+    const walletButton = signInWithWalletBtn(page, wallet);
+    await isVisible(walletButton, { timeout: TEST_TIMEOUTS.ELEMENT });
+    await walletButton.click();
+
+    if (wallet === "metamask") {
       await handlePendingWalletError(page, context, wallet);
-    } else {
-      await viewMoreWalletsBtn(page).click();
-      await chooseProvider(page, chooseProviderBtn(page, wallet), wallet);
     }
     logger.info("Handling wallet popup");
     await handleWalletPopup(context, wallet);

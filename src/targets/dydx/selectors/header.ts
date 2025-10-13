@@ -1,4 +1,5 @@
 import type { Selector } from "../types";
+import type { WalletType } from "../../../utils";
 import { DYDX_ADDRESS_RE } from "./constants";
 
 export const connectWalletBtn: Selector = (page) =>
@@ -15,8 +16,16 @@ export const accountMenuButton: Selector = (page) =>
 export const accountMenuButtonLoose: Selector = (page) =>
   page.getByRole("button", { name: DYDX_ADDRESS_RE });
 
-export const signInWithWalletBtn: Selector = (page) =>
-  page.getByRole("button", { name: /MetaMask|Phantom/i });
+export const signInWithWalletBtn: Selector<[WalletType]> = (page, wallet) => {
+  const dialog = walletPickerDialog(page);
+  if (wallet === "metamask") {
+    return dialog.getByRole("button", { name: /MetaMask/i });
+  }
+  if (wallet === "phantom") {
+    return dialog.getByRole("button", { name: /Phantom(\s*\(Solana\))?/i });
+  }
+  throw new Error(`Unsupported wallet: ${wallet}`);
+};
 
 export const viewMoreWalletsBtn: Selector = (page) =>
   page.getByRole("button", { name: /View More Wallets/i });
