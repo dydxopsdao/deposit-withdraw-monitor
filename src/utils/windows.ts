@@ -92,6 +92,7 @@ export async function closeNonPrimaryTabs(
   context: BrowserContext,
   primaryPage?: Page
 ): Promise<void> {
+  await new Promise(resolve => setTimeout(resolve, 2500));
   const pages = context.pages();
   if (!pages.length) return;
 

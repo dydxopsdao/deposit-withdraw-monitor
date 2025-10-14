@@ -29,6 +29,7 @@ export async function connectWallet(
   logger.step(`Connecting wallet: ${wallet}`);
   const attemptConnect = async (attemptNo: number) => {
     await closeNonPrimaryTabs(context, page);
+    
     if (await walletAppearsConnected(page)) {
       logger.info("Wallet already connected; skipping connect flow");
       return page;
@@ -53,8 +54,10 @@ export async function connectWallet(
 
     const walletButton = signInWithWalletBtn(page, wallet);
     await isVisible(walletButton, { timeout: TEST_TIMEOUTS.ELEMENT });
-    await walletButton.click();
-
+    
+    await walletButton.click({ force: true });
+    logger.info("Clicked wallet button");
+    
     if (wallet === "metamask") {
       await handlePendingWalletError(page, context, wallet);
     }

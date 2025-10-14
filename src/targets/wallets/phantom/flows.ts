@@ -139,7 +139,7 @@ export async function unlockPhantomWallet(
 export async function handlePhantomPopup(context: BrowserContext) {
   logger.info("Waiting for Phantom popup…");
   const ph = await findPageWithUrl(context, s.urls.notification);
-
+  
   if (!ph) {
     logger.warning("Phantom popup did not appear; assuming connected or silent approval");
     return;
@@ -158,7 +158,7 @@ export async function handlePhantomPopup(context: BrowserContext) {
     }
 
     await ph.close().catch(() => {});
-    logger.info("Phantom popup handled");
+    logger.info("Phantom popup handled: successfull clicked");
   } catch (e: any) {
     logger.warning(`Phantom popup handling had issues: ${e?.message ?? e}`);
     try { await ph.close(); } catch {}
