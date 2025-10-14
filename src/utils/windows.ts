@@ -30,7 +30,7 @@ export async function findPageWithUrl(
   urlPattern: string | RegExp,
   maxRetries = 10,
   retryDelayMs = t.DELAY,
-  waitForState: LoadState = "domcontentloaded",
+  waitForState: LoadState = "load",
 ): Promise<Page | null> {
   const rx = toRegex(urlPattern);
   logger.debug(`🔎 findPageWithUrl → pattern: ${rx}, retries: ${maxRetries}, delay: ${retryDelayMs}ms`);

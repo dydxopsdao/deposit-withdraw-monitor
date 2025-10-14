@@ -29,7 +29,6 @@ export async function connectWallet(
   logger.step(`Connecting wallet: ${wallet}`);
   const attemptConnect = async (attemptNo: number) => {
     await closeNonPrimaryTabs(context, page);
-    
     if (await walletAppearsConnected(page)) {
       logger.info("Wallet already connected; skipping connect flow");
       return page;
@@ -62,7 +61,7 @@ export async function connectWallet(
       await handlePendingWalletError(page, context, wallet);
     }
     logger.info("Handling wallet popup");
-    await handleWalletPopup(context, wallet);
+    await handleWalletPopup(context, wallet, 30);
 
     logger.info("Sending request");
     await sendRequest(page, sendRequestBtn(page));
@@ -123,9 +122,9 @@ export async function openWalletPicker(page: Page, retries = 2) {
   throw new Error("Wallet picker did not appear after clicking Connect wallet.");
 }
 
-export async function handleWalletPopup(context: BrowserContext, wallet: WalletType) {
+export async function handleWalletPopup(context: BrowserContext, wallet: WalletType, retries: number = 30) {
   if (wallet === "metamask") {
-    await handleMetamaskPopup(context);
+    await handleMetamaskPopup(context, retries);
     logger.info("MetaMask wallet popup handled");
   } else {
     await handlePhantomPopup(context);
