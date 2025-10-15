@@ -7,6 +7,9 @@ const envFile = process.env.CI ? ".env" : ".env.local";
 dotenv.config({ path: envFile });
 logger.info(`> Loaded environment from ${envFile}`);
 
+// This is so that playwright can see the phantom exstension when in "sidebar" mode
+process.env.PW_CHROMIUM_ATTACH_TO_OTHER = "1";
+
 /**
  * Read environment variables from file.
  * https://github.com/motdotla/dotenv

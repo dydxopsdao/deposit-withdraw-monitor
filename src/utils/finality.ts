@@ -108,7 +108,7 @@ export async function waitForFinality(
   await expect(dlg).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
 
   try {
-    await expect(inProgress).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
+    await expect(inProgress).toBeVisible({ timeout: TEST_TIMEOUTS.PAGE_LOAD });
   } catch (err) {
     const completion = await collectCompletion();
     if (completion) return completion;

@@ -207,12 +207,12 @@ export async function conditionallyUnlockMetamask(context: BrowserContext) {
  * @param context Browser context that emits the popup window.
  * @returns Promise that resolves once the popup has been actioned.
  */
-export async function handleMetamaskPopup(context: BrowserContext) {
+export async function handleMetamaskPopup(context: BrowserContext, retries: number = 30) {
   logger.info("Waiting for MetaMask popup…");
   // TODO: Break out specific popup steps for clearer logging and easier reuse.
   // TODO: Add a maximum total wait with a helpful error when popups never appear.
 
-  const mm = await findPageWithUrl(context, s.urls.notification);
+  const mm = await findPageWithUrl(context, s.urls.notification, retries);
   if (!mm) {
     logger.warning("MetaMask popup did not appear; assuming connected or silent approval");
     return;
@@ -226,7 +226,7 @@ export async function handleMetamaskPopup(context: BrowserContext) {
       [/^Unlock$/i, /^Next$/, /^Connect$/, /^Approve$/, /^Confirm$/],
       "MetaMask connect flow",
       {
-        overallTimeoutMs: 15000,
+        overallTimeoutMs: 25000,
         pollMs: 150,
         maxClicks: 10,
         onBeforeClick: async ({ page, pattern, button }) => {
