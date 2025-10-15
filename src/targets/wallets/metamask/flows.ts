@@ -8,6 +8,8 @@ import { logger } from "../../../logger";
 import { TEST_TIMEOUTS } from "../../../config/timeouts";
 import fs from "fs";
 
+let warnedMissingWalletPassword = false;
+
 /**
  * Launches a persistent Chromium context with the MetaMask extension loaded.
  * @param userDataDir Directory where extension state should persist between runs.
@@ -200,6 +202,39 @@ export async function conditionallyUnlockMetamask(context: BrowserContext) {
   }
 }
 
+async function attemptMetamaskUnlock(page: Page): Promise<boolean> {
+  if (!WALLET_PASSWORD) {
+    if (!warnedMissingWalletPassword) {
+      logger.warning("WALLET_PASSWORD not set; cannot auto-unlock MetaMask prompt");
+      warnedMissingWalletPassword = true;
+    }
+    return false;
+  }
+
+  const passwordField = page.locator(s.unlock.pw);
+  const submitButton = page.locator(s.unlock.pwSubmit);
+
+  try {
+    await passwordField.waitFor({ state: "visible", timeout: TEST_TIMEOUTS.ELEMENT });
+  } catch (err: any) {
+    logger.debug(`MetaMask unlock password field not visible: ${err?.message ?? err}`);
+    return false;
+  }
+
+  try {
+    logger.info("MetaMask unlock prompt detected; filling password");
+    await passwordField.fill(WALLET_PASSWORD);
+    await submitButton.waitFor({ state: "visible", timeout: TEST_TIMEOUTS.ELEMENT }).catch(() => {});
+    await submitButton.click({ timeout: TEST_TIMEOUTS.DEFAULT });
+    await page.waitForLoadState("domcontentloaded").catch(() => {});
+    logger.info("MetaMask unlock submitted");
+    return true;
+  } catch (err: any) {
+    logger.warning(`MetaMask unlock submission failed: ${err?.message ?? err}`);
+    return false;
+  }
+}
+
 /**
  * MetaMask connection popup flows vary slightly by version/permissions.
  * We try a short sequence of common buttons: Next → Connect → Approve.
@@ -218,47 +253,31 @@ export async function handleMetamaskPopup(context: BrowserContext, retries: numb
     return;
   }
 
+  await mm.bringToFront().catch(() => {});
+
+  let unlockHandled = await attemptMetamaskUnlock(mm);
+
   try {
     // Some builds show a "MetaMask Notification" title, others keep it blank.
     // Defensive: click the common flow buttons if present
     const clicks = await clickAnyButton(
       mm,
-      [/^Unlock$/i, /^Next$/, /^Connect$/, /^Approve$/, /^Confirm$/],
+      unlockHandled
+        ? [/^Next$/, /^Connect$/, /^Approve$/, /^Confirm$/]
+        : [/^Unlock$/i, /^Next$/, /^Connect$/, /^Approve$/, /^Confirm$/],
       "MetaMask connect flow",
       {
         overallTimeoutMs: 25000,
         pollMs: 150,
         maxClicks: 10,
-        onBeforeClick: async ({ page, pattern, button }) => {
+        onBeforeClick: async ({ page, pattern }) => {
           if (!/unlock/i.test(pattern.source)) return false;
 
-          if (!WALLET_PASSWORD) {
-            logger.warning("MetaMask unlock requested but WALLET_PASSWORD is not set; skipping auto-unlock");
-            return false;
+          const handled = await attemptMetamaskUnlock(page);
+          if (handled) {
+            unlockHandled = true;
           }
-
-          try {
-            const passwordField = page.locator(s.unlock.pw);
-            await passwordField.waitFor({ state: "visible", timeout: TEST_TIMEOUTS.ELEMENT });
-            logger.info("MetaMask unlock password field found");
-            await passwordField.fill(WALLET_PASSWORD);
-            logger.info("MetaMask unlock password field filled");
-          } catch (err: any) {
-            logger.warning(
-              `MetaMask unlock password entry failed: ${err?.message ?? err}`
-            );
-            return false;
-          }
-
-          try {
-            await button.click();
-          } catch (err: any) {
-            logger.warning(`MetaMask unlock click failed: ${err?.message ?? err}`);
-            return false;
-          }
-
-          logger.info("MetaMask unlock submitted; continuing connect flow");
-          return true;
+          return handled;
         },
       }
     );
