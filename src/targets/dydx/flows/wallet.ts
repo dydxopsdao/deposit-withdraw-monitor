@@ -50,10 +50,8 @@ export async function connectWallet(
         
       }
     }
-
     const walletButton = signInWithWalletBtn(page, wallet);
     await isVisible(walletButton, { timeout: TEST_TIMEOUTS.ELEMENT });
-    
     await walletButton.click({ force: true });
     logger.info("Clicked wallet button");
     
