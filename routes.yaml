@@ -276,14 +276,8 @@ routes:
     src_chain: solana
     dst_chain: dydx
     schedules:
-      - name: "workhours"
-        cron: "36 10,15 ? * MON-FRI *"
-        enabled: true
-      - name: "afterhours"
-        cron: "36 21 ? * MON-FRI *"
-        enabled: true
-      - name: "weekends"
-        cron: "36 3 ? * SAT,SUN *"
+      - name: "every-5-min"
+        cron: "0/5 * * * ? *"
         enabled: true
     enabled: true
 
