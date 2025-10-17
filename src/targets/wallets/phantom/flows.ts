@@ -2,7 +2,7 @@
 import { chromium, BrowserContext, Page } from '@playwright/test';
 import { PHANTOM_EXT_PATH } from "../../../config/constants";
 import { WALLET_PASSWORD, assertPhantomSecrets } from "./constants";
-import { findPageWithUrl, clickAnyButton, isVisible } from '../../../utils';
+import { clickAnyButton, isVisible } from '../../../utils';
 import { logger } from '../../../logger';
 import { phantomSelectors as s } from './selectors';
 import { TEST_TIMEOUTS } from "../../../config/timeouts";
@@ -81,11 +81,10 @@ export async function setupWallet(context: BrowserContext, seedPhrase: string) {
   await (await onboarding.waitForSelector(s.onboarding.tosCheckbox, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
   await (await onboarding.waitForSelector(s.onboarding.submit, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
   logger.debug("Phantom onboarding: Password set");
-
-  await (await onboarding.waitForSelector(`${s.onboarding.submit}:has-text("Get Started")`, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
-  logger.debug("Phantom onboarding: Get Started clicked");
-
-  await onboarding.close().catch(() => {});
+  
+  //await (await onboarding.waitForSelector(`${s.onboarding.submit}:has-text("Get Started")`, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
+  //logger.debug("Phantom onboarding: Get Started clicked");
+  //await new Promise(resolve => setTimeout(resolve, 10000));
   logger.info("Phantom wallet setup complete");
 }
 
@@ -138,8 +137,13 @@ export async function unlockPhantomWallet(
  */
 export async function handlePhantomPopup(context: BrowserContext) {
   logger.info("Waiting for Phantom popup…");
-  const ph = await findPageWithUrl(context, s.urls.notification);
-  
+  const ph = await findPhantomPage(
+    context,
+    [s.urls.notification, s.urls.unlock],
+    "domcontentloaded",
+    TEST_TIMEOUTS.POPUP_TIMEOUT
+  );
+
   if (!ph) {
     logger.warning("Phantom popup did not appear; assuming connected or silent approval");
     return;
@@ -168,6 +172,94 @@ export async function handlePhantomPopup(context: BrowserContext) {
 function extractId(u: string): string | null {
   const m = u.match(/^chrome-extension:\/\/([a-p]{32})\//);
   return m ? m[1] : null;
+}
+
+function replaceExtensionId(url: string, id: string): string {
+  const withPlaceholder = url.includes("{id}") ? url.replace("{id}", id) : url;
+  if (withPlaceholder.startsWith("chrome-extension://")) {
+    return withPlaceholder.replace(/^chrome-extension:\/\/[^/]+/, `chrome-extension://${id}`);
+  }
+  return withPlaceholder;
+}
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function urlPattern(url: string): RegExp {
+  try {
+    const u = new URL(url);
+    const origin = u.origin === "null"
+      ? `${u.protocol}//${u.host}`
+      : u.origin;
+    const base = `${origin}${u.pathname}`;
+    return new RegExp(`^${escapeRegex(base)}(?:[?#].*)?$`, "i");
+  } catch {
+    return new RegExp(`^${escapeRegex(url)}(?:[?#].*)?$`, "i");
+  }
+}
+
+function safeUrl(page: Page): string {
+  try {
+    return page.url();
+  } catch {
+    return "";
+  }
+}
+
+async function findPhantomPage(
+  ctx: BrowserContext,
+  urlTemplates: string[],
+  waitUntil: "load" | "domcontentloaded",
+  timeoutMs = 0,
+  idOverride?: string
+): Promise<Page | null> {
+  const id = idOverride ?? await getPhantomId(ctx);
+  const urls = urlTemplates.map((template) => replaceExtensionId(template, id));
+  const patterns = urls.map(urlPattern);
+  const matches = (page: Page): boolean => {
+    const currentUrl = safeUrl(page);
+    logger.debug(`Phantom page URL: ${currentUrl}`);
+    logger.debug(`Phantom pages: ${ctx.pages().map(p => safeUrl(p)).join(", ")}`);
+    return !!currentUrl && patterns.some((rx) => rx.test(currentUrl));
+  };
+
+  for (const page of ctx.pages()) {
+    if (!matches(page)) continue;
+    try {
+      await page.waitForLoadState(waitUntil);
+    } catch (err) {
+      logger.warning(`Phantom page wait failed (${waitUntil}): ${(err as Error).message}`);
+    }
+    try {
+      await page.bringToFront();
+    } catch { /* bringToFront can fail for panels; ignore */ }
+    return page;
+  }
+
+  if (timeoutMs <= 0) return null;
+
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const remaining = Math.max(0, deadline - Date.now());
+    try {
+      const page = await ctx.waitForEvent("page", { timeout: remaining });
+      if (!matches(page)) continue;
+      try {
+        await page.waitForLoadState(waitUntil);
+      } catch (err) {
+        logger.warning(`Phantom page wait failed (${waitUntil}): ${(err as Error).message}`);
+      }
+      try {
+        await page.bringToFront();
+      } catch { /* ignore */ }
+      return page;
+    } catch {
+      break;
+    }
+  }
+
+  return null;
 }
 
 /**
@@ -210,9 +302,14 @@ export async function openPhantomUrl(
   waitUntil: "load" | "domcontentloaded" = "load"
 ): Promise<Page> {
   const id = await getPhantomId(ctx);
-  const url = urlWithAnyId.replace(/^chrome-extension:\/\/[^/]+/, `chrome-extension://${id}`);
+  const url = replaceExtensionId(urlWithAnyId, id);
+
+  const existing = await findPhantomPage(ctx, [url], waitUntil, 1000, id);
+  if (existing) {
+    return existing;
+  }
+
   const page = await ctx.newPage();
   await page.goto(url, { waitUntil });
-  // TODO: Optionally verify a selector to assert the page is truly ready.
   return page;
 }
