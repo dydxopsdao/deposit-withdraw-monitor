@@ -30,6 +30,7 @@ export async function launchContextWithExtension(
       '--disable-dev-shm-usage',
       '--no-sandbox',
       '--disable-setuid-sandbox',
+      '--start-maximized',
     ],
   });
 
@@ -257,6 +258,21 @@ async function findPhantomPage(
     } catch {
       break;
     }
+  }
+
+  const extensionOrigin = `chrome-extension://${id}/`;
+  const fallback = ctx.pages().find((page) => safeUrl(page).startsWith(extensionOrigin));
+  if (fallback) {
+    logger.debug(`Phantom fallback matched via extension origin: ${safeUrl(fallback)}`);
+    try {
+      await fallback.waitForLoadState(waitUntil);
+    } catch (err) {
+      logger.warning(`Phantom fallback wait failed (${waitUntil}): ${(err as Error).message}`);
+    }
+    try {
+      await fallback.bringToFront();
+    } catch { /* ignore */ }
+    return fallback;
   }
 
   return null;

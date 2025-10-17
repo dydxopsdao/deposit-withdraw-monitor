@@ -121,6 +121,8 @@ export async function openWalletPicker(page: Page, retries = 2) {
 }
 
 export async function handleWalletPopup(context: BrowserContext, wallet: WalletType, retries: number = 30) {
+  logger.debug(`ctx.pages(): ${context.pages().map(p => p.url()).join(', ')}`);
+
   if (wallet === "metamask") {
     await handleMetamaskPopup(context, retries);
     logger.info("MetaMask wallet popup handled");
