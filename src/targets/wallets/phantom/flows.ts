@@ -85,6 +85,9 @@ export async function setupWallet(context: BrowserContext, seedPhrase: string) {
   
   await (await onboarding.waitForSelector(`${s.onboarding.submit}:has-text("Get Started")`, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
   logger.debug("Phantom onboarding: Get Started clicked");
+  logger.debug(`----------ctx.pages(): ${context.pages().map(p => p.url()).join(', ')}`);
+  await new Promise(resolve => setTimeout(resolve, 10000));
+  logger.debug(`----------ctx.pages(): ${context.pages().map(p => p.url()).join(', ')}`);
   logger.info("Phantom wallet setup complete");
 }
 

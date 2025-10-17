@@ -28,7 +28,20 @@ export async function connectWallet(
   const { retries = 2 } = opts;
   logger.step(`Connecting wallet: ${wallet}`);
   const attemptConnect = async (attemptNo: number) => {
-    await closeNonPrimaryTabs(context, page);
+    
+    try {
+      if (wallet === "phantom") {
+        try {
+          logger.info("Handling Phantom popup incase it is open");
+          await page.pause();
+          await handlePhantomPopup(context);
+        } catch (error) {
+          logger.warning("Failed to handle Phantom popup", { error: error instanceof Error ? error.message : String(error) });
+        }
+      }
+    } catch (error) {
+      
+    }
     if (await walletAppearsConnected(page)) {
       logger.info("Wallet already connected; skipping connect flow");
       return page;

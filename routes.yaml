@@ -140,14 +140,14 @@ routes:
     schedules:
       - name: "workhours"
         cron: "16 9,14 ? * MON-FRI *"
-        enabled: true
+        enabled: false
       - name: "afterhours"
         cron: "16 22 ? * MON-FRI *"
-        enabled: true
+        enabled: false
       - name: "weekends"
         cron: "16 4 ? * SAT,SUN *"
-        enabled: true
-    enabled: true
+        enabled: false
+    enabled: false
 
   # ---------------------------
   # DEPOSITS – $10 REGULAR
@@ -278,8 +278,8 @@ routes:
     schedules:
       - name: "every-5-min"
         cron: "0/5 * * * ? *"
-        enabled: true
-    enabled: true
+        enabled: false
+    enabled: false
 
   # ---------------------------
   # INSTANT DEPOSITS – $101
