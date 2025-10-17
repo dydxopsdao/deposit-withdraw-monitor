@@ -83,9 +83,8 @@ export async function setupWallet(context: BrowserContext, seedPhrase: string) {
   await (await onboarding.waitForSelector(s.onboarding.submit, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
   logger.debug("Phantom onboarding: Password set");
   
-  //await (await onboarding.waitForSelector(`${s.onboarding.submit}:has-text("Get Started")`, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
-  //logger.debug("Phantom onboarding: Get Started clicked");
-  //await new Promise(resolve => setTimeout(resolve, 10000));
+  await (await onboarding.waitForSelector(`${s.onboarding.submit}:has-text("Get Started")`, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
+  logger.debug("Phantom onboarding: Get Started clicked");
   logger.info("Phantom wallet setup complete");
 }
 
@@ -220,8 +219,8 @@ async function findPhantomPage(
   const patterns = urls.map(urlPattern);
   const matches = (page: Page): boolean => {
     const currentUrl = safeUrl(page);
-    logger.debug(`Phantom page URL: ${currentUrl}`);
-    logger.debug(`Phantom pages: ${ctx.pages().map(p => safeUrl(p)).join(", ")}`);
+    logger.debug(`current URL: ${currentUrl}`);
+    logger.debug(`All pages: ${ctx.pages().map(p => safeUrl(p)).join(", ")}`);
     return !!currentUrl && patterns.some((rx) => rx.test(currentUrl));
   };
 
