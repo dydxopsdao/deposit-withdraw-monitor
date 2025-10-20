@@ -2,7 +2,7 @@
 import { chromium, BrowserContext, Page } from '@playwright/test';
 import { PHANTOM_EXT_PATH } from "../../../config/constants";
 import { WALLET_PASSWORD, assertPhantomSecrets } from "./constants";
-import { clickAnyButton, isVisible } from '../../../utils';
+import { clickAnyButton, isVisible, safeUrl } from '../../../utils';
 import { logger } from '../../../logger';
 import { phantomSelectors as s } from './selectors';
 import { TEST_TIMEOUTS } from "../../../config/timeouts";
@@ -199,14 +199,6 @@ function urlPattern(url: string): RegExp {
     return new RegExp(`^${escapeRegex(base)}(?:[?#].*)?$`, "i");
   } catch {
     return new RegExp(`^${escapeRegex(url)}(?:[?#].*)?$`, "i");
-  }
-}
-
-function safeUrl(page: Page): string {
-  try {
-    return page.url();
-  } catch {
-    return "";
   }
 }
 

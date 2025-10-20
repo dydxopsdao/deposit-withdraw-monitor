@@ -3,7 +3,7 @@ import { chromium, BrowserContext, Page } from "@playwright/test";
 import { METAMASK_EXT_PATH } from "../../../config/constants";
 import { WALLET_PASSWORD, assertMetamaskSecrets } from "./constants";
 import { metamaskSelectors as s } from "./selectors";
-import { findPageWithUrl, clickAnyButton } from "../../../utils";
+import { findPageWithUrl, clickAnyButton, safeUrl } from "../../../utils";
 import { logger } from "../../../logger";
 import { TEST_TIMEOUTS } from "../../../config/timeouts";
 import fs from "fs";
@@ -247,6 +247,7 @@ export async function handleMetamaskPopup(context: BrowserContext, retries: numb
   // TODO: Break out specific popup steps for clearer logging and easier reuse.
   // TODO: Add a maximum total wait with a helpful error when popups never appear.
 
+  logger.debug(`All pages: ${context.pages().map(p => safeUrl(p)).join(", ")}`);  
   const mm = await findPageWithUrl(context, s.urls.notification, retries);
   if (!mm) {
     logger.warning("MetaMask popup did not appear; assuming connected or silent approval");

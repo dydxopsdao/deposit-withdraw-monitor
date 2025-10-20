@@ -1,7 +1,7 @@
 import { expect, type BrowserContext, type Locator, type Page } from "@playwright/test";
 import { TEST_TIMEOUTS } from "../../../config/timeouts";
 import { logger } from "../../../logger";
-import { WalletType, isVisible, closeNonPrimaryTabs } from "../../../utils";
+import { WalletType, isVisible, closeNonPrimaryTabs, safeUrl } from "../../../utils";
 import { retry, RetryError } from "../../../utils/retry";
 import { handleMetamaskPopup } from "../../wallets/metamask/flows";
 import { handlePhantomPopup } from "../../wallets/phantom/flows";
@@ -203,6 +203,7 @@ async function handlePendingWalletError(
   if (!visibleIndicators.length) return;
 
   logger.info("Detected MetaMask pending request on connect modal; opening wallet popup");
+  logger.debug(`All pages: ${context.pages().map(p => safeUrl(p)).join(", ")}`);  
   await handleMetamaskPopup(context);
 
   await Promise.all(

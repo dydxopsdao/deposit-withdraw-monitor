@@ -152,6 +152,14 @@ export type ClickWithFallbackOptions = {
   label?: string;
 };
 
+export function safeUrl(page: Page): string {
+  try {
+    return page.url();
+  } catch {
+    return "";
+  }
+}
+
 export async function clickWithFallback(
   page: Page,
   locator: Locator,
