@@ -3,7 +3,7 @@ import { chromium, BrowserContext, Page } from "@playwright/test";
 import { METAMASK_EXT_PATH } from "../../../config/constants";
 import { WALLET_PASSWORD, assertMetamaskSecrets } from "./constants";
 import { metamaskSelectors as s } from "./selectors";
-import { findPageWithUrl, clickAnyButton, safeUrl } from "../../../utils";
+import { findPageWithUrl, safeUrl } from "../../../utils";
 import { logger } from "../../../logger";
 import { TEST_TIMEOUTS } from "../../../config/timeouts";
 import fs from "fs";
@@ -104,7 +104,7 @@ export async function setupWallet(context: BrowserContext, seedPhrase: string) {
     await pin.click();
   }
 
-  await onboarding.close();
+  //await onboarding.close();
   logger.info("Wallet setup complete");
 }
 
@@ -126,7 +126,7 @@ export async function unlockMetamaskWallet(context: BrowserContext) {
   await (await unlock.waitForSelector(s.unlock.pw, { timeout: TEST_TIMEOUTS.ELEMENT })).fill(WALLET_PASSWORD);
   await (await unlock.waitForSelector(s.unlock.pwSubmit, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
 
-  await unlock.close();
+  //await unlock.close();
   logger.info("MetaMask unlocked");
 } }
 
@@ -151,6 +151,23 @@ async function findExistingUnlockPage(context: BrowserContext): Promise<Page | u
     }
   }
   return undefined;
+}
+
+const isNotificationView = (page: Page): boolean => /notification\.html/i.test(safeUrl(page));
+
+async function findMetamaskExtensionPage(
+  context: BrowserContext,
+  retries: number
+): Promise<Page | null> {
+  const candidates = context.pages().filter(isExtensionPage);
+  if (candidates.length) {
+    candidates.sort((a, b) => Number(isNotificationView(a)) - Number(isNotificationView(b)));
+    return candidates[0];
+  }
+  if (retries <= 0) {
+    return null;
+  }
+  return await findPageWithUrl(context, s.urls.extensionPage, retries);
 }
 
 /**
@@ -215,7 +232,7 @@ async function attemptMetamaskUnlock(page: Page): Promise<boolean> {
   const submitButton = page.locator(s.unlock.pwSubmit);
 
   try {
-    await passwordField.waitFor({ state: "visible", timeout: TEST_TIMEOUTS.ELEMENT });
+    await passwordField.waitFor({ state: "visible", timeout: TEST_TIMEOUTS.ACTION });
   } catch (err: any) {
     logger.debug(`MetaMask unlock password field not visible: ${err?.message ?? err}`);
     return false;
@@ -236,58 +253,155 @@ async function attemptMetamaskUnlock(page: Page): Promise<boolean> {
 }
 
 /**
+ * Handles MetaMask UI interactions within a given page.
+ * Optionally reloads the page (useful for the pinned tab) and keeps the page open unless specified.
+ */
+type HandleMetamaskPageOptions = {
+  label?: string;
+  closeOnComplete?: boolean;
+  clickTimeoutMs?: number;
+  returnPage?: Page;
+  maxReloads?: number;
+};
+
+async function handleMetamaskPage(
+  page: Page,
+  opts: HandleMetamaskPageOptions = {}
+): Promise<boolean> {
+  const {
+    label = "MetaMask connect flow",
+    clickTimeoutMs = 25000,
+    closeOnComplete = false,
+    returnPage,
+    maxReloads = 3,
+  } = opts;
+
+  logger.info(`${label}: focusing MetaMask page → ${safeUrl(page)}`);
+  try {
+    await page.bringToFront().catch(() => {});
+    await page.waitForLoadState("domcontentloaded").catch(() => {});
+
+    const patterns = [/^Unlock$/i, /^Next$/i, /^Connect$/i, /^Approve$/i, /^Confirm$/i];
+    const pollMs = TEST_TIMEOUTS.POLL;
+    const deadline = Date.now() + clickTimeoutMs;
+
+    let clickedPattern: RegExp | null = null;
+    let reloadAttempts = 0;
+
+    while (!page.isClosed() && Date.now() < deadline && reloadAttempts <= maxReloads) {
+      logger.info(`${label}: reload attempt ${reloadAttempts + 1}/${maxReloads}`);
+      try {
+        await page.reload({ waitUntil: "domcontentloaded" });
+      } catch (reloadErr: any) {
+        logger.debug(
+          `${label}: reload attempt ${reloadAttempts + 1} failed (${reloadErr?.message ?? reloadErr})`
+        );
+      }
+
+      await attemptMetamaskUnlock(page);
+
+      const scanDeadline = Math.min(deadline, Date.now() + 2000);
+      while (!page.isClosed() && Date.now() < scanDeadline) {
+        for (const pattern of patterns) {
+          const button = page.getByRole("button", { name: pattern }).first();
+          const visible = await button.isVisible().catch(() => false);
+          if (!visible) continue;
+
+          try {
+            await button.click({ timeout: TEST_TIMEOUTS.DEFAULT });
+            clickedPattern = pattern;
+            logger.info(`${label}: clicked MetaMask button matching /${pattern.source}/i`);
+          } catch (err: any) {
+            logger.debug(
+              `${label}: failed to click MetaMask button /${pattern.source}/i (${err?.message ?? err})`
+            );
+          }
+          if (clickedPattern) break;
+        }
+
+        if (clickedPattern) break;
+
+        await attemptMetamaskUnlock(page);
+        await page.waitForTimeout(pollMs).catch(() => {});
+      }
+
+      if (clickedPattern) break;
+
+      reloadAttempts += 1;
+    }
+
+    if (clickedPattern && returnPage) {
+      try {
+        await returnPage.bringToFront();
+        logger.info(`${label}: returned focus to dYdX page → ${safeUrl(returnPage)}`);
+      } catch (focusErr: any) {
+        logger.debug(`${label}: failed to refocus dYdX page (${focusErr?.message ?? focusErr})`);
+      }
+    }
+
+    if (!clickedPattern) {
+      logger.info(
+        `${label}: no actionable MetaMask buttons found after ${reloadAttempts} reload${reloadAttempts === 1 ? "" : "s"}`
+      );
+    }
+
+    if (closeOnComplete) {
+      await page.close().catch(() => {});
+    }
+
+    return clickedPattern !== null;
+  } catch (err: any) {
+    const sanitized = redactSensitive(err?.message ?? err);
+    logger.warning(`${label}: failed to handle MetaMask page: ${sanitized}`);
+    return false;
+  }
+}
+
+/**
  * MetaMask connection popup flows vary slightly by version/permissions.
  * We try a short sequence of common buttons: Next → Connect → Approve.
  * (If a Sign prompt appears later during auth, handle it in your auth flow.)
  * @param context Browser context that emits the popup window.
  * @returns Promise that resolves once the popup has been actioned.
  */
-export async function handleMetamaskPopup(context: BrowserContext, retries: number = 30) {
-  logger.info("Waiting for MetaMask popup…");
-  // TODO: Break out specific popup steps for clearer logging and easier reuse.
-  // TODO: Add a maximum total wait with a helpful error when popups never appear.
+export async function handleMetamaskPopup(context: BrowserContext, retries: number = 10) {
+  logger.info("MetaMask: checking pinned tab for pending interaction");
+  const primaryDappPage = context.pages().find((p) => !isExtensionPage(p));
+  const extensionPage = await findMetamaskExtensionPage(context, Math.min(retries, 5));
 
-  logger.debug(`All pages: ${context.pages().map(p => safeUrl(p)).join(", ")}`);  
-  const mm = await findPageWithUrl(context, s.urls.notification, retries);
-  if (!mm) {
+  if (extensionPage) {
+    const handledViaTab = await handleMetamaskPage(extensionPage, {
+      label: "MetaMask tab flow",
+      returnPage: primaryDappPage,
+      clickTimeoutMs: 25000,
+      maxReloads: 3,
+    });
+    if (handledViaTab) {
+      logger.info("MetaMask tab flow completed after interaction");
+      return;
+    }
+    logger.info("MetaMask tab flow reported no actions; falling back to popup detection");
+  } else {
+    logger.info("MetaMask pinned tab not found; waiting for popup");
+  }
+
+  const popupPage = await findPageWithUrl(context, s.urls.notification, retries);
+  if (!popupPage) {
     logger.warning("MetaMask popup did not appear; assuming connected or silent approval");
     return;
   }
 
-  await mm.bringToFront().catch(() => {});
+  const handledViaPopup = await handleMetamaskPage(popupPage, {
+    label: "MetaMask popup flow",
+    returnPage: primaryDappPage,
+    closeOnComplete: true,
+    clickTimeoutMs: 25000,
+    maxReloads: 3,
+  });
 
-  let unlockHandled = await attemptMetamaskUnlock(mm);
-
-  try {
-    // Some builds show a "MetaMask Notification" title, others keep it blank.
-    // Defensive: click the common flow buttons if present
-    const clicks = await clickAnyButton(
-      mm,
-      unlockHandled
-        ? [/^Next$/, /^Connect$/, /^Approve$/, /^Confirm$/]
-        : [/^Unlock$/i, /^Next$/, /^Connect$/, /^Approve$/, /^Confirm$/],
-      "MetaMask connect flow",
-      {
-        overallTimeoutMs: 25000,
-        pollMs: 150,
-        maxClicks: 10,
-        onBeforeClick: async ({ page, pattern }) => {
-          if (!/unlock/i.test(pattern.source)) return false;
-
-          const handled = await attemptMetamaskUnlock(page);
-          if (handled) {
-            unlockHandled = true;
-          }
-          return handled;
-        },
-      }
-    );
-    logger.info(`MetaMask popup handled: ${clicks} clicks`);
-    // Close if MetaMask leaves the window open
-    await mm.close().catch(() => {});
-    logger.info("MetaMask popup handled");
-  } catch (e: any) {
-    logger.warning(`MetaMask popup handling had issues: ${e?.message ?? e}`);
-    try { await mm.close(); } catch {}
+  if (handledViaPopup) {
+    logger.info("MetaMask popup flow completed after interaction");
+  } else {
+    logger.info("MetaMask popup flow finished without interaction");
   }
 }

@@ -70,7 +70,7 @@ export const walletContextTest = test.extend<{
   page: async ({ context }, use) => {
     const [existingPrimary] = context.pages();
     const page = existingPrimary ?? (await context.newPage());
-    await closeNonPrimaryTabs(context, page);
+    //await closeNonPrimaryTabs(context, page);
     await use(page);
   },
 });
