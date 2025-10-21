@@ -28,7 +28,7 @@ export async function connectWallet(
   const { retries = 2 } = opts;
   logger.step(`Connecting wallet: ${wallet}`);
   const attemptConnect = async (attemptNo: number) => {
-    
+    await page.pause();
     /* try {
       if (wallet === "phantom") {
         try {

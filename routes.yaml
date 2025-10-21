@@ -146,8 +146,8 @@ routes:
         enabled: false
       - name: "weekends"
         cron: "16 4 ? * SAT,SUN *"
-        enabled: false
-    enabled: false
+        enabled: true
+    enabled: true
 
   # ---------------------------
   # DEPOSITS – $10 REGULAR
@@ -276,8 +276,14 @@ routes:
     src_chain: solana
     dst_chain: dydx
     schedules:
-      - name: "every-5-min"
-        cron: "0/5 * * * ? *"
+      - name: "workhours"
+        cron: "36 10,15 ? * MON-FRI *"
+        enabled: true
+      - name: "afterhours"
+        cron: "36 21 ? * MON-FRI *"
+        enabled: true
+      - name: "weekends"
+        cron: "36 3 ? * SAT,SUN *"
         enabled: true
     enabled: true
 
