@@ -29,11 +29,10 @@ export async function connectWallet(
   logger.step(`Connecting wallet: ${wallet}`);
   const attemptConnect = async (attemptNo: number) => {
     
-    try {
+    /* try {
       if (wallet === "phantom") {
         try {
           logger.info("Handling Phantom popup incase it is open");
-          await page.pause();
           await handlePhantomPopup(context);
         } catch (error) {
           logger.warning("Failed to handle Phantom popup", { error: error instanceof Error ? error.message : String(error) });
@@ -41,7 +40,7 @@ export async function connectWallet(
       }
     } catch (error) {
       
-    }
+    } */
     if (await walletAppearsConnected(page)) {
       logger.info("Wallet already connected; skipping connect flow");
       return page;
@@ -55,14 +54,14 @@ export async function connectWallet(
     } else {
       await openWalletPicker(page);
     }
-    if (wallet === "metamask") {
+    /* if (wallet === "metamask") {
       try {
         logger.info("Handling MetaMask popup incase it is open");
         await handleMetamaskPopup(context);
       } catch (error) {
         
       }
-    }
+    } */
     const walletButton = signInWithWalletBtn(page, wallet);
     await isVisible(walletButton, { timeout: TEST_TIMEOUTS.ELEMENT });
     await walletButton.click({ force: true });
@@ -72,7 +71,7 @@ export async function connectWallet(
       await handlePendingWalletError(page, context, wallet);
     }
     logger.info("Handling wallet popup");
-    await handleWalletPopup(context, wallet, 30);
+    await handleWalletPopup(context, wallet, 10);
 
     logger.info("Sending request");
     await sendRequest(page, sendRequestBtn(page));
@@ -133,7 +132,7 @@ export async function openWalletPicker(page: Page, retries = 2) {
   throw new Error("Wallet picker did not appear after clicking Connect wallet.");
 }
 
-export async function handleWalletPopup(context: BrowserContext, wallet: WalletType, retries: number = 30) {
+export async function handleWalletPopup(context: BrowserContext, wallet: WalletType, retries: number = 10) {
 
   logger.debug(`----------ctx.pages(): ${context.pages().map(p => p.url()).join(', ')}`);
 
