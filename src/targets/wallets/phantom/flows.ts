@@ -85,9 +85,7 @@ export async function setupWallet(context: BrowserContext, seedPhrase: string) {
   
   await (await onboarding.waitForSelector(`${s.onboarding.submit}:has-text("Get Started")`, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
   logger.debug("Phantom onboarding: Get Started clicked");
-  logger.debug(`----------ctx.pages(): ${context.pages().map(p => p.url()).join(', ')}`);
-  await new Promise(resolve => setTimeout(resolve, 10000));
-  logger.debug(`----------ctx.pages(): ${context.pages().map(p => p.url()).join(', ')}`);
+  await onboarding.close().catch(() => {});
   logger.info("Phantom wallet setup complete");
 }
 
@@ -154,7 +152,6 @@ export async function handlePhantomPopup(context: BrowserContext) {
 
   try {
     logger.debug(`Phantom popup URL: ${ph.url()}`);
-
     // First try canonical test id:
     const primary = ph.getByTestId("primary-button");
     if (await isVisible(primary)) {
@@ -163,12 +160,9 @@ export async function handlePhantomPopup(context: BrowserContext) {
       // Fallback to common labels:
       await clickAnyButton(ph, [/^Approve$/i, /^Connect$/i, /^Confirm$/i], "Phantom connect flow");
     }
-
-    await ph.close().catch(() => {});
     logger.info("Phantom popup handled: successfull clicked");
   } catch (e: any) {
     logger.warning(`Phantom popup handling had issues: ${e?.message ?? e}`);
-    try { await ph.close(); } catch {}
   }
 }
 

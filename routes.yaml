@@ -278,8 +278,8 @@ routes:
     schedules:
       - name: "every-5-min"
         cron: "0/5 * * * ? *"
-        enabled: false
-    enabled: false
+        enabled: true
+    enabled: true
 
   # ---------------------------
   # INSTANT DEPOSITS – $101
