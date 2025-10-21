@@ -266,7 +266,8 @@ type HandleMetamaskPageOptions = {
 
 async function handleMetamaskPage(
   page: Page,
-  opts: HandleMetamaskPageOptions = {}
+  opts: HandleMetamaskPageOptions = {},
+  unlock?: boolean
 ): Promise<boolean> {
   const {
     label = "MetaMask connect flow",
@@ -279,7 +280,8 @@ async function handleMetamaskPage(
   logger.info(`${label}: focusing MetaMask page → ${safeUrl(page)}`);
   try {
     await page.bringToFront().catch(() => {});
-    await page.waitForLoadState("domcontentloaded").catch(() => {});
+    await page.waitForTimeout(1500);
+    await page.reload({ waitUntil: "domcontentloaded" });
 
     const patterns = [/^Unlock$/i, /^Next$/i, /^Connect$/i, /^Approve$/i, /^Confirm$/i];
     const pollMs = TEST_TIMEOUTS.POLL;
@@ -291,6 +293,7 @@ async function handleMetamaskPage(
     while (!page.isClosed() && Date.now() < deadline && reloadAttempts <= maxReloads) {
       logger.info(`${label}: reload attempt ${reloadAttempts + 1}/${maxReloads}`);
       try {
+        await page.waitForTimeout(1500);
         await page.reload({ waitUntil: "domcontentloaded" });
       } catch (reloadErr: any) {
         logger.debug(
@@ -298,7 +301,9 @@ async function handleMetamaskPage(
         );
       }
 
-      await attemptMetamaskUnlock(page);
+      if (unlock === true) {
+        await attemptMetamaskUnlock(page);
+      }
 
       const scanDeadline = Math.min(deadline, Date.now() + 2000);
       while (!page.isClosed() && Date.now() < scanDeadline) {
@@ -321,7 +326,9 @@ async function handleMetamaskPage(
 
         if (clickedPattern) break;
 
-        await attemptMetamaskUnlock(page);
+        if (unlock === true) {
+          await attemptMetamaskUnlock(page);
+        }
         await page.waitForTimeout(pollMs).catch(() => {});
       }
 
@@ -364,7 +371,7 @@ async function handleMetamaskPage(
  * @param context Browser context that emits the popup window.
  * @returns Promise that resolves once the popup has been actioned.
  */
-export async function handleMetamaskPopup(context: BrowserContext, retries: number = 10) {
+export async function handleMetamaskPopup(context: BrowserContext, retries: number = 10, unlock: boolean = false) {
   logger.info("MetaMask: checking pinned tab for pending interaction");
   const primaryDappPage = context.pages().find((p) => !isExtensionPage(p));
   const extensionPage = await findMetamaskExtensionPage(context, Math.min(retries, 5));

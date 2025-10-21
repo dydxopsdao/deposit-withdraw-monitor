@@ -114,7 +114,7 @@ for (const route of depositRoutes) {
           testRunLogger.startStep(DepositFunnelSteps.DepositFinalized);
           await test.step("Wait for finality", async () => {
             logger.info("Waiting for finality");
-            const res = await waitForFinality(page);
+            const res = await waitForFinality(page, { kind: "deposit" });
             txHash = res.txHash;
             explorerUrl = res.explorerUrl;
             expect(res.ok).toBeTruthy();

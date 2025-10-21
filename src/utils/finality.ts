@@ -4,6 +4,7 @@ import { dydxSelectors as dydxSelectors } from "../targets/dydx/selectors";
 import { TEST_TIMEOUTS } from "../config/timeouts";
 import { logger } from "../logger";
 import { isVisible } from "./ui-helper";
+import type { RouteKind } from "./routes";
 
 type FinalityResult = { ok: boolean; explorerUrl?: string; txHash?: string; explorerUrlsAll?: string[]; txHashesAll?: (string | undefined)[] };
 
@@ -17,16 +18,24 @@ const DEFAULT_FINALITY_TIMEOUT =
  * Watches the dYdX transfer dialog until the operation completes or times out.
  * Scrapes any transaction links that appear once the flow finishes.
  * @param page Active dYdX page containing the funds dialog.
- * @param timeoutMs Total time to wait before declaring failure.
- * @param pollMs Delay between polling attempts while in progress.
- * @param graceMs Small wait used when the dialog briefly disappears.
+ * @param options Flow configuration and timing overrides (kind, timeoutMs, pollMs, graceMs).
  * @returns Aggregated status plus any explorer URLs and hashes observed.
  */
+type WaitForFinalityOptions = {
+  kind?: RouteKind;
+  timeoutMs?: number;
+  pollMs?: number;
+  graceMs?: number;
+};
+
 export async function waitForFinality(
   page: Page,
-  timeoutMs = DEFAULT_FINALITY_TIMEOUT,
-  pollMs = 1500,
-  graceMs = 500
+  {
+    kind = "deposit",
+    timeoutMs = DEFAULT_FINALITY_TIMEOUT,
+    pollMs = 1500,
+    graceMs = 500,
+  }: WaitForFinalityOptions = {}
 ): Promise<FinalityResult> {
   const dlg = dydxSelectors.fundsDialog(page);
   const inProgress = dydxSelectors.transferInProgress(page);
@@ -78,15 +87,19 @@ export async function waitForFinality(
   };
 
   const collectCompletion = async (): Promise<FinalityResult | undefined> => {
-    const isDepositDone =
-      (await isVisible(depDone, { timeout: graceMs })) ||
-      (await isVisible(depCTA, { timeout: graceMs }));
+    let transferComplete = false;
 
-    const isWithdrawDone = await isVisible(wdrDone, { timeout: graceMs });
+    if (kind === "deposit") {
+      transferComplete =
+        (await isVisible(depDone, { timeout: graceMs })) ||
+        (await isVisible(depCTA, { timeout: graceMs }));
+    } else if (kind === "withdraw") {
+      transferComplete = await isVisible(wdrDone, { timeout: graceMs });
+    }
 
-    if (!isDepositDone && !isWithdrawDone) return undefined;
+    if (!transferComplete) return undefined;
 
-    logger.info("Transfer completed");
+    logger.info("Transfer completed", { kind });
     const linkInfo = await scrapeTxLinks();
 
     return {

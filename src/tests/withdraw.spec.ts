@@ -113,7 +113,7 @@ for (const route of withdrawRoutes) {
           testRunLogger.startStep(WithdrawFunnelSteps.WithdrawFinalized);
           await test.step("Wait for finality", async () => {
             logger.info("Waiting for finality");
-            const res = await waitForFinality(page);
+            const res = await waitForFinality(page, { kind: "withdraw" });
             logger.info("Finality result", { res });
             txHash = res.txHash;
             explorerUrl = res.explorerUrl;

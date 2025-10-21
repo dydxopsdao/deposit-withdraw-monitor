@@ -141,6 +141,8 @@ export async function submitDeposit(page: Page, context: BrowserContext, wallet:
   });
 
   // Handle wallet popups immediately on success
-  await handleWalletPopup(context, wallet);
-  await handleWalletPopup(context, wallet);
+  //SWITCH NETWORK
+  await handleWalletPopup(context, wallet, 10, false);
+  //CONFIRM TRANSACTION
+  await handleWalletPopup(context, wallet, 10, false);
 }

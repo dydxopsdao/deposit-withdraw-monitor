@@ -70,19 +70,19 @@ export async function connectWallet(
       await handlePendingWalletError(page, context, wallet);
     }
     logger.info("Handling wallet popup");
-    await handleWalletPopup(context, wallet, 10);
+    await handleWalletPopup(context, wallet, 10, true);
 
     logger.info("Sending request");
     await sendRequest(page, sendRequestBtn(page));
 
     logger.info("Confirming request");
-    await handleWalletPopup(context, wallet);
-
+    await handleWalletPopup(context, wallet, 10, true);
+  /* 
     try {
-      await handleWalletPopup(context, wallet);
+      await handleWalletPopup(context, wallet, 10, true);
     } catch {
       /* optional second confirmation */
-    }
+    //} 
 
     await assertWalletConnected(page, wallet);
 
@@ -131,12 +131,12 @@ export async function openWalletPicker(page: Page, retries = 2) {
   throw new Error("Wallet picker did not appear after clicking Connect wallet.");
 }
 
-export async function handleWalletPopup(context: BrowserContext, wallet: WalletType, retries: number = 10) {
+export async function handleWalletPopup(context: BrowserContext, wallet: WalletType, retries: number = 10, unlock: boolean = false) {
 
   logger.debug(`----------ctx.pages(): ${context.pages().map(p => p.url()).join(', ')}`);
 
   if (wallet === "metamask") {
-    await handleMetamaskPopup(context, retries);
+    await handleMetamaskPopup(context, retries, unlock);
     logger.info("MetaMask wallet popup handled");
   } else {
     await handlePhantomPopup(context);
