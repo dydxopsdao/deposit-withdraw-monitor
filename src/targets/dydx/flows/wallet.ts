@@ -18,6 +18,7 @@ import { fundsDialog } from "../selectors/funds-dialog";
 
 const METAMASK_PENDING_REQUEST_TEXT = /request already pending/i;
 const METAMASK_CONNECTION_ERROR_TEXT = /couldn'?t connect to metamask/i;
+const TRY_AGAIN_MAX_RETRIES = 1;
 
 export async function connectWallet(
   page: Page,
@@ -150,9 +151,9 @@ async function walletAppearsConnected(page: Page): Promise<boolean> {
   return await isVisible(fundsDialog(page), { timeout: TEST_TIMEOUTS.DELAY });
 }
 
-async function assertWalletConnected(page: Page, wallet: WalletType): Promise<void> {
+async function assertWalletConnected(page: Page, wallet: WalletType, attempt = 0): Promise<void> {
+  const acctBtn = accountMenuButton(page).or(accountMenuButtonLoose(page));
   try {
-    const acctBtn = accountMenuButton(page).or(accountMenuButtonLoose(page));
     await expect(acctBtn).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
     logger.success(`Wallet connected: ${wallet}`, { wallet });
   } catch (err) {
@@ -164,6 +165,28 @@ async function assertWalletConnected(page: Page, wallet: WalletType): Promise<vo
         stack: err instanceof Error ? err.stack : undefined,
       }
     );
+
+    const tryAgainButton = page.getByRole("button", { name: /^try again$/i });
+    if (await isVisible(tryAgainButton, { timeout: TEST_TIMEOUTS.DELAY })) {
+      if (attempt >= TRY_AGAIN_MAX_RETRIES) {
+        logger.error(
+          "Try again button detected but max retries reached; giving up on wallet connect retry",
+          err instanceof Error ? err : new Error(String(err)),
+          { wallet, attempt }
+        );
+        throw err;
+      }
+
+      logger.info("Detected Try again button after failed wallet connect; retrying wallet popup", {
+        wallet,
+        attempt,
+      });
+      await tryAgainButton.click({ force: true });
+      await handleWalletPopup(page.context(), wallet, 10, true);
+      await page.waitForTimeout(500);
+      await assertWalletConnected(page, wallet, attempt + 1);
+      return;
+    }
 
     try {
       const dialog = fundsDialog(page);
