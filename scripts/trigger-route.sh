@@ -42,6 +42,14 @@ is_aws_authenticated() {
     aws sts get-caller-identity --region $REGION >/dev/null 2>&1
 }
 
+# Function to print AWS authentication error message
+print_auth_error() {
+    echo "Error: You are not logged into AWS or your credentials have expired."
+    echo "Please run:"
+    echo "  aws sso login --sso-session dydxopsdao"
+    echo "or similar, depending on your SSO setup."
+}
+
 # Parse arguments
 ROUTE_IDS=()
 for arg in "$@"; do
@@ -67,10 +75,7 @@ for arg in "$@"; do
             if is_aws_authenticated; then
                 get_all_route_ids
             else
-                echo "Error: You are not logged into AWS or your credentials have expired."
-                echo "Please run:"
-                echo "  aws sso login --sso-session dydxopsdao"
-                echo "or similar, depending on your SSO setup."
+                print_auth_error
                 exit 1
             fi
             exit 0
@@ -99,10 +104,7 @@ fi
 
 # Check AWS authentication before attempting any AWS operations
 if ! is_aws_authenticated; then
-    echo "Error: You are not logged into AWS or your credentials have expired."
-    echo "Please run:"
-    echo "  aws sso login --sso-session dydxopsdao"
-    echo "or similar, depending on your SSO setup."
+    print_auth_error
     exit 1
 fi
 
