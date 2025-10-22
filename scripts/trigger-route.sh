@@ -143,28 +143,34 @@ echo
 for ROUTE_ID in "${ROUTE_IDS[@]}"; do
     echo -n "Triggering: $ROUTE_ID... "
     
-    # Capture the output from the ECS command
-    output=$(run_ecs_task_command "$ROUTE_ID")
-    
-    # Check for failures in the response
-    failures=$(echo "$output" | jq -r '.failures // empty | length')
-    
-    if [ -n "$failures" ] && [ "$failures" -gt 0 ]; then
-        echo "FAILED"
-        echo "Failures for $ROUTE_ID:"
-        echo "$output" | jq -r '.failures[]'
-        echo
+    # Capture the output from the ECS command and check exit status
+    if output=$(run_ecs_task_command "$ROUTE_ID" 2>&1); then
+        # Command succeeded, check for failures in the JSON response
+        failures=$(echo "$output" | jq -r '.failures // empty | length' 2>/dev/null)
+        
+        if [ -n "$failures" ] && [ "$failures" -gt 0 ]; then
+            echo "FAILED"
+            echo "Failures for $ROUTE_ID:"
+            echo "$output" | jq -r '.failures[]'
+            echo
+        else
+            echo "ok."
+            
+            # Show full JSON output only in debug mode
+            if [ "$DEBUG" = "true" ]; then
+                echo "Full JSON output:"
+                echo "$output"
+                echo
+            fi
+        fi
     else
-        echo "ok."
-    fi
-
-    # Show full JSON output only in debug mode
-    if [ "$DEBUG" = "true" ]; then
-        echo "Full JSON output:"
+        # Command failed (non-zero exit status)
+        echo "FAILED"
+        echo "Error executing route $ROUTE_ID:"
         echo "$output"
         echo
     fi
 done
 
 echo
-echo "All routes completed"
+echo "All routes processed"
