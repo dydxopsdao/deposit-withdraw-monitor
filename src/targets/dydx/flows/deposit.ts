@@ -76,16 +76,25 @@ async function readButtonLabel(button: Locator): Promise<string> {
 async function waitForEnabledOrExplain(button: Locator, timeoutMs: number): Promise<string /* last label */> {
   const start = Date.now();
   let lastLabel = "";
+  const INSUFFICIENT_GRACE_MS = 5000;
+  let insufficientSince: number | null = null;
 
   while (Date.now() - start < timeoutMs) {
     const label = await readButtonLabel(button);
     logger.info("Deposit button label", { label });
     if (label) lastLabel = label;
 
-    //TODO: capture future errors.
-    if (/insufficient\s+usdc/i.test(label)) {
-      // Immediate, explicit failure reason.
-      throw new Error(`deposit button not enabled: ${label}`);
+    if (/insufficient/i.test(label)) {
+      if (!insufficientSince) {
+        insufficientSince = Date.now();
+        logger.info("Deposit button shows insufficient; starting grace wait", {
+          graceMs: INSUFFICIENT_GRACE_MS,
+        });
+      } else if (Date.now() - insufficientSince >= INSUFFICIENT_GRACE_MS) {
+        throw new Error(`deposit button not enabled after grace period: ${label}`);
+      }
+    } else {
+      insufficientSince = null;
     }
 
     const enabled = await button.isEnabled().catch(() => false);
