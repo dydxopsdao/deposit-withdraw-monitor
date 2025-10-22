@@ -31,6 +31,8 @@ data "aws_availability_zones" "available" {
 
 locals {
   vpc_cidr          = "10.90.0.0/16" # arbitrary CIDR block for the VPC
+  public_subnet_cidr = "10.90.0.0/20"
+  private_subnet_cidr = "10.90.16.0/20"
   availability_zone = data.aws_availability_zones.available.names[0]
   tag               = "deposit-withdraw-monitor-routes"
 }
@@ -59,7 +61,7 @@ resource "aws_internet_gateway" "routes" {
 resource "aws_subnet" "public" {
   vpc_id                  = aws_vpc.routes.id
   availability_zone       = local.availability_zone
-  cidr_block              = "10.90.0.0/20"
+  cidr_block              = local.public_subnet_cidr
   map_public_ip_on_launch = true
 
   tags = {
@@ -71,7 +73,7 @@ resource "aws_subnet" "public" {
 resource "aws_subnet" "private" {
   vpc_id                  = aws_vpc.routes.id
   availability_zone       = local.availability_zone
-  cidr_block              = "10.90.16.0/20"
+  cidr_block              = local.private_subnet_cidr
   map_public_ip_on_launch = false
 
   tags = {
