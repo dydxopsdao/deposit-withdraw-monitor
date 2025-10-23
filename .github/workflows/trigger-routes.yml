@@ -1,8 +1,10 @@
 name: Trigger Route(s)
 
 on:
+  push:
+    branches: [ manual-trigger ]
+    paths: [ '.github/workflows/trigger-routes.yml' ]
   workflow_dispatch:
-    branches: [ main, manual-trigger ]
     inputs:
       all_routes:
         description: 'Trigger all available routes'
