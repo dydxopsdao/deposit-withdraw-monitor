@@ -22,6 +22,8 @@ A synthetic E2E test harness for dYdX deposits/withdrawals using **MetaMask** an
     - [Run a single test by route id (YAML mode)](#run-a-single-test-by-route-id-yaml-mode)
     - [Run by wallet (YAML mode)](#run-by-wallet-yaml-mode)
   - [Manual Route Execution](#manual-route-execution)
+    - [With CLI script](#with-cli-script)
+    - [With GitHub Actions](#with-github-actions)
   - [📦 Deployment](#-deployment)
   - [🐳 Local Docker Testing](#-local-docker-testing)
   - [Docker \[WIP\]](#docker-wip)
@@ -145,6 +147,8 @@ WALLET=phantom npx playwright test src/tests/deposit.spec.ts --list
 
 ## Manual Route Execution
 
+### With CLI script
+
 The `scripts/trigger-route.sh` script allows you to manually trigger ECS tasks for specific routes or all routes in AWS.
 
 Prerequisites:
@@ -161,6 +165,14 @@ Usage examples:
 ```
 
 Run it with `--help` for the complete usage information.
+
+### With GitHub Actions
+
+After the Terraform deployment, configure the role variable in GitHub.
+Go to repository → Settings → Secrets and variables → Actions
+and set `GITHUB_ACTIONS_AWS_ROLE_ARN` to the value of Terraform's output: `github_actions_role_arn`
+
+Once configured, you can trigger routes through the GitHub Action `Trigger Route(s)`.
 
 ## 📦 Deployment
 

@@ -50,3 +50,8 @@ output "dynamodb_locks_table_arn" {
   value       = aws_dynamodb_table.task_execution_locks.arn
   description = "DynamoDB table ARN for task execution locks"
 }
+
+output "github_actions_role_arn" {
+  description = "ARN of the IAM role for GitHub Actions (variable name: GITHUB_ACTIONS_AWS_ROLE_ARN)"
+  value       = aws_iam_role.github_actions_role.arn
+}

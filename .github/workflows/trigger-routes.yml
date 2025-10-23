@@ -1,0 +1,62 @@
+name: Trigger Route(s)
+
+on:
+  workflow_dispatch:
+    inputs:
+      all_routes:
+        description: 'Trigger all available routes'
+        required: false
+        default: false
+        type: boolean
+      route_ids:
+        description: 'Route IDs to trigger (space-separated, ignored if "all routes" is checked)'
+        required: false
+        type: string
+
+permissions:
+  id-token: write   # Required for OIDC authentication
+  contents: read    # Required to checkout code
+
+jobs:
+  trigger-routes:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ vars.GITHUB_ACTIONS_AWS_ROLE_ARN }}
+        role-session-name: github-actions-deposit-withdraw-monitor
+
+    - name: Validate inputs
+      run: |
+        if [ "${{ inputs.all_routes }}" != "true" ] && [ -z "${{ inputs.route_ids }}" ]; then
+          echo "Error: Either 'all_routes' must be true or 'route_ids' must be provided"
+          exit 1
+        fi
+        
+    - name: Trigger routes (all)
+      if: inputs.all_routes == true
+      run: |
+        echo "Triggering all routes"
+        ./scripts/trigger-route.sh --all=true
+          
+    - name: Trigger routes (specific)
+      if: inputs.all_routes != true
+      run: |
+        echo "Triggering routes:"
+        echo "${{ inputs.route_ids }}"
+        ./scripts/trigger-route.sh ${{ inputs.route_ids }}
+          
+    - name: Summary
+      if: always()
+      run: |
+        echo "## Route Trigger Summary" >> $GITHUB_STEP_SUMMARY
+        echo "- **All Routes**: ${{ inputs.all_routes }}" >> $GITHUB_STEP_SUMMARY
+        if [ "${{ inputs.all_routes }}" != "true" ]; then
+          echo "- **Selected Routes**: ${{ inputs.route_ids }}" >> $GITHUB_STEP_SUMMARY
+        fi
+        echo "- **Job Status**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
