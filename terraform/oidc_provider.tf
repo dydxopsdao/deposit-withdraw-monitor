@@ -64,20 +64,24 @@ resource "aws_iam_role_policy" "github_actions" {
         ]
         Resource = aws_ecr_repository.this.arn
       },
-      # ECS permissions to list task definitions and run tasks
+      # ECS permissions to list and describe task definitions
       {
         Effect = "Allow"
         Action = [
           "ecs:ListTaskDefinitions",
-          "ecs:RunTask",
           "ecs:DescribeTaskDefinition"
         ]
         Resource = "*"
-        Condition = {
-          StringEquals = {
-            "ecs:cluster" = "arn:aws:ecs:*:${data.aws_caller_identity.current.account_id}:cluster/deposit-withdraw-monitor-scheduled-jobs"
-          }
-        }
+      },
+      # ECS permissions to run tasks (with cluster restriction)
+      {
+        Effect = "Allow"
+        Action = [
+          "ecs:RunTask"
+        ]
+        Resource = [
+          "arn:aws:ecs:*:${data.aws_caller_identity.current.account_id}:*"
+        ]
       },
       {
         Effect = "Allow"
