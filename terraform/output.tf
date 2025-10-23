@@ -3,6 +3,7 @@ output "aws_ecr_repository_url" {
 }
 
 output "aws_github_actions_role_arn" {
+  description = "ARN of the IAM role for GitHub Actions (variable name: GITHUB_ACTIONS_AWS_ROLE_ARN)"
   value = aws_iam_role.github_actions.arn
 }
 

@@ -43,6 +43,7 @@ resource "aws_iam_role_policy" "github_actions" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
+      # ECR permissions to pull and push images
       {
         Effect = "Allow"
         Action = [
@@ -63,6 +64,63 @@ resource "aws_iam_role_policy" "github_actions" {
         ]
         Resource = aws_ecr_repository.this.arn
       },
+      # ECS permissions to list task definitions and run tasks
+      {
+        Effect = "Allow"
+        Action = [
+          "ecs:ListTaskDefinitions",
+          "ecs:RunTask",
+          "ecs:DescribeTaskDefinition"
+        ]
+        Resource = "*"
+        Condition = {
+          StringEquals = {
+            "ecs:cluster" = "arn:aws:ecs:*:${data.aws_caller_identity.current.account_id}:cluster/deposit-withdraw-monitor-scheduled-jobs"
+          }
+        }
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ecs:DescribeClusters"
+        ]
+        Resource = "arn:aws:ecs:*:${data.aws_caller_identity.current.account_id}:cluster/deposit-withdraw-monitor-scheduled-jobs"
+      },
+      # DynamoDB permissions to read locks table
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:GetItem",
+          "dynamodb:Query",
+          "dynamodb:Scan"
+        ]
+        Resource = aws_dynamodb_table.task_execution_locks.arn
+      },
+      # EC2 permissions to describe networking resources (needed by trigger script)
+      {
+        Effect = "Allow"
+        Action = [
+          "ec2:DescribeSubnets",
+          "ec2:DescribeSecurityGroups"
+        ]
+        Resource = "*"
+      },
+      # IAM permissions to pass the ECS task role (required for ECS RunTask)
+      {
+        Effect = "Allow"
+        Action = [
+          "iam:PassRole"
+        ]
+        Resource = [
+          aws_iam_role.task_role.arn,
+          aws_iam_role.task_execution.arn
+        ]
+        Condition = {
+          StringEquals = {
+            "iam:PassedToService" = "ecs-tasks.amazonaws.com"
+          }
+        }
+      }
     ]
   })
 }

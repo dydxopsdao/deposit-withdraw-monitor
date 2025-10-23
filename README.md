@@ -12,18 +12,29 @@ A synthetic E2E test harness for dYdX deposits/withdrawals using **MetaMask** an
 - [Deposit–Withdraw Monitor](#depositwithdraw-monitor)
   - [Contents](#contents)
   - [Quick start](#quick-start)
+  - [Configuration \[WIP\]](#configuration-wip)
+    - [Environment Configuration](#environment-configuration)
+  - [Routes: how tests are generated](#routes-how-tests-are-generated)
+  - [Rebalancing](#rebalancing)
+  - [Scheduling](#scheduling)
+  - [Running tests](#running-tests)
+    - [List generated tests (YAML mode)](#list-generated-tests-yaml-mode)
     - [Run a single test by route id (YAML mode)](#run-a-single-test-by-route-id-yaml-mode)
     - [Run by wallet (YAML mode)](#run-by-wallet-yaml-mode)
-  - [Configuration [WIP]](#configuration-wip)
-    - [Environment Configuration](#environment-configuration)
+  - [Manual Route Execution](#manual-route-execution)
+    - [With CLI script](#with-cli-script)
+    - [With GitHub Actions](#with-github-actions)
   - [📦 Deployment](#-deployment)
   - [🐳 Local Docker Testing](#-local-docker-testing)
   - [Docker \[WIP\]](#docker-wip)
   - [Running locally with traces written to S3](#running-locally-with-traces-written-to-s3)
   - [AWS (EventBridge → ECS Fargate) — IaC \[WIP\]](#aws-eventbridge--ecs-fargate--iac-wip)
   - [Project structure](#project-structure)
-  - [Telemetry (Datadog) \[WIP\]](#telemetry-datadog-wip)
+  - [Observability (Datadog)](#observability-datadog)
   - [Troubleshooting \[WIP\]](#troubleshooting-wip)
+  - [Custom v4-client-js Dependency Fix](#custom-v4-client-js-dependency-fix)
+    - [Why a custom build?](#why-a-custom-build)
+    - [Building and updating the custom dependency](#building-and-updating-the-custom-dependency)
 
 ---
 
@@ -133,6 +144,31 @@ WALLET=phantom npx playwright test src/tests/deposit.spec.ts --list
 
 
 ---
+
+## Manual Route Execution
+
+### With CLI script
+
+The `scripts/trigger-route.sh` script allows you to manually trigger ECS tasks for specific routes or all routes in AWS.
+
+Prerequisites:
+
+- AWS CLI configured with appropriate credentials
+- `jq` installed for JSON processing
+- AWS SSO login (if using SSO): `aws sso login --sso-session dydxopsdao`
+
+Usage examples:
+
+```bash
+./scripts/trigger-route.sh metamask-arbitrum-usdc-deposit-instant
+./scripts/trigger-route.sh --all=true
+```
+
+Run it with `--help` for the complete usage information.
+
+### With GitHub Actions
+
+Given that `AWS_GITHUB_ACTIONS_ROLE_ARN` is set up (see below: *GitHub Repository Configuration*), you can trigger routes through the GitHub Action `Trigger Route(s)`.
 
 ## 📦 Deployment
 
