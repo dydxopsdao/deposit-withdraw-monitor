@@ -156,10 +156,23 @@ Prerequisites:
 - AWS CLI configured with appropriate credentials
 - `jq` installed for JSON processing
 - AWS SSO login (if using SSO): `aws sso login --sso-session dydxopsdao`
+- `~/.aws/config` should have the following entries:
+  ```
+  [sso-session dydxopsdao]
+  sso_start_url = https://dydxopsservices.awsapps.com/start/
+  sso_region = ap-northeast-1
+  sso_registration_scopes = sso:account:access
+
+  [profile deposit-withdraw-monitor]
+  sso_session = dydxopsdao
+  sso_account_id = 987747149454
+  sso_role_name = Engineer
+  ```
 
 Usage examples:
 
 ```bash
+export AWS_PROFILE=deposit-withdraw-monitor
 ./scripts/trigger-route.sh metamask-arbitrum-usdc-deposit-instant
 ./scripts/trigger-route.sh --all=true
 ```
