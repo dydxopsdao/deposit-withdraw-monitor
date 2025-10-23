@@ -16,9 +16,6 @@ resource "aws_iam_openid_connect_provider" "github_actions" {
   ]
 }
 
-# Data source to get the GitHub repository information
-data "aws_caller_identity" "current" {}
-
 # IAM Role for GitHub Actions to assume
 resource "aws_iam_role" "github_actions_role" {
   name = "deposit-withdraw-monitor-github-actions"
