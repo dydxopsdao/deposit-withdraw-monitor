@@ -168,11 +168,7 @@ Run it with `--help` for the complete usage information.
 
 ### With GitHub Actions
 
-After the Terraform deployment, configure the role variable in GitHub.
-Go to repository → Settings → Secrets and variables → Actions
-and set `GITHUB_ACTIONS_AWS_ROLE_ARN` to the value of Terraform's output: `github_actions_role_arn`
-
-Once configured, you can trigger routes through the GitHub Action `Trigger Route(s)`.
+Given that `AWS_GITHUB_ACTIONS_ROLE_ARN` is set up (see below: *GitHub Repository Configuration*), you can trigger routes through the GitHub Action `Trigger Route(s)`.
 
 ## 📦 Deployment
 

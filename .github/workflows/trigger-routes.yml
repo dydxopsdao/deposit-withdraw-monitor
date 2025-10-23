@@ -13,6 +13,10 @@ on:
         required: false
         type: string
 
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  AWS_GITHUB_ACTIONS_ROLE_ARN: ${{ vars.AWS_GITHUB_ACTIONS_ROLE_ARN }}
+
 permissions:
   id-token: write   # Required for OIDC authentication
   contents: read    # Required to checkout code
@@ -28,8 +32,9 @@ jobs:
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
-        role-to-assume: ${{ vars.GITHUB_ACTIONS_AWS_ROLE_ARN }}
+        role-to-assume: ${{ env.AWS_GITHUB_ACTIONS_ROLE_ARN }}
         role-session-name: github-actions-deposit-withdraw-monitor
+        aws-region: ${{ env.AWS_REGION }}
 
     - name: Validate inputs
       run: |
