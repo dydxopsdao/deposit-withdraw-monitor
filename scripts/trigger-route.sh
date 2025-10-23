@@ -4,7 +4,7 @@
 # aws sso login --sso-session dydxopsdao
 
 # Default region
-REGION="ap-northeast-1"  # Tokyo
+REGION="ap-northeast-1" # Tokyo
 DEBUG=false
 ALL=false
 
@@ -24,17 +24,67 @@ get_all_route_ids() {
     aws ecs list-task-definitions --region $REGION --query 'taskDefinitionArns[*]' --output text | awk '{for(i=1;i<=NF;i++) if($i ~ /task-definition/) {split($i,a,"/"); split(a[length(a)],b,":"); print b[1]}}'
 }
 
+# Function to check if route is currently locked
+check_route_lock() {
+    local route_id="$1"
+    local current_time=$(date +%s)
+    local dynamodb_table="deposit-withdraw-monitor-task-locks"
+
+    # Query DynamoDB to check if lock exists and is not expired
+    local lock_info=$(aws dynamodb get-item \
+        --table-name "$dynamodb_table" \
+        --key "{\"route_id\": {\"S\": \"$route_id\"}}" \
+        --region $REGION \
+        --output json)
+
+    # In debug mode, print the dynamoDB query result
+    if [ "$DEBUG" = "true" ]; then
+        echo "DynamoDB query result:"
+        echo "$lock_info"
+    fi
+
+    # If the dynamoDB query is empty, assume the route is not locked
+    if [ -z "$lock_info" ]; then
+        return 0
+    fi
+
+    # If the dynamoDB query result is not empty, interpret it
+    if echo "$lock_info" | jq -e '.Item' >/dev/null 2>&1; then
+        # Extract lock expiry time
+        local lock_expiry=$(echo "$lock_info" | jq -r '.Item.lock_expiry.N // empty')
+
+        # If the lock expiry time is not a number, print warning and continue
+        if ! [[ "$lock_expiry" =~ ^[0-9]+$ ]]; then
+            echo -n "cannot determine lock status (lock expiry is not a number) - continuing... "
+            return 0
+        fi
+
+        # If the lock expiry time is a number, check if it is greater than the current time
+        if [ "$lock_expiry" -gt "$current_time" ]; then
+            return 1 # Route is locked
+        else
+            echo -n "lock expired - continuing... "
+            return 0
+        fi
+    else
+        # If the dynamoDB query is not empty but the item does not exist, print warning but continue
+        echo -n "cannot determine lock status (no item found) - continuing... "
+        return 0
+    fi
+
+}
+
 # Function to run ECS task command
 run_ecs_task_command() {
     local route_id="$1"
-    
+
     aws ecs run-task \
-      --region $REGION \
-      --cluster deposit-withdraw-monitor-scheduled-jobs \
-      --task-definition $route_id \
-      --launch-type FARGATE \
-      --platform-version 1.4.0 \
-      --network-configuration "awsvpcConfiguration={subnets=[$SUBNET_ID],securityGroups=[$SG_ID],assignPublicIp=DISABLED}"
+        --region $REGION \
+        --cluster deposit-withdraw-monitor-scheduled-jobs \
+        --task-definition $route_id \
+        --launch-type FARGATE \
+        --platform-version 1.4.0 \
+        --network-configuration "awsvpcConfiguration={subnets=[$SUBNET_ID],securityGroups=[$SG_ID],assignPublicIp=DISABLED}"
 }
 
 # Function to check if user is authenticated with AWS
@@ -54,39 +104,39 @@ print_auth_error() {
 ROUTE_IDS=()
 for arg in "$@"; do
     case $arg in
-        --region=*)
-            REGION="${arg#*=}"
-            shift
-            ;;
-        --debug=*)
-            DEBUG="${arg#*=}"
-            shift
-            ;;
-        --all=*)
-            ALL="${arg#*=}"
-            shift
-            ;;
-        --help)
-            print_usage
-            exit 0
-            ;;
-        --list-routes)
-            echo "Available routes:"
-            if is_aws_authenticated; then
-                get_all_route_ids
-            else
-                print_auth_error
-                exit 1
-            fi
-            exit 0
-            ;;
-        -*)
-            echo "Unknown option: $arg"
+    --region=*)
+        REGION="${arg#*=}"
+        shift
+        ;;
+    --debug=*)
+        DEBUG="${arg#*=}"
+        shift
+        ;;
+    --all=*)
+        ALL="${arg#*=}"
+        shift
+        ;;
+    --help)
+        print_usage
+        exit 0
+        ;;
+    --list-routes)
+        echo "Available routes:"
+        if is_aws_authenticated; then
+            get_all_route_ids
+        else
+            print_auth_error
             exit 1
-            ;;
-        *)
-            ROUTE_IDS+=("$arg")
-            ;;
+        fi
+        exit 0
+        ;;
+    -*)
+        echo "Unknown option: $arg"
+        exit 1
+        ;;
+    *)
+        ROUTE_IDS+=("$arg")
+        ;;
     esac
 done
 
@@ -97,7 +147,7 @@ if [ ${#ROUTE_IDS[@]} -eq 0 ] && [ "$ALL" = "false" ]; then
 fi
 
 # Check for required dependencies
-if ! command -v jq &> /dev/null; then
+if ! command -v jq &>/dev/null; then
     echo "Error: jq is required but not installed. Please install jq to use this script."
     exit 1
 fi
@@ -112,7 +162,7 @@ fi
 if [ "$ALL" = "true" ]; then
     # Fetch all available routes
     ROUTE_IDS=($(get_all_route_ids))
-    
+
     if [ ${#ROUTE_IDS[@]} -eq 0 ]; then
         echo "Error: No routes found in region $REGION"
         exit 1
@@ -143,13 +193,22 @@ echo
 
 # Loop through all route IDs and execute each one
 for ROUTE_ID in "${ROUTE_IDS[@]}"; do
-    echo -n "Triggering: $ROUTE_ID... "
-    
+    echo -n "Processing: $ROUTE_ID... "
+
+    # Check if route is currently locked
+    if ! check_route_lock "$ROUTE_ID"; then
+        # Route is locked, skip execution (message already printed by check_route_lock)
+        echo "locked - skipping."
+        continue
+    fi
+
+    echo -n "triggering... "
+
     # Capture the output from the ECS command and check exit status
     if output=$(run_ecs_task_command "$ROUTE_ID" 2>&1); then
         # Command succeeded, check for failures in the JSON response
         failures=$(echo "$output" | jq -r '.failures // empty | length' 2>/dev/null)
-        
+
         if [ -n "$failures" ] && [ "$failures" -gt 0 ]; then
             echo "FAILED"
             echo "Failures for $ROUTE_ID:"
@@ -157,7 +216,7 @@ for ROUTE_ID in "${ROUTE_IDS[@]}"; do
             echo
         else
             echo "ok."
-            
+
             # Show full JSON output only in debug mode
             if [ "$DEBUG" = "true" ]; then
                 echo "Full JSON output:"
