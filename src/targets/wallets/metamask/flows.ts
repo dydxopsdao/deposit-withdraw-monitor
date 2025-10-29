@@ -280,8 +280,8 @@ async function handleMetamaskPage(
   logger.info(`${label}: focusing MetaMask page → ${safeUrl(page)}`);
   try {
     await page.bringToFront().catch(() => {});
-    await page.waitForTimeout(1500);
-    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(2500);
+    await page.reload({ waitUntil: "load" });
 
     const patterns = [/^Unlock$/i, /^Next$/i, /^Connect$/i, /^Approve$/i, /^Confirm$/i];
     const pollMs = TEST_TIMEOUTS.POLL;
@@ -293,8 +293,8 @@ async function handleMetamaskPage(
     while (!page.isClosed() && Date.now() < deadline && reloadAttempts <= maxReloads) {
       logger.info(`${label}: reload attempt ${reloadAttempts + 1}/${maxReloads}`);
       try {
-        await page.waitForTimeout(1500);
-        await page.reload({ waitUntil: "domcontentloaded" });
+        await page.waitForTimeout(2500);
+        await page.reload({ waitUntil: "load" });
       } catch (reloadErr: any) {
         logger.debug(
           `${label}: reload attempt ${reloadAttempts + 1} failed (${reloadErr?.message ?? reloadErr})`
