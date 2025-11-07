@@ -17,7 +17,8 @@ import {
   getRoutesSync,
   type Route,
   type WalletType,
-  waitForFinality,
+  waitForUIFinality,
+  checkAPIFinality,
 } from "../utils";
 import { openApp, connectWallet, deposit, submitDeposit } from "../targets/dydx/flows";
 import { dydxSelectors } from "../targets/dydx/selectors";
@@ -25,6 +26,7 @@ import { TEST_TIMEOUTS } from "../config/timeouts";
 import { datadog, DepositFunnelSteps } from "../utils/datadog";
 import { sendTestRunMetricsToDatadog, sendRebalancerBalanceMetrics } from "../utils/datadog/metrics";
 import { rebalanceNow } from "../rebalancer";
+import interop, { TokenAmount } from "../rebalancer/interop";
 
 // ---- Route discovery (sync so tests can be defined at import time) ----------
 const onlyRouteId = process.env.ROUTE_ID?.trim();
@@ -62,7 +64,8 @@ for (const route of depositRoutes) {
 
       let txHash: string | undefined;
       let explorerUrl: string | undefined;
-      let passed = false;
+      let freeCollateralBeforeDeposit: TokenAmount;
+      let freeCollateralAfterDeposit: TokenAmount;
 
       logger.info(`Starting test: (${route.id})`, {
         route_id: route.id,
@@ -79,6 +82,8 @@ for (const route of depositRoutes) {
       });
 
       try {
+          freeCollateralBeforeDeposit = await interop.getFreeCollateral(route.dydx_address);
+
           // NavigateDialog: Open app and connect wallet to reach deposit dialog
           testRunLogger.startStep(DepositFunnelSteps.NavigateDialog);
           await test.step("Open app", async () => {
@@ -110,20 +115,43 @@ for (const route of depositRoutes) {
           });
           testRunLogger.completeStep(DepositFunnelSteps.DepositSubmitted);
 
-          // DepositFinalized: Transaction confirmed on-chain
-          testRunLogger.startStep(DepositFunnelSteps.DepositFinalized);
-          await test.step("Wait for finality", async () => {
-            logger.info("Waiting for finality");
-            const res = await waitForFinality(page, { kind: "deposit" });
-            txHash = res.txHash;
-            explorerUrl = res.explorerUrl;
-            expect(res.ok).toBeTruthy();
-            passed = true;
-          });
-          testRunLogger.completeStep(DepositFunnelSteps.DepositFinalized);
+          let uiFinalityPassed: boolean = false;
+          let apiFinalityPassed: boolean = false;
+          try {
+            testRunLogger.startStep(DepositFunnelSteps.DepositFinalized);
+            await test.step('Wait for finality', async () => {
+              logger.info('Waiting for finality');
+              const res = await waitForUIFinality(page, { kind: 'deposit' });
+              txHash = res.txHash;
+              explorerUrl = res.explorerUrl;
+              expect(res.ok).toBeTruthy();
+              uiFinalityPassed = true;
+            });
+            testRunLogger.completeStep(DepositFunnelSteps.DepositFinalized);
+          } catch (e: any) {
+            logger.error('UI Finality check failed', e, { route_id: route.id, txHash, explorerUrl });
+            uiFinalityPassed = false;
+          }
 
-          logger.success("Deposit flow complete", { route_id: route.id, txHash, explorerUrl });
-          
+          freeCollateralAfterDeposit = await interop.getFreeCollateral(route.dydx_address);
+          apiFinalityPassed = checkAPIFinality(
+            freeCollateralBeforeDeposit, 
+            freeCollateralAfterDeposit, 
+            {
+              routeKind: "deposit",
+              depositRouteKind: route.route_kind,
+            }
+          );
+          expect(apiFinalityPassed).toBeTruthy();
+  
+          logger.success('Deposit flow complete', {
+            route_id: route.id,
+            txHash,
+            explorerUrl,
+            uiFinalityPassed,
+            apiFinalityPassed,
+          });
+
           // Emit comprehensive test run log for successful tests
           await testRunLogger.logTestResult({
             status: "passed",
@@ -132,7 +160,7 @@ for (const route of depositRoutes) {
           });
           
           // Send metrics for successful test
-          await sendTestRunMetricsToDatadog(route, "deposit", "passed");
+          await sendTestRunMetricsToDatadog(route, "deposit", "passed", uiFinalityPassed, apiFinalityPassed);
           
           // TODO: Consider closing the entire context here to avoid cross-test leakage when running multiple routes.
         } catch (e: any) {
@@ -147,7 +175,7 @@ for (const route of depositRoutes) {
           });
           
           // Send metrics for failed test
-          await sendTestRunMetricsToDatadog(route, "deposit", "failed");
+          await sendTestRunMetricsToDatadog(route, "deposit", "failed", false, false);
           
           throw e;
       } finally {
@@ -156,7 +184,6 @@ for (const route of depositRoutes) {
           try {
             // Assume your rebalance returns optional balances; OK if it returns void
             const result = await rebalanceNow(route);
-            const balancesBefore = (result as any)?.balancesBefore;
             const balancesAfter = (result as any)?.balancesAfter;
 
             // Note: Rebalance logging could be added to the modular system in the future if needed

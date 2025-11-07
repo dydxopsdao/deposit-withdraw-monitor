@@ -151,7 +151,6 @@ async function depositToSubaccount(dYdXSeed: string, amount: bigint | string) {
   const dYdXChainConfig = CHAIN_CONFIGS[dYdXChainId];
 
   const dYdXWallet = await LocalWallet.fromMnemonic(dYdXSeed, dYdXChainConfig.bech32Prefix);
-  const dYdXAddress = dYdXWallet.address ?? '';
 
   const validatorClient = await ValidatorClient.connect({
     restEndpoint: dYdXChainConfig.getRpcEndpoint(),

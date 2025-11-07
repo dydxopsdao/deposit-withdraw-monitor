@@ -4,7 +4,9 @@ import { dydxSelectors as dydxSelectors } from "../targets/dydx/selectors";
 import { TEST_TIMEOUTS } from "../config/timeouts";
 import { logger } from "../logger";
 import { isVisible } from "./ui-helper";
-import type { RouteKind } from "./routes";
+import type { DepositRouteKind, RouteKind } from "./routes";
+import { TokenAmount } from "../rebalancer/interop";
+import { parseUsdcAmount } from "../rebalancer/interop/balances";
 
 type FinalityResult = { ok: boolean; explorerUrl?: string; txHash?: string; explorerUrlsAll?: string[]; txHashesAll?: (string | undefined)[] };
 
@@ -21,21 +23,21 @@ const DEFAULT_FINALITY_TIMEOUT =
  * @param options Flow configuration and timing overrides (kind, timeoutMs, pollMs, graceMs).
  * @returns Aggregated status plus any explorer URLs and hashes observed.
  */
-type WaitForFinalityOptions = {
+type WaitForUIFinalityOptions = {
   kind?: RouteKind;
   timeoutMs?: number;
   pollMs?: number;
   graceMs?: number;
 };
 
-export async function waitForFinality(
+export async function waitForUIFinality(
   page: Page,
   {
     kind = "deposit",
     timeoutMs = DEFAULT_FINALITY_TIMEOUT,
     pollMs = 1500,
     graceMs = 500,
-  }: WaitForFinalityOptions = {}
+  }: WaitForUIFinalityOptions = {}
 ): Promise<FinalityResult> {
   const dlg = dydxSelectors.fundsDialog(page);
   const inProgress = dydxSelectors.transferInProgress(page);
@@ -174,4 +176,51 @@ function extractTxHash(href: string): string | undefined {
     href.match(/\/transaction\/([A-Za-z0-9_-]{32,})/)?.[1] ??
     undefined
   );
+}
+
+const REGULAR_DEPOSIT_FEES_THRESHOLD = parseUsdcAmount('2.0').amount;
+const INSTANT_DEPOSIT_FEES_THRESHOLD = parseUsdcAmount('1.0').amount;
+const WITHDRAW_FEES_THRESHOLD = parseUsdcAmount('2.0').amount;
+
+/**
+ * Options for the API finality check
+ * @param routeKind - The kind of route
+ * @param depositRouteKind - The kind of deposit route
+ */
+type APIFinalityOptions = {
+  routeKind: RouteKind;
+  depositRouteKind?: DepositRouteKind;
+};
+/**
+ * Checks if the API finality is met for the given route kind and deposit route kind.
+ * The finality is met if the balance after the operation is within the fees threshold of the balance before the operation.
+ * @param balanceBefore - The balance before the operation
+ * @param balanceAfter - The balance after the operation
+ * @param options - The options for the API finality check
+ * @returns True if the API finality is met, false otherwise
+ */
+export function checkAPIFinality(
+  balanceBefore: TokenAmount,
+  balanceAfter: TokenAmount,
+  options: APIFinalityOptions
+): boolean {
+  if (options.routeKind === 'deposit') {
+    if (options.depositRouteKind === 'regular') {
+      return (
+        balanceAfter.amount <= balanceBefore.amount &&
+        balanceAfter.amount >= balanceBefore.amount - REGULAR_DEPOSIT_FEES_THRESHOLD
+      );
+    } else if (options.depositRouteKind === 'instant') {
+      return (
+        balanceAfter.amount <= balanceBefore.amount &&
+        balanceAfter.amount >= balanceBefore.amount - INSTANT_DEPOSIT_FEES_THRESHOLD
+      );
+    }
+  } else if (options.routeKind === 'withdraw') {
+    return (
+      balanceAfter.amount <= balanceBefore.amount &&
+      balanceAfter.amount >= balanceBefore.amount - WITHDRAW_FEES_THRESHOLD
+    );
+  }
+  return false;
 }
