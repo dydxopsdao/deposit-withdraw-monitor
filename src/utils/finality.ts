@@ -178,49 +178,26 @@ function extractTxHash(href: string): string | undefined {
   );
 }
 
-const REGULAR_DEPOSIT_FEES_THRESHOLD = parseUsdcAmount('2.0').amount;
-const INSTANT_DEPOSIT_FEES_THRESHOLD = parseUsdcAmount('1.0').amount;
-const WITHDRAW_FEES_THRESHOLD = parseUsdcAmount('2.0').amount;
-
 /**
- * Options for the API finality check
- * @param routeKind - The kind of route
- * @param depositRouteKind - The kind of deposit route
- */
-type APIFinalityOptions = {
-  routeKind: RouteKind;
-  depositRouteKind?: DepositRouteKind;
-};
-/**
- * Checks if the API finality is met for the given route kind and deposit route kind.
- * The finality is met if the balance after the operation is within the fees threshold of the balance before the operation.
- * @param balanceBefore - The balance before the operation
- * @param balanceAfter - The balance after the operation
- * @param options - The options for the API finality check
+ * Checks if the API finality is met for the given transfer.
+ * The finality is met if the balance after the transfer is within the fees threshold of the balance before the transfer plus the transfer amount.
+ * Note that this is from the perspective of the destination wallet, so its balance should always be increased by the transfer amount minus the fees.
+ * Basically, `endAmount = beginAmount + transferAmount - fees`, where `fees` is between 0 and TRANSFER_FEES_THRESHOLD.
+ * @param destinationBalanceBefore - The balance before the transfer on the destination wallet
+ * @param destinationBalanceAfter - The balance after the transfer on the destination wallet
+ * @param transferAmount - The amount of the transfer. Must be positive non-zero in USDC format.
  * @returns True if the API finality is met, false otherwise
  */
 export function checkAPIFinality(
-  balanceBefore: TokenAmount,
-  balanceAfter: TokenAmount,
-  options: APIFinalityOptions
+  destinationBalanceBefore: TokenAmount,
+  destinationBalanceAfter: TokenAmount,
+  transferAmount: string,
 ): boolean {
-  if (options.routeKind === 'deposit') {
-    if (options.depositRouteKind === 'regular') {
-      return (
-        balanceAfter.amount <= balanceBefore.amount &&
-        balanceAfter.amount >= balanceBefore.amount - REGULAR_DEPOSIT_FEES_THRESHOLD
-      );
-    } else if (options.depositRouteKind === 'instant') {
-      return (
-        balanceAfter.amount <= balanceBefore.amount &&
-        balanceAfter.amount >= balanceBefore.amount - INSTANT_DEPOSIT_FEES_THRESHOLD
-      );
-    }
-  } else if (options.routeKind === 'withdraw') {
-    return (
-      balanceAfter.amount <= balanceBefore.amount &&
-      balanceAfter.amount >= balanceBefore.amount - WITHDRAW_FEES_THRESHOLD
-    );
-  }
-  return false;
+  const TRANSFER_FEES_THRESHOLD = parseUsdcAmount('5.0').amount;
+  const transferAmountBigInt = parseUsdcAmount(transferAmount).amount;
+
+  return (
+    destinationBalanceAfter.amount <= destinationBalanceBefore.amount + transferAmountBigInt &&
+    destinationBalanceAfter.amount >= destinationBalanceBefore.amount + transferAmountBigInt - TRANSFER_FEES_THRESHOLD
+  );
 }

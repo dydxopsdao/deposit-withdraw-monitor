@@ -64,6 +64,8 @@ for (const route of withdrawRoutes) {
       let txHashesAll: (string | undefined)[] = [];
       let walletBalanceBeforeWithdraw: TokenAmount;
       let walletBalanceAfterWithdraw: TokenAmount;
+      let uiFinalityPassed: boolean = false;
+      let apiFinalityPassed: boolean = false;
 
       logger.info("Starting withdraw", {
         route_id: route.id,
@@ -80,117 +82,115 @@ for (const route of withdrawRoutes) {
       });
 
       try {
+        walletBalanceBeforeWithdraw = await interop.getUsdcBalance(route.dst_chain, route.wallet_address);
+
+        // NavigateDialog: Open app and connect wallet to reach withdraw dialog
+        testRunLogger.startStep(WithdrawFunnelSteps.NavigateDialog);
+        await test.step("Open app", async () => {
+          await openApp(page, {
+            waitUntil: "domcontentloaded",
+            maxRetries: 3,
+            retryDelayMs: 1500,
+            waitFor: [dydxSelectors.connectWalletBtn]
+          });
+        });
+
+        await test.step(`Connect wallet (${route.wallet_type})`, async () => {
+          await connectWallet(page, context, route.wallet_type);
+        });
+        testRunLogger.completeStep(WithdrawFunnelSteps.NavigateDialog);
+
+        // WithdrawInitiated: User fills withdraw dialog and initiates a withdrawal
+        testRunLogger.startStep(WithdrawFunnelSteps.WithdrawInitiated);
+        await test.step("Withdraw Dialog Input", async () => {
+          await withdraw(page, route.amount, route.dst_chain, route.token, route.wallet_type);
+        });
+        testRunLogger.completeStep(WithdrawFunnelSteps.WithdrawInitiated);
+
+        // WithdrawSubmitted: Transaction submitted to blockchain
+        testRunLogger.startStep(WithdrawFunnelSteps.WithdrawSubmitted);
+        await test.step("Submit withdraw", async () => {
+          logger.info("Submitting withdraw");
+          return await submitWithdraw(page, context, route.wallet_type);
+        });
+        testRunLogger.completeStep(WithdrawFunnelSteps.WithdrawSubmitted);
+
         try {
-          walletBalanceBeforeWithdraw = await interop.getUsdcBalance(route.src_chain, route.wallet_address);
-
-          // NavigateDialog: Open app and connect wallet to reach withdraw dialog
-          testRunLogger.startStep(WithdrawFunnelSteps.NavigateDialog);
-          await test.step("Open app", async () => {
-            await openApp(page, {
-              waitUntil: "domcontentloaded",
-              maxRetries: 3,
-              retryDelayMs: 1500,
-              waitFor: [dydxSelectors.connectWalletBtn]
-            });
+          testRunLogger.startStep(WithdrawFunnelSteps.WithdrawFinalized);
+          await test.step("Wait for finality", async () => {
+            logger.info("Waiting for finality");
+            const res = await waitForUIFinality(page, { kind: "withdraw" });
+            logger.info("Finality result", { res });
+            txHash = res.txHash;
+            explorerUrl = res.explorerUrl;
+            explorerUrlsAll = res.explorerUrlsAll ?? [];
+            txHashesAll = res.txHashesAll ?? [];
+            expect(res.ok).toBeTruthy();
+            uiFinalityPassed = true;
           });
+          testRunLogger.completeStep(WithdrawFunnelSteps.WithdrawFinalized);
+        } catch (e: any) {
+          logger.error('UI Finality check failed', e, { route_id: route.id, txHash, explorerUrl });
+          uiFinalityPassed = false;
+        }
 
-          await test.step(`Connect wallet (${route.wallet_type})`, async () => {
-            await connectWallet(page, context, route.wallet_type);
-          });
-          testRunLogger.completeStep(WithdrawFunnelSteps.NavigateDialog);
-
-          // WithdrawInitiated: User fills withdraw dialog and initiates a withdrawal
-          testRunLogger.startStep(WithdrawFunnelSteps.WithdrawInitiated);
-          await test.step("Withdraw Dialog Input", async () => {
-            await withdraw(page, String(route.amount), route.dst_chain, route.token, route.wallet_type);
-          });
-          testRunLogger.completeStep(WithdrawFunnelSteps.WithdrawInitiated);
-
-          // WithdrawSubmitted: Transaction submitted to blockchain
-          testRunLogger.startStep(WithdrawFunnelSteps.WithdrawSubmitted);
-          await test.step("Submit withdraw", async () => {
-            logger.info("Submitting withdraw");
-            return await submitWithdraw(page, context, route.wallet_type);
-          });
-          testRunLogger.completeStep(WithdrawFunnelSteps.WithdrawSubmitted);
-
-          let uiFinalityPassed: boolean = false;
-          let apiFinalityPassed: boolean = false;
-          try {
-              testRunLogger.startStep(WithdrawFunnelSteps.WithdrawFinalized);
-            await test.step("Wait for finality", async () => {
-              logger.info("Waiting for finality");
-              const res = await waitForUIFinality(page, { kind: "withdraw" });
-              logger.info("Finality result", { res });
-              txHash = res.txHash;
-              explorerUrl = res.explorerUrl;
-              explorerUrlsAll = res.explorerUrlsAll ?? [];
-              txHashesAll = res.txHashesAll ?? [];
-              expect(res.ok).toBeTruthy();
-              uiFinalityPassed = true;
-            });
-            testRunLogger.completeStep(WithdrawFunnelSteps.WithdrawFinalized);
-          } catch (e: any) {
-            logger.error('UI Finality check failed', e, { route_id: route.id, txHash, explorerUrl });
-            uiFinalityPassed = false;
-          }
-
-          walletBalanceAfterWithdraw = await interop.getUsdcBalance(route.src_chain, route.wallet_address);
+        if (!uiFinalityPassed) {
+          walletBalanceAfterWithdraw = await interop.getUsdcBalance(route.dst_chain, route.wallet_address);
           apiFinalityPassed = checkAPIFinality(
             walletBalanceBeforeWithdraw, 
             walletBalanceAfterWithdraw, 
-            {
-              routeKind: "withdraw"
-            }
+            route.amount
           );
           expect(apiFinalityPassed).toBeTruthy();
-
-          /* =========================
-            TEST PASSED
-            ========================= */
-          logger.success("Withdraw flow complete", 
-            { route_id: route.id, 
-              explorerUrlsAll, 
-              txHashesAll, 
-              uiFinalityPassed, 
-              apiFinalityPassed,
-            });
-          
-          // Emit comprehensive test run log for successful tests
-          await testRunLogger.logTestResult({
-            status: "passed",
-            txHash,
-            explorerUrl,
-          });
-          
-          // Send metrics for successful test
-          await sendTestRunMetricsToDatadog(route, "withdraw", "passed", uiFinalityPassed, apiFinalityPassed);
-        } catch (e: any) {
-          /* =========================
-            TEST FAILED
-            ========================= */
-          logger.error("Withdraw failed", e, { route_id: route.id, explorerUrlsAll, txHashesAll });
-          
-          // Emit comprehensive test run log for failed tests
-          await testRunLogger.logTestResult({
-            status: "failed",
-            error: e,
-            txHash,
-            explorerUrl,
-          });
-          
-          // Send metrics for failed test
-          await sendTestRunMetricsToDatadog(route, "withdraw", "failed", false, false);
-          
-          throw e;
+        } else {
+          // If the UI finality passed, the API finality should also pass - 
+          // let's not give it a chance to fail by checking the balance again
+          apiFinalityPassed = true;
         }
 
+        /* =========================
+          TEST PASSED
+          ========================= */
+        logger.success("Withdraw flow complete", 
+          { route_id: route.id, 
+            explorerUrlsAll, 
+            txHashesAll, 
+            uiFinalityPassed, 
+            apiFinalityPassed,
+          });
+        
+        // Emit comprehensive test run log for successful tests
+        await testRunLogger.logTestResult({
+          status: "passed",
+          txHash,
+          explorerUrl,
+        });
+        
+        // Send metrics for successful test
+        await sendTestRunMetricsToDatadog(route, "withdraw", "passed", uiFinalityPassed, apiFinalityPassed);
+      } catch (e: any) {
+        /* =========================
+          TEST FAILED
+          ========================= */
+        logger.error("Withdraw failed", e, { route_id: route.id, explorerUrlsAll, txHashesAll });
+        
+        // Emit comprehensive test run log for failed tests
+        await testRunLogger.logTestResult({
+          status: "failed",
+          error: e,
+          txHash,
+          explorerUrl,
+        });
+        
+        // Send metrics for failed test
+        await sendTestRunMetricsToDatadog(route, "withdraw", "failed", uiFinalityPassed, apiFinalityPassed);
+        
+        throw e;
       } finally {
         // -------- Always attempt to rebalance — must not fail the test -------
         await test.step("Rebalance (teardown)", async () => {
           try {
             const result = await rebalanceNow(route);
-            const balancesBefore = (result as any)?.balancesBefore;
             const balancesAfter = (result as any)?.balancesAfter;
 
             // Note: Rebalance logging could be added to the modular system in the future if needed

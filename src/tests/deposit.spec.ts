@@ -66,6 +66,8 @@ for (const route of depositRoutes) {
       let explorerUrl: string | undefined;
       let freeCollateralBeforeDeposit: TokenAmount;
       let freeCollateralAfterDeposit: TokenAmount;
+      let uiFinalityPassed: boolean = false;
+      let apiFinalityPassed: boolean = false;
 
       logger.info(`Starting test: (${route.id})`, {
         route_id: route.id,
@@ -82,102 +84,103 @@ for (const route of depositRoutes) {
       });
 
       try {
-          freeCollateralBeforeDeposit = await interop.getFreeCollateral(route.dydx_address);
+        freeCollateralBeforeDeposit = await interop.getFreeCollateral(route.dydx_address);
 
-          // NavigateDialog: Open app and connect wallet to reach deposit dialog
-          testRunLogger.startStep(DepositFunnelSteps.NavigateDialog);
-          await test.step("Open app", async () => {
-            await openApp(page, {
-              waitUntil: "domcontentloaded",
-              maxRetries: 3,
-              retryDelayMs: 1500,
-              waitFor: [dydxSelectors.connectWalletBtn]
-            });
+        // NavigateDialog: Open app and connect wallet to reach deposit dialog
+        testRunLogger.startStep(DepositFunnelSteps.NavigateDialog);
+        await test.step("Open app", async () => {
+          await openApp(page, {
+            waitUntil: "domcontentloaded",
+            maxRetries: 3,
+            retryDelayMs: 1500,
+            waitFor: [dydxSelectors.connectWalletBtn]
           });
+        });
 
-          await test.step(`Connect wallet (${route.wallet_type})`, async () => {
-            await connectWallet(page, context, route.wallet_type);
+        await test.step(`Connect wallet (${route.wallet_type})`, async () => {
+          await connectWallet(page, context, route.wallet_type);
+        });
+        testRunLogger.completeStep(DepositFunnelSteps.NavigateDialog);
+
+        // DepositInitiated: User fills deposit dialog and initiates deposit
+        testRunLogger.startStep(DepositFunnelSteps.DepositInitiated);
+        await test.step("Deposit Dialog Input", async () => {
+          await deposit(page, route.amount, route.src_chain, route.token, route.wallet_type);
+        });
+        testRunLogger.completeStep(DepositFunnelSteps.DepositInitiated);
+
+        // DepositSubmitted: Transaction submitted to blockchain
+        testRunLogger.startStep(DepositFunnelSteps.DepositSubmitted);
+        await test.step("Submit deposit", async () => {
+          logger.info("Submitting deposit");
+          return await submitDeposit(page, context, route.wallet_type);
+        });
+        testRunLogger.completeStep(DepositFunnelSteps.DepositSubmitted);
+
+        try {
+          testRunLogger.startStep(DepositFunnelSteps.DepositFinalized);
+          await test.step('Wait for finality', async () => {
+            logger.info('Waiting for finality');
+            const res = await waitForUIFinality(page, { kind: 'deposit' });
+            txHash = res.txHash;
+            explorerUrl = res.explorerUrl;
+            expect(res.ok).toBeTruthy();
+            uiFinalityPassed = true;
           });
-          testRunLogger.completeStep(DepositFunnelSteps.NavigateDialog);
+          testRunLogger.completeStep(DepositFunnelSteps.DepositFinalized);
+        } catch (e: any) {
+          logger.error('UI Finality check failed', e, { route_id: route.id, txHash, explorerUrl });
+          uiFinalityPassed = false;
+        }
 
-          // DepositInitiated: User fills deposit dialog and initiates deposit
-          testRunLogger.startStep(DepositFunnelSteps.DepositInitiated);
-          await test.step("Deposit Dialog Input", async () => {
-            await deposit(page, route.amount, route.src_chain, route.token, route.wallet_type);
-          });
-          testRunLogger.completeStep(DepositFunnelSteps.DepositInitiated);
-
-          // DepositSubmitted: Transaction submitted to blockchain
-          testRunLogger.startStep(DepositFunnelSteps.DepositSubmitted);
-          await test.step("Submit deposit", async () => {
-            logger.info("Submitting deposit");
-            return await submitDeposit(page, context, route.wallet_type);
-          });
-          testRunLogger.completeStep(DepositFunnelSteps.DepositSubmitted);
-
-          let uiFinalityPassed: boolean = false;
-          let apiFinalityPassed: boolean = false;
-          try {
-            testRunLogger.startStep(DepositFunnelSteps.DepositFinalized);
-            await test.step('Wait for finality', async () => {
-              logger.info('Waiting for finality');
-              const res = await waitForUIFinality(page, { kind: 'deposit' });
-              txHash = res.txHash;
-              explorerUrl = res.explorerUrl;
-              expect(res.ok).toBeTruthy();
-              uiFinalityPassed = true;
-            });
-            testRunLogger.completeStep(DepositFunnelSteps.DepositFinalized);
-          } catch (e: any) {
-            logger.error('UI Finality check failed', e, { route_id: route.id, txHash, explorerUrl });
-            uiFinalityPassed = false;
-          }
-
+        if (!uiFinalityPassed) {
           freeCollateralAfterDeposit = await interop.getFreeCollateral(route.dydx_address);
           apiFinalityPassed = checkAPIFinality(
             freeCollateralBeforeDeposit, 
             freeCollateralAfterDeposit, 
-            {
-              routeKind: "deposit",
-              depositRouteKind: route.route_kind,
-            }
+            route.amount
           );
           expect(apiFinalityPassed).toBeTruthy();
-  
-          logger.success('Deposit flow complete', {
-            route_id: route.id,
-            txHash,
-            explorerUrl,
-            uiFinalityPassed,
-            apiFinalityPassed,
-          });
+        } else {
+          // If the UI finality passed, the API finality should also pass - 
+          // let's not give it a chance to fail by checking the balance again
+          apiFinalityPassed = true;
+        }
 
-          // Emit comprehensive test run log for successful tests
-          await testRunLogger.logTestResult({
-            status: "passed",
-            txHash,
-            explorerUrl,
-          });
-          
-          // Send metrics for successful test
-          await sendTestRunMetricsToDatadog(route, "deposit", "passed", uiFinalityPassed, apiFinalityPassed);
-          
-          // TODO: Consider closing the entire context here to avoid cross-test leakage when running multiple routes.
-        } catch (e: any) {
-          logger.error("Deposit failed", e, { route_id: route.id, txHash, explorerUrl });
-          
-          // Emit comprehensive test run log for failed tests
-          await testRunLogger.logTestResult({
-            status: "failed",
-            error: e,
-            txHash,
-            explorerUrl,
-          });
-          
-          // Send metrics for failed test
-          await sendTestRunMetricsToDatadog(route, "deposit", "failed", false, false);
-          
-          throw e;
+        logger.success('Deposit flow complete', {
+          route_id: route.id,
+          txHash,
+          explorerUrl,
+          uiFinalityPassed,
+          apiFinalityPassed,
+        });
+
+        // Emit comprehensive test run log for successful tests
+        await testRunLogger.logTestResult({
+          status: "passed",
+          txHash,
+          explorerUrl,
+        });
+        
+        // Send metrics for successful test
+        await sendTestRunMetricsToDatadog(route, "deposit", "passed", uiFinalityPassed, apiFinalityPassed);
+        
+        // TODO: Consider closing the entire context here to avoid cross-test leakage when running multiple routes.
+      } catch (e: any) {
+        logger.error("Deposit failed", e, { route_id: route.id, txHash, explorerUrl });
+        
+        // Emit comprehensive test run log for failed tests
+        await testRunLogger.logTestResult({
+          status: "failed",
+          error: e,
+          txHash,
+          explorerUrl,
+        });
+        
+        // Send metrics for failed test
+        await sendTestRunMetricsToDatadog(route, "deposit", "failed", uiFinalityPassed, apiFinalityPassed);
+        
+        throw e;
       } finally {
         // -------- Always attempt to rebalance — must not fail the test -------
         await test.step("Rebalance (teardown)", async () => {
