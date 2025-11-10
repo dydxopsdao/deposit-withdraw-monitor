@@ -26,7 +26,7 @@ import { openApp, connectWallet, withdraw, submitWithdraw } from "../targets/dyd
 import { dydxSelectors } from "../targets/dydx/selectors";
 import { TEST_TIMEOUTS } from "../config/timeouts";
 import { rebalanceNow } from "../rebalancer";
-import interop, { TokenAmount } from "../rebalancer/interop";
+import interop, { CHAIN_IDS, TokenAmount } from "../rebalancer/interop";
 
 // ---- Route discovery (sync so tests can be defined at import time) ----------
 const onlyRouteId = process.env.ROUTE_ID?.trim();
@@ -82,7 +82,7 @@ for (const route of withdrawRoutes) {
       });
 
       try {
-        walletBalanceBeforeWithdraw = await interop.getUsdcBalance(route.dst_chain, route.wallet_address);
+        walletBalanceBeforeWithdraw = await interop.getUsdcBalance(CHAIN_IDS[route.dst_chain], route.wallet_address);
 
         // NavigateDialog: Open app and connect wallet to reach withdraw dialog
         testRunLogger.startStep(WithdrawFunnelSteps.NavigateDialog);
@@ -137,7 +137,7 @@ for (const route of withdrawRoutes) {
         if (!uiFinalityPassed) {
           logger.info('UI finality failed, checking API finality');
           testRunLogger.startStep(WithdrawFunnelSteps.WithdrawFinalizedAPI);
-          walletBalanceAfterWithdraw = await interop.getUsdcBalance(route.dst_chain, route.wallet_address);
+          walletBalanceAfterWithdraw = await interop.getUsdcBalance(CHAIN_IDS[route.dst_chain], route.wallet_address);
           apiFinalityPassed = checkAPIFinality(
             walletBalanceBeforeWithdraw, 
             walletBalanceAfterWithdraw, 
