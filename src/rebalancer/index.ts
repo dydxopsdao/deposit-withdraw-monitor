@@ -44,8 +44,6 @@ async function rebalanceNow(route: Route): Promise<{ balancesBefore: BalanceMap;
 }
 
 async function rebalanceDepositRoute(route: Route): Promise<{ balancesBefore: BalanceMap; balancesAfter: BalanceMap }> {
-  interop.configureSkipClient();
-
   // Get balances before concurrently
   const [walletBalancesBefore, freeCollateralBefore] = await Promise.all([
     interop.getWalletBalances(CHAIN_IDS[route.src_chain], route.wallet_address),
@@ -90,8 +88,6 @@ async function rebalanceDepositRoute(route: Route): Promise<{ balancesBefore: Ba
 async function rebalanceWithdrawRoute(
   route: Route
 ): Promise<{ balancesBefore: BalanceMap; balancesAfter: BalanceMap }> {
-  interop.configureSkipClient();
-
   // Get balances before concurrently
   const [freeCollateralBefore, walletBalancesBefore] = await Promise.all([
     interop.getFreeCollateral(route.dydx_address),

@@ -11,8 +11,6 @@ import interop, { CHAIN_IDS } from '../rebalancer/interop';
 import { buildBalanceMap } from '../rebalancer';
 
 async function main(): Promise<void> {
-  interop.configureSkipClient();
-
   const routes = getRoutesSync();
 
   // e.g 

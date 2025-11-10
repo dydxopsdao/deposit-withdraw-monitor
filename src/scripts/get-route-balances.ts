@@ -35,8 +35,6 @@ function parseBalanceResponse(address: string, balanceResponse: BalanceResponse)
 }
 
 async function main(): Promise<void> {
-  interop.configureSkipClient();
-
   const routes = getRoutesSync();
 
   const routeId = process.argv[2];

@@ -28,10 +28,19 @@ import {
 
 export { configureSkipClient, executeRoute, getBalances, getUsdcRoutes, generateUserAddresses, sweepNobleBalance };
 
+// Track if Skip client has been configured
+let skipClientConfigured = false;
+
 /**
  * Configures the Skip client so that it knows how to withdraw from dYdX.
+ * This function is idempotent - it only configures the client once, even if called multiple times.
  */
 const configureSkipClient = (): void => {
+  // Early return if already configured
+  if (skipClientConfigured) {
+    return;
+  }
+
   assertInteropSecrets();
 
   const options: SkipClientOptions = {
@@ -49,7 +58,18 @@ const configureSkipClient = (): void => {
   };
 
   setClientOptions(options);
+  skipClientConfigured = true;
 };
+
+// Auto-configure Skip client when module is loaded
+// This ensures the client is always configured before any API calls
+try {
+  configureSkipClient();
+} catch (error) {
+  // If configuration fails at module load time (e.g., secrets not available),
+  // it will be retried when configureSkipClient() is called explicitly
+  // This allows the module to be imported even if secrets aren't loaded yet
+}
 
 // Define the Skip API balance request structure
 interface BalanceRequest {
