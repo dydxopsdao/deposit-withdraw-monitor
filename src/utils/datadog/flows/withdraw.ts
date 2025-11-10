@@ -8,7 +8,8 @@ export const WithdrawFunnelSteps = {
   NavigateDialog: "NavigateDialog",        // Open app and connect wallet to reach withdraw dialog
   WithdrawInitiated: "WithdrawInitiated",  // User fills withdraw dialog and initiates a withdrawal
   WithdrawSubmitted: "WithdrawSubmitted",  // Transaction submitted to blockchain
-  WithdrawFinalized: "WithdrawFinalized",  // Transaction confirmed on destination chain
+  WithdrawFinalizedUI: "WithdrawFinalizedUI",  // Transaction confirmed on destination chain by UI
+  WithdrawFinalizedAPI: "WithdrawFinalizedAPI",  // Transaction confirmed on destination chain by API
 } as const;
 
 type WithdrawFunnelStep = (typeof WithdrawFunnelSteps)[keyof typeof WithdrawFunnelSteps];

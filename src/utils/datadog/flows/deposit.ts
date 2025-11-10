@@ -9,7 +9,8 @@ export const DepositFunnelSteps = {
   NavigateDialog: "NavigateDialog",
   DepositInitiated: "DepositInitiated",
   DepositSubmitted: "DepositSubmitted",
-  DepositFinalized: "DepositFinalized",
+  DepositFinalizedUI: "DepositFinalizedUI",
+  DepositFinalizedAPI: "DepositFinalizedAPI",
 } as const;
 
 type DepositFunnelStep = (typeof DepositFunnelSteps)[keyof typeof DepositFunnelSteps];

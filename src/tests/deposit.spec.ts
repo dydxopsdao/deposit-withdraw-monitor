@@ -117,8 +117,8 @@ for (const route of depositRoutes) {
         });
         testRunLogger.completeStep(DepositFunnelSteps.DepositSubmitted);
 
+        testRunLogger.startStep(DepositFunnelSteps.DepositFinalizedUI);
         try {
-          testRunLogger.startStep(DepositFunnelSteps.DepositFinalized);
           await test.step('Wait for finality', async () => {
             logger.info('Waiting for finality');
             const res = await waitForUIFinality(page, { kind: 'deposit' });
@@ -127,13 +127,14 @@ for (const route of depositRoutes) {
             expect(res.ok).toBeTruthy();
             uiFinalityPassed = true;
           });
-          testRunLogger.completeStep(DepositFunnelSteps.DepositFinalized);
         } catch (e: any) {
           logger.error('UI Finality check failed', e, { route_id: route.id, txHash, explorerUrl });
           uiFinalityPassed = false;
         }
+        testRunLogger.completeStep(DepositFunnelSteps.DepositFinalizedUI);
 
         if (!uiFinalityPassed) {
+          testRunLogger.startStep(DepositFunnelSteps.DepositFinalizedAPI);
           freeCollateralAfterDeposit = await interop.getFreeCollateral(route.dydx_address);
           apiFinalityPassed = checkAPIFinality(
             freeCollateralBeforeDeposit, 
@@ -141,6 +142,7 @@ for (const route of depositRoutes) {
             route.amount
           );
           expect(apiFinalityPassed).toBeTruthy();
+          testRunLogger.completeStep(DepositFunnelSteps.DepositFinalizedAPI);
         } else {
           // If the UI finality passed, the API finality should also pass - 
           // let's not give it a chance to fail by checking the balance again
