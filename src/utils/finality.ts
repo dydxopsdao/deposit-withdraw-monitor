@@ -4,7 +4,7 @@ import { dydxSelectors as dydxSelectors } from "../targets/dydx/selectors";
 import { TEST_TIMEOUTS } from "../config/timeouts";
 import { logger } from "../logger";
 import { isVisible } from "./ui-helper";
-import type { DepositRouteKind, RouteKind } from "./routes";
+import type { RouteKind } from "./routes";
 import { TokenAmount } from "../rebalancer/interop";
 import { parseUsdcAmount } from "../rebalancer/interop/balances";
 
@@ -195,6 +195,13 @@ export function checkAPIFinality(
 ): boolean {
   const TRANSFER_FEES_THRESHOLD = parseUsdcAmount('5.0').amount;
   const transferAmountBigInt = parseUsdcAmount(transferAmount).amount;
+
+  logger.debug('Checking API finality', {
+    destinationBalanceBefore: destinationBalanceBefore.amount,
+    destinationBalanceAfter: destinationBalanceAfter.amount,
+    transferAmountBigInt,
+    TRANSFER_FEES_THRESHOLD
+  });
 
   return (
     destinationBalanceAfter.amount <= destinationBalanceBefore.amount + transferAmountBigInt &&

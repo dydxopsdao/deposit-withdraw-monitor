@@ -117,8 +117,8 @@ for (const route of withdrawRoutes) {
 
         testRunLogger.startStep(WithdrawFunnelSteps.WithdrawFinalizedUI);
         try {
-          await test.step("Wait for finality", async () => {
-            logger.info("Waiting for finality");
+          await test.step("Wait for UI finality", async () => {
+            logger.info("Waiting for UI finality");
             const res = await waitForUIFinality(page, { kind: "withdraw" });
             logger.info("Finality result", { res });
             txHash = res.txHash;
@@ -135,6 +135,7 @@ for (const route of withdrawRoutes) {
         testRunLogger.completeStep(WithdrawFunnelSteps.WithdrawFinalizedUI);
 
         if (!uiFinalityPassed) {
+          logger.info('UI finality failed, checking API finality');
           testRunLogger.startStep(WithdrawFunnelSteps.WithdrawFinalizedAPI);
           walletBalanceAfterWithdraw = await interop.getUsdcBalance(route.dst_chain, route.wallet_address);
           apiFinalityPassed = checkAPIFinality(
@@ -145,6 +146,7 @@ for (const route of withdrawRoutes) {
           expect(apiFinalityPassed).toBeTruthy();
           testRunLogger.completeStep(WithdrawFunnelSteps.WithdrawFinalizedAPI);
         } else {
+          logger.info('UI finality passed, skipping API finality check');
           // If the UI finality passed, the API finality should also pass - 
           // let's not give it a chance to fail by checking the balance again
           apiFinalityPassed = true;

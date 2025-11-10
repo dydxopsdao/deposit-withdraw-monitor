@@ -119,8 +119,8 @@ for (const route of depositRoutes) {
 
         testRunLogger.startStep(DepositFunnelSteps.DepositFinalizedUI);
         try {
-          await test.step('Wait for finality', async () => {
-            logger.info('Waiting for finality');
+          await test.step('Wait for UI finality', async () => {
+            logger.info('Waiting for UI finality');
             const res = await waitForUIFinality(page, { kind: 'deposit' });
             txHash = res.txHash;
             explorerUrl = res.explorerUrl;
@@ -134,6 +134,7 @@ for (const route of depositRoutes) {
         testRunLogger.completeStep(DepositFunnelSteps.DepositFinalizedUI);
 
         if (!uiFinalityPassed) {
+          logger.info('UI finality failed, checking API finality');
           testRunLogger.startStep(DepositFunnelSteps.DepositFinalizedAPI);
           freeCollateralAfterDeposit = await interop.getFreeCollateral(route.dydx_address);
           apiFinalityPassed = checkAPIFinality(
@@ -144,6 +145,7 @@ for (const route of depositRoutes) {
           expect(apiFinalityPassed).toBeTruthy();
           testRunLogger.completeStep(DepositFunnelSteps.DepositFinalizedAPI);
         } else {
+          logger.info('UI finality passed, skipping API finality check');
           // If the UI finality passed, the API finality should also pass - 
           // let's not give it a chance to fail by checking the balance again
           apiFinalityPassed = true;
