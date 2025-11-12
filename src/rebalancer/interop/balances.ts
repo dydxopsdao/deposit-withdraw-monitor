@@ -55,22 +55,12 @@ function parseUsdcAmount(amount: bigint | string | number): TokenAmount {
     };
   }
   if (typeof amount === 'string') {
-    // Check if the string contains a decimal point (formatted amount)
-    if (amount.includes('.')) {
-      // Treat as formatted amount (e.g., "0.5")
-      const parsedAmount = parseUnits(amount, DYDX_USDC_DECIMALS);
-      return {
-        amount: parsedAmount,
-        formattedAmount: amount,
-      };
-    } else {
-      // Treat as bigint string (e.g., "500000")
-      const bigintAmount = BigInt(amount);
-      return {
-        amount: bigintAmount,
-        formattedAmount: formatUnits(bigintAmount, DYDX_USDC_DECIMALS),
-      };
-    }
+    // Treat as formatted amount (e.g., "0.5")
+    const parsedAmount = parseUnits(amount, DYDX_USDC_DECIMALS);
+    return {
+      amount: parsedAmount,
+      formattedAmount: amount,
+    };
   }
   throw new Error('Invalid parameter type');
 }
@@ -134,11 +124,7 @@ async function getFreeCollateral(dYdXAddress: string): Promise<TokenAmount> {
 
   const data = await response.json();
   // The response is a formatted string, so we need to parse it into a bigint
-  const freeCollateral = data?.subaccounts?.[0]?.freeCollateral
-    ? (parseUnits(data.subaccounts[0].freeCollateral, DYDX_USDC_DECIMALS) as bigint)
-    : 0n;
-
-  return parseUsdcAmount(freeCollateral);
+  return parseUsdcAmount(data?.subaccounts?.[0]?.freeCollateral || '0');
 }
 
 /**
@@ -151,7 +137,6 @@ async function depositToSubaccount(dYdXSeed: string, amount: bigint | string) {
   const dYdXChainConfig = CHAIN_CONFIGS[dYdXChainId];
 
   const dYdXWallet = await LocalWallet.fromMnemonic(dYdXSeed, dYdXChainConfig.bech32Prefix);
-  const dYdXAddress = dYdXWallet.address ?? '';
 
   const validatorClient = await ValidatorClient.connect({
     restEndpoint: dYdXChainConfig.getRpcEndpoint(),

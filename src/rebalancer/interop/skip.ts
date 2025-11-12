@@ -1,6 +1,6 @@
 import {
   UserAddress,
-  executeRoute,
+  executeRoute as skipExecuteRoute,
   setClientOptions,
   SkipClientOptions,
   balances,
@@ -28,10 +28,19 @@ import {
 
 export { configureSkipClient, executeRoute, getBalances, getUsdcRoutes, generateUserAddresses, sweepNobleBalance };
 
+// Track if Skip client has been configured
+let skipClientConfigured = false;
+
 /**
  * Configures the Skip client so that it knows how to withdraw from dYdX.
+ * This function is idempotent - it only configures the client once, even if called multiple times.
  */
 const configureSkipClient = (): void => {
+  // Early return if already configured
+  if (skipClientConfigured) {
+    return;
+  }
+
   assertInteropSecrets();
 
   const options: SkipClientOptions = {
@@ -49,6 +58,18 @@ const configureSkipClient = (): void => {
   };
 
   setClientOptions(options);
+  skipClientConfigured = true;
+};
+
+const ensureSkipClientConfigured = (): void => {
+  if (!skipClientConfigured) {
+    configureSkipClient();
+  }
+};
+
+const executeRoute: typeof skipExecuteRoute = async request => {
+  ensureSkipClientConfigured();
+  return await skipExecuteRoute(request);
 };
 
 // Define the Skip API balance request structure
@@ -82,6 +103,7 @@ interface BalanceResponse {
  * @returns The balances for the wallet on the given chains
  */
 async function getBalances(walletAddress: string, chainIds: string[]): Promise<BalanceResponse> {
+  ensureSkipClientConfigured();
   // Build the balance request with chain-specific denoms
   const balanceRequest: BalanceRequest = {
     chains: chainIds.reduce((acc, chainId) => {
@@ -118,6 +140,7 @@ async function getUsdcRoutes(
   destChainId: string,
   amount: bigint | string
 ): Promise<{ slow: Route; fast: Route }> {
+  ensureSkipClientConfigured();
   const routeOptions: RouteRequest = {
     allowMultiTx: true,
     allowSwaps: true,
@@ -196,6 +219,7 @@ async function generateUserAddresses(chainIds: string[], walletSeed: string, dYd
  * @param amount - The amount to sweep
  */
 async function sweepNobleBalance(dYdXSeed: string, amount: bigint | string) {
+  ensureSkipClientConfigured();
   const dYdXChainId = CHAIN_IDS['dydx'];
   const dYdXChainConfig = CHAIN_CONFIGS[dYdXChainId];
   const nobleChainId = CHAIN_IDS['noble'];

@@ -172,9 +172,9 @@ export const datadogMetrics = new DatadogMetricsClient();
 export function buildTestRunTags(
   route: Route, 
   flowName: string, 
-  testStatus: "passed" | "failed", 
   env: string,
-  failureStep?: string
+  uiFinalityPassed: boolean,
+  apiFinalityPassed: boolean,
 ): MetricTag[] {
   const tags: MetricTag[] = [
     { key: "route_id", value: route.id },
@@ -184,6 +184,8 @@ export function buildTestRunTags(
     { key: "token", value: route.token },
     { key: "flow", value: flowName },
     { key: "env", value: env },
+    { key: "ui_finality", value: uiFinalityPassed ? "passed" : "failed" },
+    { key: "api_finality", value: apiFinalityPassed ? "passed" : "failed" }
   ];
 
   // Add chain tag (non-dydx chain)
@@ -193,11 +195,6 @@ export function buildTestRunTags(
   // Add route_kind for deposit routes
   if (route.route_kind) {
     tags.push({ key: "route_kind", value: route.route_kind });
-  }
-
-  // Add failure step if provided
-  if (failureStep) {
-    tags.push({ key: "failure_step", value: failureStep });
   }
 
   return tags;
@@ -224,10 +221,11 @@ export async function sendTestRunMetricsToDatadog(
   route: Route,
   flowName: "deposit" | "withdraw",
   testStatus: "passed" | "failed",
-  failureStep?: string,
+  uiFinalityPassed: boolean,
+  apiFinalityPassed: boolean,
   client: DatadogMetricsClient = datadogMetrics
 ): Promise<void> {
-  const tags = buildTestRunTags(route, flowName, testStatus, client.env, failureStep);
+  const tags = buildTestRunTags(route, flowName, client.env, uiFinalityPassed, apiFinalityPassed);
   const isPassed = testStatus === "passed" ? 1 : 0;
   
   // Use "playwright" as source for test metrics

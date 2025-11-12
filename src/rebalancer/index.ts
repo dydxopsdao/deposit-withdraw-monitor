@@ -32,8 +32,6 @@ function buildBalanceMap(route: Route, walletBalances: WalletBalances, freeColla
  * @returns The balances before and after the rebalance
  */
 async function rebalanceNow(route: Route): Promise<{ balancesBefore: BalanceMap; balancesAfter: BalanceMap }> {
-  interop.configureSkipClient();
-
   logger.info(`Rebalancing route: ${route.id}`);
   switch (route.kind) {
     case 'deposit':
@@ -46,8 +44,6 @@ async function rebalanceNow(route: Route): Promise<{ balancesBefore: BalanceMap;
 }
 
 async function rebalanceDepositRoute(route: Route): Promise<{ balancesBefore: BalanceMap; balancesAfter: BalanceMap }> {
-  interop.configureSkipClient();
-
   // Get balances before concurrently
   const [walletBalancesBefore, freeCollateralBefore] = await Promise.all([
     interop.getWalletBalances(CHAIN_IDS[route.src_chain], route.wallet_address),
