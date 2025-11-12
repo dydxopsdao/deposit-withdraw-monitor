@@ -1,6 +1,6 @@
 import {
   UserAddress,
-  executeRoute,
+  executeRoute as skipExecuteRoute,
   setClientOptions,
   SkipClientOptions,
   balances,
@@ -61,15 +61,16 @@ const configureSkipClient = (): void => {
   skipClientConfigured = true;
 };
 
-// Auto-configure Skip client when module is loaded
-// This ensures the client is always configured before any API calls
-try {
-  configureSkipClient();
-} catch (error) {
-  // If configuration fails at module load time (e.g., secrets not available),
-  // it will be retried when configureSkipClient() is called explicitly
-  // This allows the module to be imported even if secrets aren't loaded yet
-}
+const ensureSkipClientConfigured = (): void => {
+  if (!skipClientConfigured) {
+    configureSkipClient();
+  }
+};
+
+const executeRoute: typeof skipExecuteRoute = async request => {
+  ensureSkipClientConfigured();
+  return await skipExecuteRoute(request);
+};
 
 // Define the Skip API balance request structure
 interface BalanceRequest {
@@ -102,6 +103,7 @@ interface BalanceResponse {
  * @returns The balances for the wallet on the given chains
  */
 async function getBalances(walletAddress: string, chainIds: string[]): Promise<BalanceResponse> {
+  ensureSkipClientConfigured();
   // Build the balance request with chain-specific denoms
   const balanceRequest: BalanceRequest = {
     chains: chainIds.reduce((acc, chainId) => {
@@ -138,6 +140,7 @@ async function getUsdcRoutes(
   destChainId: string,
   amount: bigint | string
 ): Promise<{ slow: Route; fast: Route }> {
+  ensureSkipClientConfigured();
   const routeOptions: RouteRequest = {
     allowMultiTx: true,
     allowSwaps: true,
@@ -216,6 +219,7 @@ async function generateUserAddresses(chainIds: string[], walletSeed: string, dYd
  * @param amount - The amount to sweep
  */
 async function sweepNobleBalance(dYdXSeed: string, amount: bigint | string) {
+  ensureSkipClientConfigured();
   const dYdXChainId = CHAIN_IDS['dydx'];
   const dYdXChainConfig = CHAIN_CONFIGS[dYdXChainId];
   const nobleChainId = CHAIN_IDS['noble'];
