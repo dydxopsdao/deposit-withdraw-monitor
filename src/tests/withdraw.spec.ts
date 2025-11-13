@@ -168,6 +168,8 @@ for (const route of withdrawRoutes) {
           status: "passed",
           txHash,
           explorerUrl,
+          uiFinalityPassed,
+          apiFinalityPassed,
         });
         
         // Send metrics for successful test
@@ -184,6 +186,8 @@ for (const route of withdrawRoutes) {
           error: e,
           txHash,
           explorerUrl,
+          uiFinalityPassed,
+          apiFinalityPassed,
         });
         
         // Send metrics for failed test

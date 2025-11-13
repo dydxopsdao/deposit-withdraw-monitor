@@ -112,6 +112,9 @@ export class FlowTestRunLogger<TStep extends string, TLog extends BaseTestRunLog
       // Transaction details
       tx_hash: result.txHash,
       explorer_url: result.explorerUrl,
+      // Finality outcomes
+      ui_finality_passed: result.uiFinalityPassed,
+      api_finality_passed: result.apiFinalityPassed,
       
       // Playwright report URL
       report_url: this.generateReportUrl(),
@@ -209,8 +212,17 @@ export class FlowTestRunLogger<TStep extends string, TLog extends BaseTestRunLog
       consoleLogger.info(`DD log to datadog (${this.config.flowName})`, log as any);
     }
 
+    const finalityParts: string[] = [];
+    if (typeof log.ui_finality_passed === "boolean") {
+      finalityParts.push(`ui=${log.ui_finality_passed ? "passed" : "failed"}`);
+    }
+    if (typeof log.api_finality_passed === "boolean") {
+      finalityParts.push(`api=${log.api_finality_passed ? "passed" : "failed"}`);
+    }
+    const finalitySummary = finalityParts.length ? ` [finality ${finalityParts.join(" ")}]` : "";
+
     const ddLogItem = {
-      message: `[synthetic_test_run] ${log.test_status.toUpperCase()}: ${log.route_id} (${this.config.flowName})`,
+      message: `[synthetic_test_run] ${log.test_status.toUpperCase()}: ${log.route_id} (${this.config.flowName})${finalitySummary}`,
       status: log.test_status === "failed" ? "error" : "info",
       ddtags: this.buildTags(log).join(","),
       ddsource: DD_SOURCE,
@@ -259,6 +271,14 @@ export class FlowTestRunLogger<TStep extends string, TLog extends BaseTestRunLog
     // Add failure step tag if present
     if ('failure_step' in log && log.failure_step) {
       baseTags.push(`failure_step:${log.failure_step}`);
+    }
+
+    if (typeof log.ui_finality_passed === "boolean") {
+      baseTags.push(`ui_finality:${log.ui_finality_passed ? "passed" : "failed"}`);
+    }
+
+    if (typeof log.api_finality_passed === "boolean") {
+      baseTags.push(`api_finality:${log.api_finality_passed ? "passed" : "failed"}`);
     }
 
     return baseTags.filter(Boolean) as string[];

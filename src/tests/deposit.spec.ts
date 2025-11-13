@@ -164,6 +164,8 @@ for (const route of depositRoutes) {
           status: "passed",
           txHash,
           explorerUrl,
+          uiFinalityPassed,
+          apiFinalityPassed,
         });
         
         // Send metrics for successful test
@@ -179,6 +181,8 @@ for (const route of depositRoutes) {
           error: e,
           txHash,
           explorerUrl,
+          uiFinalityPassed,
+          apiFinalityPassed,
         });
         
         // Send metrics for failed test

@@ -24,6 +24,10 @@ export interface BaseTestRunLog {
   
   // Playwright report URLs
   report_url?: string;
+
+  // Finality outcomes
+  ui_finality_passed?: boolean;
+  api_finality_passed?: boolean;
 }
 
 export interface FlowStepData<TStep extends string> {
@@ -51,4 +55,6 @@ export interface TestResult {
   error?: Error;
   txHash?: string;
   explorerUrl?: string;
+  uiFinalityPassed?: boolean;
+  apiFinalityPassed?: boolean;
 }
