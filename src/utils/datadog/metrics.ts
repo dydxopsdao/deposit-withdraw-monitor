@@ -170,9 +170,10 @@ export const datadogMetrics = new DatadogMetricsClient();
  * Build standard tags for test run metrics
  */
 export function buildTestRunTags(
-  route: Route, 
-  flowName: string, 
+  route: Route,
+  flowName: string,
   env: string,
+  testStatus: "passed" | "failed",
   uiFinalityPassed: boolean,
   apiFinalityPassed: boolean,
 ): MetricTag[] {
@@ -184,6 +185,7 @@ export function buildTestRunTags(
     { key: "token", value: route.token },
     { key: "flow", value: flowName },
     { key: "env", value: env },
+    { key: "test_status", value: testStatus },
     { key: "ui_finality", value: uiFinalityPassed ? "passed" : "failed" },
     { key: "api_finality", value: apiFinalityPassed ? "passed" : "failed" }
   ];
@@ -225,11 +227,38 @@ export async function sendTestRunMetricsToDatadog(
   apiFinalityPassed: boolean,
   client: DatadogMetricsClient = datadogMetrics
 ): Promise<void> {
-  const tags = buildTestRunTags(route, flowName, client.env, uiFinalityPassed, apiFinalityPassed);
+  const tags = buildTestRunTags(route, flowName, client.env, testStatus, uiFinalityPassed, apiFinalityPassed);
+  const timestamp = Math.floor(Date.now() / 1000);
   const isPassed = testStatus === "passed" ? 1 : 0;
   
   // Use "playwright" as source for test metrics
-  await client.sendGauge("synthetic_test_run.is_passed", isPassed, tags, undefined, "playwright");
+  await client.sendGauge("synthetic_test_run.is_passed", isPassed, tags, timestamp, "playwright");
+  await client.sendGauge("synthetic_test_run.ui_finality_passed", uiFinalityPassed ? 1 : 0, tags, timestamp, "playwright");
+  await client.sendGauge("synthetic_test_run.api_finality_passed", apiFinalityPassed ? 1 : 0, tags, timestamp, "playwright");
+
+  if (!uiFinalityPassed) {
+    const failureTags: MetricTag[] = [
+      ...tags,
+      { key: "failure_reason", value: "ui_finality" },
+    ];
+    await client.sendGauge("synthetic_test_run.failure_count", 1, failureTags, timestamp, "playwright");
+  }
+
+  if (!apiFinalityPassed) {
+    const failureTags: MetricTag[] = [
+      ...tags,
+      { key: "failure_reason", value: "api_finality" },
+    ];
+    await client.sendGauge("synthetic_test_run.failure_count", 1, failureTags, timestamp, "playwright");
+  }
+
+  if (testStatus === "failed" && uiFinalityPassed && apiFinalityPassed) {
+    const failureTags: MetricTag[] = [
+      ...tags,
+      { key: "failure_reason", value: "other" },
+    ];
+    await client.sendGauge("synthetic_test_run.failure_count", 1, failureTags, timestamp, "playwright");
+  }
 }
 
 /**
