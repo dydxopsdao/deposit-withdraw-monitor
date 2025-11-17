@@ -173,7 +173,7 @@ export function buildTestRunTags(
   route: Route,
   flowName: string,
   env: string,
-  testStatus: "passed" | "failed",
+  testStatus: "passed" | "failed" | "skipped",
   uiFinalityPassed: boolean,
   apiFinalityPassed: boolean,
 ): MetricTag[] {
@@ -222,7 +222,7 @@ export function buildRebalancerTags(route: Route, chain: string, asset: string, 
 export async function sendTestRunMetricsToDatadog(
   route: Route,
   flowName: "deposit" | "withdraw",
-  testStatus: "passed" | "failed",
+  testStatus: "passed" | "failed" | "skipped",
   uiFinalityPassed: boolean,
   apiFinalityPassed: boolean,
   client: DatadogMetricsClient = datadogMetrics
@@ -236,7 +236,7 @@ export async function sendTestRunMetricsToDatadog(
   await client.sendGauge("synthetic_test_run.ui_finality_passed", uiFinalityPassed ? 1 : 0, tags, timestamp, "playwright");
   await client.sendGauge("synthetic_test_run.api_finality_passed", apiFinalityPassed ? 1 : 0, tags, timestamp, "playwright");
 
-  if (!uiFinalityPassed) {
+  if (testStatus === "failed" && !uiFinalityPassed) {
     const failureTags: MetricTag[] = [
       ...tags,
       { key: "failure_reason", value: "ui_finality" },
@@ -244,7 +244,7 @@ export async function sendTestRunMetricsToDatadog(
     await client.sendGauge("synthetic_test_run.failure_count", 1, failureTags, timestamp, "playwright");
   }
 
-  if (!apiFinalityPassed) {
+  if (testStatus === "failed" && !apiFinalityPassed) {
     const failureTags: MetricTag[] = [
       ...tags,
       { key: "failure_reason", value: "api_finality" },
@@ -258,6 +258,10 @@ export async function sendTestRunMetricsToDatadog(
       { key: "failure_reason", value: "other" },
     ];
     await client.sendGauge("synthetic_test_run.failure_count", 1, failureTags, timestamp, "playwright");
+  }
+
+  if (testStatus === "skipped") {
+    await client.sendGauge("synthetic_test_run.skipped", 1, tags, timestamp, "playwright");
   }
 }
 

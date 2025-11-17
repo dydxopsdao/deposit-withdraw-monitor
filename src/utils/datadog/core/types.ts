@@ -8,7 +8,7 @@ export interface BaseTestRunLog {
   route_id: string;
   
   // Test outcome
-  test_status: "passed" | "failed";
+  test_status: "passed" | "failed" | "skipped";
   duration_ms: number;
   
   // Route details (available from route object)
@@ -51,7 +51,7 @@ export interface BaseFlowConfig<TStep extends string, TLog extends BaseTestRunLo
 }
 
 export interface TestResult {
-  status: "passed" | "failed";
+  status: "passed" | "failed" | "skipped";
   error?: Error;
   txHash?: string;
   explorerUrl?: string;

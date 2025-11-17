@@ -221,9 +221,11 @@ export class FlowTestRunLogger<TStep extends string, TLog extends BaseTestRunLog
     }
     const finalitySummary = finalityParts.length ? ` [finality ${finalityParts.join(" ")}]` : "";
 
+    const ddLogStatus = log.test_status === "failed" ? "error" : log.test_status === "skipped" ? "warn" : "info";
+
     const ddLogItem = {
       message: `[synthetic_test_run] ${log.test_status.toUpperCase()}: ${log.route_id} (${this.config.flowName})${finalitySummary}`,
-      status: log.test_status === "failed" ? "error" : "info",
+      status: ddLogStatus,
       ddtags: this.buildTags(log).join(","),
       ddsource: DD_SOURCE,
       service: DD_SERVICE,

@@ -27,6 +27,7 @@ import { datadog, DepositFunnelSteps } from "../utils/datadog";
 import { sendTestRunMetricsToDatadog, sendRebalancerBalanceMetrics } from "../utils/datadog/metrics";
 import { rebalanceNow } from "../rebalancer";
 import interop, { TokenAmount } from "../rebalancer/interop";
+import { MetamaskNetworkFeeAlertError } from "../targets/wallets/metamask/errors";
 
 // ---- Route discovery (sync so tests can be defined at import time) ----------
 const onlyRouteId = process.env.ROUTE_ID?.trim();
@@ -173,6 +174,25 @@ for (const route of depositRoutes) {
         
         // TODO: Consider closing the entire context here to avoid cross-test leakage when running multiple routes.
       } catch (e: any) {
+        if (e instanceof MetamaskNetworkFeeAlertError) {
+          logger.warning("MetaMask network fee alert detected; skipping deposit test", {
+            route_id: route.id,
+            txHash,
+            explorerUrl,
+          });
+
+          await testRunLogger.logTestResult({
+            status: "skipped",
+            error: e,
+            txHash,
+            explorerUrl,
+          });
+
+          await sendTestRunMetricsToDatadog(route, "deposit", "skipped", uiFinalityPassed, apiFinalityPassed);
+
+          testInfo.skip(true, "MetaMask network fee alert triggered. Test skipped.");
+          return;
+        }
         logger.error("Deposit failed", e, { route_id: route.id, txHash, explorerUrl });
         
         // Emit comprehensive test run log for failed tests

@@ -7,6 +7,7 @@ import { findPageWithUrl, safeUrl } from "../../../utils";
 import { logger } from "../../../logger";
 import { TEST_TIMEOUTS } from "../../../config/timeouts";
 import fs from "fs";
+import { MetamaskNetworkFeeAlertError } from "./errors";
 
 let warnedMissingWalletPassword = false;
 
@@ -283,6 +284,19 @@ async function handleMetamaskPage(
     await page.waitForTimeout(2500);
     await page.reload({ waitUntil: "load" });
 
+    const ensureNoNetworkFeeAlert = async () => {
+      const reviewAlertButton = page.getByRole("button", { name: /^review alert$/i }).first();
+      const visible = await reviewAlertButton.isVisible().catch(() => false);
+      if (visible) {
+        logger.warning(`${label}: MetaMask network fee alert detected`, {
+          metamask_url: safeUrl(page),
+        });
+        throw new MetamaskNetworkFeeAlertError();
+      }
+    };
+
+    await ensureNoNetworkFeeAlert();
+
     const patterns = [/^Unlock$/i, /^Next$/i, /^Connect$/i, /^Approve$/i, /^Confirm$/i];
     const pollMs = TEST_TIMEOUTS.POLL;
     const deadline = Date.now() + clickTimeoutMs;
@@ -301,12 +315,15 @@ async function handleMetamaskPage(
         );
       }
 
+      await ensureNoNetworkFeeAlert();
+
       if (unlock === true) {
         await attemptMetamaskUnlock(page);
       }
 
       const scanDeadline = Math.min(deadline, Date.now() + 2000);
       while (!page.isClosed() && Date.now() < scanDeadline) {
+        await ensureNoNetworkFeeAlert();
         for (const pattern of patterns) {
           const button = page.getByRole("button", { name: pattern }).first();
           const visible = await button.isVisible().catch(() => false);
@@ -358,6 +375,9 @@ async function handleMetamaskPage(
 
     return clickedPattern !== null;
   } catch (err: any) {
+    if (err instanceof MetamaskNetworkFeeAlertError) {
+      throw err;
+    }
     const sanitized = redactSensitive(err?.message ?? err);
     logger.warning(`${label}: failed to handle MetaMask page: ${sanitized}`);
     return false;

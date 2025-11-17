@@ -27,6 +27,7 @@ import { dydxSelectors } from "../targets/dydx/selectors";
 import { TEST_TIMEOUTS } from "../config/timeouts";
 import { rebalanceNow } from "../rebalancer";
 import interop, { CHAIN_IDS, TokenAmount } from "../rebalancer/interop";
+import { MetamaskNetworkFeeAlertError } from "../targets/wallets/metamask/errors";
 
 // ---- Route discovery (sync so tests can be defined at import time) ----------
 const onlyRouteId = process.env.ROUTE_ID?.trim();
@@ -175,6 +176,25 @@ for (const route of withdrawRoutes) {
         // Send metrics for successful test
         await sendTestRunMetricsToDatadog(route, "withdraw", "passed", uiFinalityPassed, apiFinalityPassed);
       } catch (e: any) {
+        if (e instanceof MetamaskNetworkFeeAlertError) {
+          logger.warning("MetaMask network fee alert detected; skipping withdraw test", {
+            route_id: route.id,
+            explorerUrlsAll,
+            txHashesAll,
+          });
+
+          await testRunLogger.logTestResult({
+            status: "skipped",
+            error: e,
+            txHash,
+            explorerUrl,
+          });
+
+          await sendTestRunMetricsToDatadog(route, "withdraw", "skipped", uiFinalityPassed, apiFinalityPassed);
+
+          testInfo.skip(true, "MetaMask network fee alert triggered. Test skipped.");
+          return;
+        }
         /* =========================
           TEST FAILED
           ========================= */
