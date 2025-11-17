@@ -40,6 +40,9 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
+# Install explicit NPM version for reproducibility
+RUN npm install -g npm@10.8.2
+
 # Install Node.js dependencies (including devDependencies for Playwright CLI)
 RUN npm ci
 
