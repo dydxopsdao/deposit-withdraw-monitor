@@ -58,7 +58,7 @@ export async function submitWithdraw(page: Page, context: BrowserContext, wallet
 
   await expect(button).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
   await amountInput(page).press("Tab").catch(() => {});
-  await expect(button).toBeEnabled({ timeout: TEST_TIMEOUTS.ELEMENT });
+  await expect(button).toBeEnabled({ timeout: TEST_TIMEOUTS.NAVIGATION });
   await button.click();
 
   await handleWalletPopup(context, wallet);
