@@ -8,7 +8,7 @@ import { Extract } from 'unzipper';
 const extensionName = process.argv[2];
 const extensionId = process.argv[3];
 const isMetaMask = extensionName?.toLowerCase() === 'metamask';
-const METAMASK_VERSION = '13.3.0';
+const METAMASK_VERSION = '13.16.1';
 
 if (!extensionName) {
   console.error('❌ Please provide the extension name as the first argument');
