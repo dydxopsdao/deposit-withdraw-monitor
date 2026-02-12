@@ -28,6 +28,8 @@ import { sendTestRunMetricsToDatadog, sendRebalancerBalanceMetrics } from "../ut
 import { rebalanceNow } from "../rebalancer";
 import interop, { TokenAmount } from "../rebalancer/interop";
 import { MetamaskNetworkFeeAlertError } from "../targets/wallets/metamask/errors";
+import { Page } from "@playwright/test";
+import { metamaskSelectors } from "../targets/wallets/metamask/selectors";
 
 // ---- Route discovery (sync so tests can be defined at import time) ----------
 const onlyRouteId = process.env.ROUTE_ID?.trim();
@@ -122,6 +124,8 @@ for (const route of depositRoutes) {
         try {
           await test.step('Wait for UI finality', async () => {
             logger.info('Waiting for UI finality');
+            const isExtensionPage = (page: Page): boolean => metamaskSelectors.urls.extensionPage.test(page.url());
+            await context.pages().find((p) => !isExtensionPage(p)).bringToFront();
             const res = await waitForUIFinality(page, { kind: 'deposit' });
             txHash = res.txHash;
             explorerUrl = res.explorerUrl;

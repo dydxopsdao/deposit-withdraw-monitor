@@ -15,6 +15,7 @@ import {
 } from "../selectors/header";
 import { chooseProviderBtn, sendRequestBtn } from "../selectors/wallet";
 import { fundsDialog } from "../selectors/funds-dialog";
+import { metamaskSelectors } from "../../wallets/metamask/selectors";
 
 const METAMASK_PENDING_REQUEST_TEXT = /request already pending/i;
 const METAMASK_CONNECTION_ERROR_TEXT = /couldn'?t connect to metamask/i;
@@ -70,12 +71,18 @@ export async function connectWallet(
     if (wallet === "metamask") {
       await handlePendingWalletError(page, context, wallet);
     }
+    if (wallet == "metamask") {
+    await openMetamaskNotificationPage(context);
+    }
     logger.info("Handling wallet popup");
     await handleWalletPopup(context, wallet, 10, true);
 
     logger.info("Sending request");
     await sendRequest(page, sendRequestBtn(page));
 
+    if (wallet == "metamask") {
+      await openMetamaskNotificationPage(context);
+      }
     logger.info("Confirming request");
     await handleWalletPopup(context, wallet, 10, true);
   /* 
@@ -132,6 +139,11 @@ export async function openWalletPicker(page: Page, retries = 2) {
   throw new Error("Wallet picker did not appear after clicking Connect wallet.");
 }
 
+export async function openMetamaskNotificationPage(context: BrowserContext) {
+  const metamaskNotificationPage = await context.newPage();
+  await metamaskNotificationPage.goto(metamaskSelectors.urls.notificationPageExplicitUrl, { waitUntil: "domcontentloaded" });
+  return metamaskNotificationPage;
+}
 export async function handleWalletPopup(context: BrowserContext, wallet: WalletType, retries: number = 10, unlock: boolean = false) {
 
   logger.debug(`----------ctx.pages(): ${context.pages().map(p => p.url()).join(', ')}`);

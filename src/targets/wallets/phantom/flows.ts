@@ -21,6 +21,7 @@ export async function launchContextWithExtension(
 
   const context = await chromium.launchPersistentContext(userDataDir, {
     headless: false,
+    viewport: { width: 1920, height: 1080 },
     ignoreDefaultArgs: ['--enable-automation'],
     args: [
       '--disable-blink-features=AutomationControlled',

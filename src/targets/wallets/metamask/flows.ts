@@ -1,5 +1,5 @@
 // src/targets/wallets/metamask/flows.ts
-import { chromium, BrowserContext, Page } from "@playwright/test";
+import { chromium, BrowserContext, Page, expect } from "@playwright/test";
 import { METAMASK_EXT_PATH } from "../../../config/constants";
 import { WALLET_PASSWORD, assertMetamaskSecrets } from "./constants";
 import { metamaskSelectors as s } from "./selectors";
@@ -35,7 +35,7 @@ export async function launchContextWithExtension(
 
   const context = await chromium.launchPersistentContext(userDataDir, {
     headless: false,
-    viewport: { width: 1280, height: 720 },
+    viewport: { width: 1920, height: 1080 },
     ignoreDefaultArgs: ["--enable-automation"],
     args: ciArgs,
   });
@@ -67,17 +67,19 @@ export async function setupWallet(context: BrowserContext, seedPhrase: string) {
   logger.debug(`MetaMask onboarding page: ${onboarding.url()}`);
 
   // Welcome and Terms of Service
-  await onboarding.locator(s.onboarding.start).click();
-  await onboarding.locator(s.onboarding.termsScroll).click();
-  await onboarding.locator(s.onboarding.termsCheckbox).check();
-  await onboarding.locator(s.onboarding.termsAgree).click();
+  await onboarding.locator(s.onboarding.iHaveExistingWallet).click();
   
   // Import with Secret Recovery Phrase
   await onboarding.locator(s.onboarding.importWallet).click();
   await (await onboarding.waitForSelector(s.onboarding.importWithSrp, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
-
-  const srp = await onboarding.waitForSelector(s.onboarding.srpInput, { timeout: TEST_TIMEOUTS.ELEMENT });
-  await srp.type(seedPhrase);
+  const seedWords = seedPhrase.trim().split(/\s+/).filter(Boolean);
+  for (let i = 0; i < seedWords.length; i++) {
+    const wordInput = i === 0
+      ? await onboarding.waitForSelector(s.onboarding.srpInput, { timeout: TEST_TIMEOUTS.ELEMENT })
+      : await onboarding.waitForSelector(`[data-testid="import-srp__srp-word-${i}"]`, { timeout: TEST_TIMEOUTS.ELEMENT });
+    await wordInput.fill(seedWords[i]);
+    await onboarding.keyboard.press("Space");
+  }
 
   await (await onboarding.waitForSelector(s.onboarding.confirmSrp, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
 
@@ -86,26 +88,12 @@ export async function setupWallet(context: BrowserContext, seedPhrase: string) {
   await onboarding.locator(s.onboarding.pwConfirm).fill(WALLET_PASSWORD);
   await onboarding.locator(s.onboarding.pwTerms).click();
   await onboarding.locator(s.onboarding.pwSubmit).click();
-
-  // Telemetry → No thanks (optional)
-  const noThanks = await onboarding.waitForSelector(s.onboarding.noThanks, { timeout: TEST_TIMEOUTS.ELEMENT }).catch(() => null);
-  if (noThanks) {
-    await noThanks.click();
-  }
+  
+  await onboarding.locator(s.onboarding.helpImproveMetaMask).click();
   // Click Done
   await (await onboarding.waitForSelector(s.onboarding.done, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
-
-  const downloadAppContinue = await onboarding.waitForSelector(s.onboarding.downloadAppContinue, { timeout: TEST_TIMEOUTS.ELEMENT }).catch(() => null);
-  if (downloadAppContinue) {
-    await downloadAppContinue.click();
-  }
-  // Pin extension suggestion → Done (optional)
-  const pin = await onboarding.waitForSelector(s.onboarding.pinDone, { timeout: TEST_TIMEOUTS.ELEMENT }).catch(() => null);
-  if (pin) {
-    await pin.click();
-  }
-
-  //await onboarding.close();
+  await expect(onboarding.locator(s.onboarding.done)).toBeDisabled();
+  await onboarding.close().catch(() => {});
   logger.info("Wallet setup complete");
 }
 
@@ -273,7 +261,7 @@ async function handleMetamaskPage(
   const {
     label = "MetaMask connect flow",
     clickTimeoutMs = 25000,
-    closeOnComplete = false,
+    closeOnComplete = true,
     returnPage,
     maxReloads = 3,
   } = opts;
@@ -282,7 +270,6 @@ async function handleMetamaskPage(
   try {
     await page.bringToFront().catch(() => {});
     await page.waitForTimeout(2500);
-    await page.reload({ waitUntil: "load" });
 
     const ensureNoNetworkFeeAlert = async () => {
       const reviewAlertButton = page.getByRole("button", { name: /^review alert$/i }).first();
@@ -306,21 +293,6 @@ async function handleMetamaskPage(
 
     while (!page.isClosed() && Date.now() < deadline && reloadAttempts <= maxReloads) {
       logger.info(`${label}: reload attempt ${reloadAttempts + 1}/${maxReloads}`);
-      try {
-        await page.waitForTimeout(2500);
-        await page.reload({ waitUntil: "load" });
-      } catch (reloadErr: any) {
-        logger.debug(
-          `${label}: reload attempt ${reloadAttempts + 1} failed (${reloadErr?.message ?? reloadErr})`
-        );
-      }
-
-      await ensureNoNetworkFeeAlert();
-
-      if (unlock === true) {
-        await attemptMetamaskUnlock(page);
-      }
-
       const scanDeadline = Math.min(deadline, Date.now() + 2000);
       while (!page.isClosed() && Date.now() < scanDeadline) {
         await ensureNoNetworkFeeAlert();
@@ -342,10 +314,6 @@ async function handleMetamaskPage(
         }
 
         if (clickedPattern) break;
-
-        if (unlock === true) {
-          await attemptMetamaskUnlock(page);
-        }
         await page.waitForTimeout(pollMs).catch(() => {});
       }
 
@@ -410,25 +378,5 @@ export async function handleMetamaskPopup(context: BrowserContext, retries: numb
     logger.info("MetaMask tab flow reported no actions; falling back to popup detection");
   } else {
     logger.info("MetaMask pinned tab not found; waiting for popup");
-  }
-
-  const popupPage = await findPageWithUrl(context, s.urls.notification, retries);
-  if (!popupPage) {
-    logger.warning("MetaMask popup did not appear; assuming connected or silent approval");
-    return;
-  }
-
-  const handledViaPopup = await handleMetamaskPage(popupPage, {
-    label: "MetaMask popup flow",
-    returnPage: primaryDappPage,
-    closeOnComplete: true,
-    clickTimeoutMs: 25000,
-    maxReloads: 3,
-  });
-
-  if (handledViaPopup) {
-    logger.info("MetaMask popup flow completed after interaction");
-  } else {
-    logger.info("MetaMask popup flow finished without interaction");
   }
 }

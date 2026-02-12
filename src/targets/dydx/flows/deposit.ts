@@ -4,7 +4,7 @@ import { logger } from "../../../logger";
 import { clickWithFallback, preferSecondCandidate, WalletType } from "../../../utils";
 import { depositFundsButton, tokenPickerDialogDeposit } from "../selectors/deposit";
 import { tokenPickerCandidates, tokenPillDeposit, fundsDialog, amountInput } from "../selectors/funds-dialog";
-import { handleWalletPopup } from "./wallet";
+import { handleWalletPopup, openMetamaskNotificationPage } from "./wallet";
 import { clickAnyDeposit, enterAmount } from "./shared";
 
 export async function deposit(
@@ -148,10 +148,9 @@ export async function submitDeposit(page: Page, context: BrowserContext, wallet:
   logger.info("Deposit funds button clicked", {
     label: lastLabel || (await readButtonLabel(button).catch(() => "")),
   });
-
-  // Handle wallet popups immediately on success
-  //SWITCH NETWORK
-  await handleWalletPopup(context, wallet, 10, false);
   //CONFIRM TRANSACTION
+  if (wallet == "metamask") {
+    await openMetamaskNotificationPage(context);
+  }
   await handleWalletPopup(context, wallet, 10, false);
 }

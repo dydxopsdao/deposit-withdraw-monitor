@@ -8,10 +8,10 @@ export const metamaskSelectors = {
   // URLs that MM uses
   urls: {
     extensionPage: /chrome-extension:\/\/[^/]+\/(?:home|notification)\.html(?:[?#].*)?$/i,
-    onboarding: /chrome-extension:\/\/.*\/home\.html#onboarding\/welcome/,
+    onboarding: /chrome-extension:\/\/.*\/home\.html#\/?(?:[^?#/]+\/)*onboarding\/welcome(?:[?#].*)?/i,
     unlock: /chrome-extension:\/\/[^/]+\/home\.html#(?:[^?#/]+\/)*unlock(?:[?#].*)?/i,
     notification:   /chrome-extension:\/\/[^/]+\/notification\.html(?:\?.*)?(?:#.*)?$/i,
-
+    notificationPageExplicitUrl: 'chrome-extension://gipjnhcfkablljbiijlkcohbaniiimdi/notification.html',
   },
 
   // dApp-side buttons
@@ -30,10 +30,12 @@ export const metamaskSelectors = {
 
   // Onboarding page
   onboarding: {
+    iHaveExistingWallet: '[data-testid="onboarding-import-wallet"]',
     start:           '[data-testid="onboarding-get-started-button"]',
     termsScroll:     '[data-testid="terms-of-use-scroll-button"]',
     termsCheckbox:   '#terms-of-use__checkbox',
     termsAgree:      '[data-testid="terms-of-use-agree-button"]',
+    helpImproveMetaMask: '[data-testid="metametrics-i-agree"]',
     importWallet:    '[data-testid="onboarding-import-wallet"]',
     importWithSrp:   '[data-testid="onboarding-import-with-srp-button"]',
     srpInput:        '[data-testid="srp-input-import__srp-note"]',
