@@ -188,6 +188,10 @@ export async function primeMetamaskExtensionId(context: BrowserContext): Promise
   return id;
 }
 
+export function getCachedMetamaskExtensionId(context: BrowserContext): string | null {
+  return metamaskExtensionIdCache.get(context) ?? null;
+}
+
 async function openMetamaskNotificationPage(context: BrowserContext): Promise<Page | null> {
   const extensionId = await getMetamaskExtensionId(context);
   if (!extensionId) {
