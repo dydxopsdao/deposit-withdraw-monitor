@@ -10,6 +10,7 @@ import fs from "fs";
 import { MetamaskNetworkFeeAlertError } from "./errors";
 
 let warnedMissingWalletPassword = false;
+const metamaskExtensionIdCache = new WeakMap<BrowserContext, string>();
 
 /**
  * Launches a persistent Chromium context with the MetaMask extension loaded.
@@ -143,6 +144,73 @@ async function findExistingUnlockPage(context: BrowserContext): Promise<Page | u
 }
 
 const isNotificationView = (page: Page): boolean => /notification\.html/i.test(safeUrl(page));
+
+const extractExtensionId = (url: string): string | null => {
+  const match = url.match(/^chrome-extension:\/\/([a-p]{32})\//i);
+  return match?.[1] ?? null;
+};
+
+async function getMetamaskExtensionId(context: BrowserContext): Promise<string | null> {
+  const cached = metamaskExtensionIdCache.get(context);
+  if (cached) return cached;
+
+  for (const sw of context.serviceWorkers()) {
+    const id = extractExtensionId(sw.url());
+    if (id) {
+      metamaskExtensionIdCache.set(context, id);
+      return id;
+    }
+  }
+  for (const page of context.pages()) {
+    const id = extractExtensionId(safeUrl(page));
+    if (id) {
+      metamaskExtensionIdCache.set(context, id);
+      return id;
+    }
+  }
+  try {
+    const sw = await context.waitForEvent("serviceworker", { timeout: TEST_TIMEOUTS.EXTENSIONS });
+    const id = extractExtensionId(sw.url());
+    if (id) metamaskExtensionIdCache.set(context, id);
+    return id;
+  } catch {
+    return null;
+  }
+}
+
+export async function primeMetamaskExtensionId(context: BrowserContext): Promise<string | null> {
+  const id = await getMetamaskExtensionId(context);
+  if (id) {
+    logger.debug(`MetaMask extension ID cached: ${id}`);
+  } else {
+    logger.warning("Unable to cache MetaMask extension ID at context startup");
+  }
+  return id;
+}
+
+async function openMetamaskNotificationPage(context: BrowserContext): Promise<Page | null> {
+  const extensionId = await getMetamaskExtensionId(context);
+  if (!extensionId) {
+    logger.warning("MetaMask extension ID could not be resolved");
+    return null;
+  }
+
+  const url = s.urls.notificationTemplate.replace("{id}", extensionId);
+  const existing = context.pages().find((page) => safeUrl(page).startsWith(url));
+  const page = existing ?? await context.newPage();
+
+  try {
+    await page.goto(url, { waitUntil: "domcontentloaded" });
+    logger.info(`MetaMask notification opened via dynamic extension ID: ${url}`);
+    return page;
+  } catch (error: any) {
+    logger.warning(`Failed to open MetaMask notification URL ${url}: ${error?.message ?? error}`);
+    if (!existing) {
+      await page.close().catch(() => {});
+    }
+    return null;
+  }
+}
 
 async function findMetamaskExtensionPage(
   context: BrowserContext,
@@ -375,8 +443,28 @@ export async function handleMetamaskPopup(context: BrowserContext, retries: numb
       logger.info("MetaMask tab flow completed after interaction");
       return;
     }
-    logger.info("MetaMask tab flow reported no actions; falling back to popup detection");
+    logger.info("MetaMask tab flow reported no actions; trying dynamic notification URL");
   } else {
-    logger.info("MetaMask pinned tab not found; waiting for popup");
+    logger.info("MetaMask pinned tab not found; trying dynamic notification URL");
+  }
+
+  const notificationPage = await openMetamaskNotificationPage(context);
+  if (!notificationPage) {
+    logger.warning("MetaMask notification page could not be opened");
+    return;
+  }
+
+  const handledViaNotification = await handleMetamaskPage(notificationPage, {
+    label: "MetaMask notification flow",
+    returnPage: primaryDappPage,
+    closeOnComplete: true,
+    clickTimeoutMs: 25000,
+    maxReloads: 3,
+  }, unlock);
+
+  if (handledViaNotification) {
+    logger.info("MetaMask notification flow completed after interaction");
+  } else {
+    logger.info("MetaMask notification flow finished without interaction");
   }
 }

@@ -5,6 +5,7 @@ import { USER_DATA_DIR } from '../config/constants';
 import { type Route, closeNonPrimaryTabs } from '../utils';
 import {
   launchContextWithExtension as launchMetamaskContext,
+  primeMetamaskExtensionId,
   setupWallet as setupMetamaskWallet,
   unlockMetamaskWallet as unlockMetamaskWallet,
 } from '../targets/wallets/metamask/flows';
@@ -46,6 +47,7 @@ export const walletContextTest = test.extend<{
     switch (route.wallet_type) {
       case 'metamask':
         context = await launchMetamaskContext(userDataDir);
+        await primeMetamaskExtensionId(context);
         if(userDataDirExists) {
           await unlockMetamaskWallet(context);
         } else {

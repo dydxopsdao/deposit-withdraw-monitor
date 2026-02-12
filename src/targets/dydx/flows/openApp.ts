@@ -37,7 +37,6 @@ export async function openApp(
     // Build the target URL from base + path unless an absolute URL was provided.
     const targetUrl = url ?? new URL(path ?? "", DAPP_URL).toString();
     logger.step(`Navigating to app: ${targetUrl}`);
-  
     try {
       await retry(
         async (attemptNo) => {

@@ -20,6 +20,26 @@ import { metamaskSelectors } from "../../wallets/metamask/selectors";
 const METAMASK_PENDING_REQUEST_TEXT = /request already pending/i;
 const METAMASK_CONNECTION_ERROR_TEXT = /couldn'?t connect to metamask/i;
 const TRY_AGAIN_MAX_RETRIES = 1;
+const EXTENSION_ID_REGEX = /^chrome-extension:\/\/([a-p]{32})\//i;
+
+async function getMetamaskExtensionId(context: BrowserContext): Promise<string> {
+  for (const sw of context.serviceWorkers()) {
+    const id = sw.url().match(EXTENSION_ID_REGEX)?.[1];
+    if (id) return id;
+  }
+
+  for (const page of context.pages()) {
+    const id = safeUrl(page).match(EXTENSION_ID_REGEX)?.[1];
+    if (id) return id;
+  }
+
+  const sw = await context.waitForEvent("serviceworker", { timeout: TEST_TIMEOUTS.EXTENSIONS });
+  const id = sw.url().match(EXTENSION_ID_REGEX)?.[1];
+  if (!id) {
+    throw new Error(`MetaMask extension ID not found from service worker URL: ${sw.url()}`);
+  }
+  return id;
+}
 
 export async function connectWallet(
   page: Page,
@@ -140,8 +160,12 @@ export async function openWalletPicker(page: Page, retries = 2) {
 }
 
 export async function openMetamaskNotificationPage(context: BrowserContext) {
+  const extensionId = await getMetamaskExtensionId(context);
   const metamaskNotificationPage = await context.newPage();
-  await metamaskNotificationPage.goto(metamaskSelectors.urls.notificationPageExplicitUrl, { waitUntil: "domcontentloaded" });
+  await metamaskNotificationPage.goto(
+    metamaskSelectors.urls.notificationTemplate.replace("{id}", extensionId),
+    { waitUntil: "domcontentloaded" }
+  );
   return metamaskNotificationPage;
 }
 export async function handleWalletPopup(context: BrowserContext, wallet: WalletType, retries: number = 10, unlock: boolean = false) {

@@ -11,7 +11,7 @@ export const metamaskSelectors = {
     onboarding: /chrome-extension:\/\/.*\/home\.html#\/?(?:[^?#/]+\/)*onboarding\/welcome(?:[?#].*)?/i,
     unlock: /chrome-extension:\/\/[^/]+\/home\.html#(?:[^?#/]+\/)*unlock(?:[?#].*)?/i,
     notification:   /chrome-extension:\/\/[^/]+\/notification\.html(?:\?.*)?(?:#.*)?$/i,
-    notificationPageExplicitUrl: 'chrome-extension://gipjnhcfkablljbiijlkcohbaniiimdi/notification.html',
+    notificationTemplate: "chrome-extension://{id}/notification.html",
   },
 
   // dApp-side buttons
