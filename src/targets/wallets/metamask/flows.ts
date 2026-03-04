@@ -69,7 +69,7 @@ export async function setupWallet(context: BrowserContext, seedPhrase: string) {
 
   // Welcome and Terms of Service
   await onboarding.locator(s.onboarding.iHaveExistingWallet).click();
-  
+ 
   // Import with Secret Recovery Phrase
   await onboarding.locator(s.onboarding.importWallet).click();
   await (await onboarding.waitForSelector(s.onboarding.importWithSrp, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
@@ -93,6 +93,7 @@ export async function setupWallet(context: BrowserContext, seedPhrase: string) {
   await onboarding.locator(s.onboarding.helpImproveMetaMask).click();
   // Click Done
   await (await onboarding.waitForSelector(s.onboarding.done, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
+  await onboarding.pause();
   await expect(onboarding.locator(s.onboarding.done)).toBeDisabled();
   await onboarding.close().catch(() => {});
   logger.info("Wallet setup complete");

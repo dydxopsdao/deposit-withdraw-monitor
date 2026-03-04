@@ -100,7 +100,7 @@ for (const route of withdrawRoutes) {
           await connectWallet(page, context, route.wallet_type);
         });
         testRunLogger.completeStep(WithdrawFunnelSteps.NavigateDialog);
-
+        
         // WithdrawInitiated: User fills withdraw dialog and initiates a withdrawal
         testRunLogger.startStep(WithdrawFunnelSteps.WithdrawInitiated);
         await test.step("Withdraw Dialog Input", async () => {

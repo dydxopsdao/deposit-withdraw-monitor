@@ -16,6 +16,7 @@ export async function withdraw(
 ) {
   logger.step(`Withdrawing ${amount} ${token} to ${dst_chain}`);
 
+  await closeChatIfPresent(page);
   try {
     await expect(fundsDialog(page)).toBeVisible({ timeout: TEST_TIMEOUTS.DEFAULT });
     await closeDialogButton(page).click();
@@ -34,6 +35,22 @@ export async function withdraw(
 
   await enterAmount(page, amount);
   logger.info("Amount entered");
+}
+
+/**
+ * Closes the Global Chat panel if it is currently visible.
+ * @param page Playwright Page object
+ */
+async function closeChatIfPresent(page: Page): Promise<void> {
+  try {
+    const chatCloseButton = page.locator('.sc-l0nx5c-0.ergVgG.sc-1xochuw-0.ibmTXw.sc-mg0yzv-0.bFLbGV.sc-1opvvl2-6.bpTdGr');
+    await chatCloseButton.waitFor({ state: "visible", timeout: 3000 });
+    logger.step("Global Chat panel detected. Closing it.");
+    await chatCloseButton.click();
+    await page.waitForTimeout(600);
+  } catch {
+    logger.step("Global Chat panel not visible, proceeding.");
+  }
 }
 
 export async function selectTokenWithdraw(page: Page, token: string, chain: string) {
