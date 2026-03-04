@@ -93,7 +93,6 @@ export async function setupWallet(context: BrowserContext, seedPhrase: string) {
   await onboarding.locator(s.onboarding.helpImproveMetaMask).click();
   // Click Done
   await (await onboarding.waitForSelector(s.onboarding.done, { timeout: TEST_TIMEOUTS.ELEMENT })).click();
-  await onboarding.pause();
   await expect(onboarding.locator(s.onboarding.done)).toBeDisabled();
   await onboarding.close().catch(() => {});
   logger.info("Wallet setup complete");
