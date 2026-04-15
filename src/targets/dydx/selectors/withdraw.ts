@@ -2,8 +2,11 @@ import type { Selector } from "../types";
 import { esc } from "./constants";
 import { fundsDialog } from "./funds-dialog";
 
+export const withdrawButtons: Selector = (page) =>
+  page.getByRole("button", { name: /^withdraw$/i });
+
 export const withdrawButton: Selector = (page) =>
-  page.getByRole("button", { name: "Withdraw" });
+  withdrawButtons(page).first();
 
 export const chainPickerDialog: Selector = (page) =>
   page.getByRole("dialog", { name: /select (a )?chain/i });

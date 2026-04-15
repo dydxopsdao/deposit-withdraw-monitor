@@ -2,10 +2,10 @@ import { expect, type BrowserContext, type Page, type Locator } from "@playwrigh
 import { TEST_TIMEOUTS } from "../../../config/timeouts";
 import { logger } from "../../../logger";
 import { clickWithFallback, preferSecondCandidate, WalletType } from "../../../utils";
-import { withdrawFundsButton, withdrawButton, chainPickerDialog, chainPickerRow } from "../selectors/withdraw";
+import { withdrawFundsButton, chainPickerDialog, chainPickerRow } from "../selectors/withdraw";
 import { closeDialogButton, fundsDialog, amountInput, tokenPillWithdraw } from "../selectors/funds-dialog";
 import { handleWalletPopup } from "./wallet";
-import { enterAmount } from "./shared";
+import { clickAnyWithdraw, enterAmount } from "./shared";
 
 export async function withdraw(
   page: Page,
@@ -27,8 +27,8 @@ export async function withdraw(
   }
 
   logger.step("Clicking withdraw button");
-  await withdrawButton(page).click();
-  await expect(fundsDialog(page)).toBeVisible({ timeout: TEST_TIMEOUTS.DEFAULT });
+  await clickAnyWithdraw(page);
+  await expect(fundsDialog(page)).toBeVisible({ timeout: TEST_TIMEOUTS.ELEMENT });
   logger.info("Withdraw dialog opened");
 
   if (wallet === "metamask") {
@@ -48,10 +48,18 @@ async function closeChatIfPresent(page: Page): Promise<void> {
     const chatCloseButton = page.locator('.sc-l0nx5c-0.ergVgG.sc-1xochuw-0.ibmTXw.sc-mg0yzv-0.bFLbGV.sc-1opvvl2-6.bpTdGr');
     await chatCloseButton.waitFor({ state: "visible", timeout: 3000 });
     logger.step("Global Chat panel detected. Closing it.");
-    await chatCloseButton.click();
+    await clickWithFallback(page, chatCloseButton, {
+      timeout: 1000,
+      retries: 0,
+      requireEnabled: false,
+      label: "global chat close",
+    });
     await page.waitForTimeout(600);
-  } catch {
-    logger.step("Global Chat panel not visible, proceeding.");
+  } catch (error: any) {
+    logger.step("Global Chat panel not visible or not closable, proceeding.");
+    if (error?.message) {
+      logger.debug("Global Chat close attempt skipped or failed", { message: error.message });
+    }
   }
 }
 
@@ -60,20 +68,51 @@ async function closeChatIfPresent(page: Page): Promise<void> {
  * The widget renders inside an iframe, so we iterate page.frames() to find it.
  */
 async function closeStatusPageIfPresent(page: Page): Promise<void> {
-  try {
-    for (const frame of page.frames()) {
-      const button = frame.locator('#frame-div button.svg-button');
-      if (await button.isVisible({ timeout: 500 }).catch(() => false)) {
-        logger.step("Status page notification detected. Closing it.");
-        await button.click();
-        await page.waitForTimeout(300);
-        return;
-      }
+  for (const frame of page.frames()) {
+    const isStub = await frame
+      .getByRole("heading", { name: /status embed installed correctly/i })
+      .isVisible()
+      .catch(() => false);
+
+    if (isStub) {
+      logger.debug("Status embed stub present; ignoring it.");
+      continue;
     }
-    logger.step("Status page notification not visible, proceeding.");
-  } catch {
-    logger.step("Status page notification not visible, proceeding.");
+
+    const hasStatusLink = await frame
+      .locator('a[href*="status.dydx.trade"], a[href*="utm_source=embed"]')
+      .first()
+      .isVisible()
+      .catch(() => false);
+    if (!hasStatusLink) continue;
+
+    const button = frame.locator('#frame-div button.svg-button, button.svg-button').first();
+    if (!(await button.isVisible().catch(() => false))) continue;
+    if (!(await button.isEnabled().catch(() => false))) {
+      logger.debug("Status widget close button is disabled; ignoring it.");
+      continue;
+    }
+
+    logger.step("Status page notification detected. Attempting close.");
+
+    try {
+      await clickWithFallback(page, button, {
+        timeout: 1000,
+        retries: 0,
+        requireEnabled: false,
+        label: "status widget close",
+      });
+      await page.waitForTimeout(300);
+    } catch (error: any) {
+      logger.warning("Status widget close attempt failed; continuing.", {
+        message: error?.message ?? String(error),
+      });
+    }
+
+    return;
   }
+
+  logger.step("Status page notification not visible, proceeding.");
 }
 
 export async function selectTokenWithdraw(page: Page, token: string, chain: string) {
