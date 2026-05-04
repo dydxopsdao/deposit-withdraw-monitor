@@ -410,6 +410,8 @@ async function handleMetamaskPage(
     }
 
     if (closeOnComplete) {
+      //sleep for 5 second
+      await page.waitForTimeout(5000);
       await page.close().catch(() => {});
     }
 
