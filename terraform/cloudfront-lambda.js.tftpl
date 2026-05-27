@@ -14,7 +14,7 @@
  * - BUCKET_REGION: AWS region where S3 bucket is located
  */
 
-// Use AWS SDK v3 for Node.js 18.x runtime
+// Use AWS SDK v3 (bundled in the Node.js 24.x runtime)
 const { S3Client, ListObjectsV2Command } = require('@aws-sdk/client-s3');
 const s3Client = new S3Client({ region: '${BUCKET_REGION}' });
 
