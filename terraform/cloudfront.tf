@@ -7,7 +7,7 @@ resource "aws_lambda_function" "cloudfront_basic_auth" {
   role             = aws_iam_role.lambda_basic_auth.arn
   handler          = "index.handler"
   source_code_hash = data.archive_file.lambda_basic_auth_zip.output_base64sha256
-  runtime          = "nodejs18.x"
+  runtime          = "nodejs24.x"
   publish          = true
   region           = "us-east-1" # Lambda@Edge is only available in us-east-1
 
